@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "paas": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/mcp.js"],
+      "env": {
+        "PAAS_API_URL": "${PAAS_API_URL:-https://api.aible-campus.com}",
+        "PAAS_TOKEN": "${PAAS_TOKEN:-}",
+        "PAAS_IDENTITY_URL": "${PAAS_IDENTITY_URL:-}",
+        "PAAS_DEVICE_CLIENT_ID": "${PAAS_DEVICE_CLIENT_ID:-paas-mcp}"
+      }
+    }
+  }
+}
