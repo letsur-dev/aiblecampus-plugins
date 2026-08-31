@@ -3224,8 +3224,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path6) {
-      let input = path6;
+    function removeDotSegments(path7) {
+      let input = path7;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3477,8 +3477,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path6, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path6 && path6 !== "/" ? path6 : void 0;
+        const [path7, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7269,8 +7269,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path6, errorMaps, issueData } = params;
-  const fullPath = [...path6, ...issueData.path || []];
+  const { data, path: path7, errorMaps, issueData } = params;
+  const fullPath = [...path7, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7385,11 +7385,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path6, key) {
+  constructor(parent, value, path7, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path6;
+    this._path = path7;
     this._key = key;
   }
   get path() {
@@ -11310,10 +11310,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path6) {
-  if (!path6)
+function getElementAtPath(obj, path7) {
+  if (!path7)
     return obj;
-  return path6.reduce((acc, key) => acc?.[key], obj);
+  return path7.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11722,11 +11722,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path6, issues) {
+function prefixIssues(path7, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path6);
+    iss.path.unshift(path7);
     return iss;
   });
 }
@@ -11873,16 +11873,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path6 = []) => {
+  const processError = (error52, path7 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
       } else {
-        const fullpath = [...path6, ...issue2.path];
+        const fullpath = [...path7, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -11909,17 +11909,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path6 = []) => {
+  const processError = (error52, path7 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
       } else {
-        const fullpath = [...path6, ...issue2.path];
+        const fullpath = [...path7, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -11951,8 +11951,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path6 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path6) {
+  const path7 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path7) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -23064,11 +23064,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path6) {
-  if (path6.length === 0) {
+function getDotPath(path7) {
+  if (path7.length === 0) {
     return "object root";
   }
-  return path6.reduce((acc, seg, index) => {
+  return path7.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -25093,13 +25093,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path6 = ref.slice(1).split("/").filter(Boolean);
-  if (path6.length === 0) {
+  const path7 = ref.slice(1).split("/").filter(Boolean);
+  if (path7.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path6[0] === defsKey) {
-    const key = path6[1];
+  if (path7[0] === defsKey) {
+    const key = path7[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -30997,9 +30997,9 @@ var StdioServerTransport = class {
 };
 
 // mcp/index.ts
-import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 import { existsSync } from "node:fs";
-import path5 from "node:path";
+import path6 from "node:path";
 
 // mcp/pack.ts
 import path from "node:path";
@@ -34671,10 +34671,137 @@ async function openVerificationUrl(url2) {
   });
 }
 
+// mcp/deployment-attempts.ts
+import { randomUUID as randomUUID2 } from "node:crypto";
+import {
+  mkdir as mkdir3,
+  readFile as readFile4,
+  rename as rename2,
+  rmdir,
+  stat as stat2,
+  writeFile as writeFile2
+} from "node:fs/promises";
+import { homedir as homedir2 } from "node:os";
+import path5 from "node:path";
+var DEFAULT_TTL_MS = 30 * 60 * 1e3;
+var LOCK_STALE_MS = 1e4;
+var LOCK_RETRY_MS = 25;
+var LOCK_RETRIES = 200;
+function defaultAttemptFile() {
+  const configured = process.env["PAAS_DEPLOYMENT_ATTEMPT_FILE"]?.trim();
+  if (configured) return path5.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path5.join(homedir2(), ".config");
+  return path5.join(
+    configRoot,
+    "aiblecampus-paas",
+    "deployment-attempts.json"
+  );
+}
+function emptyState2() {
+  return { version: 1, attempts: {} };
+}
+function parseState2(raw) {
+  const parsed = JSON.parse(raw);
+  if (parsed.version !== 1 || parsed.attempts === null || typeof parsed.attempts !== "object" || Array.isArray(parsed.attempts)) {
+    throw new Error("\uBC30\uD3EC \uC694\uCCAD \uBCF5\uAD6C \uD30C\uC77C \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+  }
+  const attempts = {};
+  for (const [fingerprint, attempt] of Object.entries(parsed.attempts)) {
+    if (!/^[a-f0-9]{64}$/.test(fingerprint) || attempt === null || typeof attempt !== "object" || typeof attempt.key !== "string" || attempt.key.length === 0 || typeof attempt.expiresAt !== "number" || !Number.isFinite(attempt.expiresAt)) {
+      throw new Error("\uBC30\uD3EC \uC694\uCCAD \uBCF5\uAD6C \uD30C\uC77C \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+    }
+    attempts[fingerprint] = {
+      key: attempt.key,
+      expiresAt: attempt.expiresAt
+    };
+  }
+  return { version: 1, attempts };
+}
+async function readState2(file2) {
+  try {
+    return parseState2(await readFile4(file2, "utf8"));
+  } catch (error51) {
+    if (error51.code === "ENOENT") return emptyState2();
+    if (error51 instanceof SyntaxError || error51 instanceof Error && error51.message === "\uBC30\uD3EC \uC694\uCCAD \uBCF5\uAD6C \uD30C\uC77C \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4") {
+      throw new Error(
+        `\uBC30\uD3EC \uC694\uCCAD \uBCF5\uAD6C \uD30C\uC77C \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4: ${file2}. \uD30C\uC77C\uC744 \uBCC4\uB3C4 \uC704\uCE58\uB85C \uC62E\uAE34 \uB4A4 deployment_status\uB85C \uAE30\uC874 \uBC30\uD3EC\uB97C \uBA3C\uC800 \uD655\uC778\uD55C\uB2E4`
+      );
+    }
+    throw error51;
+  }
+}
+async function writeState2(file2, state) {
+  await mkdir3(path5.dirname(file2), { recursive: true, mode: 448 });
+  const temporary = `${file2}.${process.pid}.${randomUUID2()}.tmp`;
+  await writeFile2(temporary, `${JSON.stringify(state, null, 2)}
+`, {
+    mode: 384
+  });
+  await rename2(temporary, file2);
+}
+async function acquireLock(lockDirectory) {
+  for (let attempt = 0; attempt < LOCK_RETRIES; attempt += 1) {
+    try {
+      await mkdir3(lockDirectory, { mode: 448 });
+      return;
+    } catch (error51) {
+      if (error51.code !== "EEXIST") throw error51;
+      try {
+        const current = await stat2(lockDirectory);
+        if (Date.now() - current.mtimeMs > LOCK_STALE_MS) {
+          await rmdir(lockDirectory);
+          continue;
+        }
+      } catch (inspectionError) {
+        const code = inspectionError.code;
+        if (code === "ENOENT") continue;
+        if (code !== "ENOTEMPTY") throw inspectionError;
+      }
+      await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
+    }
+  }
+  throw new Error("\uBC30\uD3EC \uC694\uCCAD \uBCF5\uAD6C \uD30C\uC77C\uC744 \uC7A0\uADF8\uC9C0 \uBABB\uD588\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD55C\uB2E4");
+}
+async function withFileLock(file2, work) {
+  await mkdir3(path5.dirname(file2), { recursive: true, mode: 448 });
+  const lockDirectory = `${file2}.lock`;
+  await acquireLock(lockDirectory);
+  try {
+    return await work();
+  } finally {
+    try {
+      await rmdir(lockDirectory);
+    } catch (error51) {
+      if (error51.code !== "ENOENT") throw error51;
+    }
+  }
+}
+async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
+  const file2 = options.file ?? defaultAttemptFile();
+  const now = options.now ?? Date.now();
+  const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
+  return withFileLock(file2, async () => {
+    const state = await readState2(file2);
+    for (const [candidate, attempt2] of Object.entries(state.attempts)) {
+      if (attempt2.expiresAt <= now) delete state.attempts[candidate];
+    }
+    const existing = state.attempts[fingerprint];
+    if (!forceNewRevision && existing !== void 0) {
+      await writeState2(file2, state);
+      return { key: existing.key, recovered: true };
+    }
+    const attempt = {
+      key: randomUUID2(),
+      expiresAt: now + ttlMs
+    };
+    state.attempts[fingerprint] = attempt;
+    await writeState2(file2, state);
+    return { key: attempt.key, recovered: false };
+  });
+}
+
 // mcp/index.ts
-var PLUGIN_VERSION = "0.16.0";
-var DEPLOYMENT_ATTEMPT_TTL_MS = 30 * 60 * 1e3;
-var deploymentAttempts = /* @__PURE__ */ new Map();
+var PLUGIN_VERSION = "0.17.0";
 function apiBase() {
   return process.env["PAAS_API_URL"]?.trim() || "https://api.aible-campus.com";
 }
@@ -34704,6 +34831,7 @@ function sortedEntries(values) {
 function deploymentFingerprint(input) {
   return createHash3("sha256").update(
     JSON.stringify({
+      apiBase: apiBase(),
       source: input.source,
       name: input.name,
       env: sortedEntries(input.env),
@@ -34712,22 +34840,6 @@ function deploymentFingerprint(input) {
       workspace: input.workspace ?? null
     })
   ).digest("hex");
-}
-function deploymentAttempt(fingerprint, forceNewRevision) {
-  const now = Date.now();
-  for (const [candidate, attempt2] of deploymentAttempts) {
-    if (attempt2.expiresAt <= now) deploymentAttempts.delete(candidate);
-  }
-  const existing = deploymentAttempts.get(fingerprint);
-  if (!forceNewRevision && existing !== void 0 && existing.expiresAt > now) {
-    return { key: existing.key, recovered: true };
-  }
-  const attempt = {
-    key: randomUUID2(),
-    expiresAt: now + DEPLOYMENT_ATTEMPT_TTL_MS
-  };
-  deploymentAttempts.set(fingerprint, attempt);
-  return { key: attempt.key, recovered: false };
 }
 var WorkspaceInputSchema = external_exports.string().min(1).optional().describe(
   "\uB300\uC0C1 Workspace\uC758 ID \uB610\uB294 slug. \uC0DD\uB7B5\uD558\uBA74 \uAC1C\uC778 Workspace\uB97C \uC0AC\uC6A9\uD55C\uB2E4"
@@ -35050,21 +35162,28 @@ server.registerTool(
       const deploymentName2 = toDeploymentName(
         name ?? gitRepoNameOf(projectPath)
       );
-      const attempt2 = deploymentAttempt(
-        deploymentFingerprint({
-          source: JSON.stringify({
-            url: projectPath,
-            ref: ref ?? null,
-            subdir: subdir ?? null
+      let attempt2;
+      try {
+        attempt2 = await deploymentAttempt(
+          deploymentFingerprint({
+            source: JSON.stringify({
+              url: projectPath,
+              ref: ref ?? null,
+              subdir: subdir ?? null
+            }),
+            name: deploymentName2,
+            env: env ?? {},
+            secrets: secrets ?? {},
+            resources,
+            workspace
           }),
-          name: deploymentName2,
-          env: env ?? {},
-          secrets: secrets ?? {},
-          resources,
-          workspace
-        }),
-        forceNewRevision ?? false
-      );
+          forceNewRevision ?? false
+        );
+      } catch (error51) {
+        return errorResult(
+          `\uBC30\uD3EC \uC694\uCCAD\uC744 \uC548\uC804\uD558\uAC8C \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
+        );
+      }
       const result2 = await callApi("/v1/deployments/git", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -35103,7 +35222,7 @@ server.registerTool(
         `\uB85C\uCEEC \uD658\uACBD \uC124\uC815\uC744 \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
       );
     }
-    const deploymentName = toDeploymentName(name ?? path5.basename(projectPath));
+    const deploymentName = toDeploymentName(name ?? path6.basename(projectPath));
     let tarball;
     try {
       tarball = await packDirectory(projectPath);
@@ -35128,17 +35247,24 @@ server.registerTool(
     if (resources !== void 0) {
       form.set("resources", JSON.stringify(resources));
     }
-    const attempt = deploymentAttempt(
-      deploymentFingerprint({
-        source: createHash3("sha256").update(tarball).digest("hex"),
-        name: deploymentName,
-        env: resolvedEnv,
-        secrets: resolvedSecrets,
-        resources,
-        workspace
-      }),
-      forceNewRevision ?? false
-    );
+    let attempt;
+    try {
+      attempt = await deploymentAttempt(
+        deploymentFingerprint({
+          source: createHash3("sha256").update(tarball).digest("hex"),
+          name: deploymentName,
+          env: resolvedEnv,
+          secrets: resolvedSecrets,
+          resources,
+          workspace
+        }),
+        forceNewRevision ?? false
+      );
+    } catch (error51) {
+      return errorResult(
+        `\uBC30\uD3EC \uC694\uCCAD\uC744 \uC548\uC804\uD558\uAC8C \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
+      );
+    }
     form.set("idempotencyKey", attempt.key);
     const result = await callApi("/v1/deployments", {
       method: "POST",
@@ -35321,7 +35447,7 @@ server.registerTool(
   "deployment_status",
   {
     title: "\uBC30\uD3EC \uC0C1\uD0DC \uC870\uD68C",
-    description: "\uBC30\uD3EC\uC758 \uD604\uC7AC \uC0C1\uD0DC, \uC811\uC18D URL, \uD604\uC7AC revision \uC744 \uC870\uD68C\uD55C\uB2E4. \uC774\uB984\uC774\uB098 \uBC30\uD3EC id \uB85C \uCC3E\uB294\uB2E4.",
+    description: "\uBC30\uD3EC\uC758 \uC811\uC18D URL, \uD604\uC7AC \uC11C\uBE44\uC2A4 \uC911\uC778 revision\uACFC \uAC00\uC7A5 \uCD5C\uADFC \uBC30\uD3EC \uC791\uC5C5\uC758 queued, building, healthcheck, running \uB610\uB294 failed \uC0C1\uD0DC\uB97C \uC870\uD68C\uD55C\uB2E4. \uC774\uB984\uC774\uB098 \uBC30\uD3EC id \uB85C \uCC3E\uB294\uB2E4.",
     inputSchema: {
       deployment: external_exports.string().describe("\uBC30\uD3EC \uC774\uB984 \uB610\uB294 \uBC30\uD3EC id"),
       workspace: WorkspaceInputSchema

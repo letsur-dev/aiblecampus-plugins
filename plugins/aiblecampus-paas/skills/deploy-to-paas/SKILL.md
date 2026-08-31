@@ -225,9 +225,9 @@ SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 구체�
 - build, run 또는 health 실패는 `deployment_logs`로 원인을 확인하고 수정한 뒤 다시 검증한다.
 - 원인을 확인하지 않은 동일 배포 반복은 하지 않는다.
 - `deploy_project`가 연결 오류, 제한 시간 초과 또는 응답 없음으로 끝나면 같은 이름으로 `deployment_status`를 먼저 호출한다.
-- 상태가 queued, building 또는 healthcheck면 새 Revision을 만들지 않고 기존 작업이 끝날 때까지 상태와 로그를 조회한다.
-- 상태가 running이면 기존 요청이 성공한 것으로 보고 응답의 URL을 사용한다.
-- 상태가 failed면 해당 Revision 로그를 확인해 원인을 수정하고 다시 검증한 뒤에만 재배포한다.
+- `deployment_status`의 `latestRevision.status`가 queued, building 또는 healthcheck면 새 Revision을 만들지 않고 기존 작업이 끝날 때까지 상태와 로그를 조회한다.
+- `latestRevision.status`가 running이면 기존 요청이 성공한 것으로 보고 응답의 URL을 사용한다.
+- `latestRevision.status`가 failed면 같은 항목의 `error`와 해당 Revision 로그를 확인해 원인을 수정하고 다시 검증한 뒤에만 재배포한다. `currentRevision`이 별도로 있으면 실패 중에도 이전 정상 Revision이 계속 서비스되고 있다는 뜻이다.
 - 대상이 두 번 연속 404이고 진행 중인 Revision이 없음을 확인한 경우에만 같은 요청을 한 번 다시 보낼 수 있다.
 - 연결 오류와 응답 없음 복구에는 `forceNewRevision`을 사용하지 않는다. 같은 요청의 멱등 키를 재사용해야 기존 Revision을 돌려받는다.
 - 직전 Revision이 명확히 failed이고 소스 변경 없이 외부 장애만 해소해 새 빌드가 필요한 경우에만 `forceNewRevision: true`를 한 번 사용한다.

@@ -32,12 +32,13 @@ Claude Code에서 설치나 갱신 뒤 새 Skill과 MCP가 현재 대화에 보�
 - `PAAS_DEVICE_CLIENT_ID`: Device Flow client ID. 기본값은 `aiblecampus-paas-device`다.
 - `PAAS_OPEN_BROWSER`: Device Flow 승인 주소 자동 열기 여부. 기본값은 `1`이며 `0`, `false` 또는 `off`로 끌 수 있다.
 - `PAAS_TOKEN`: 이전 운영 및 CI용 service Credential. 개인 기기 로그인보다 우선 적용된다.
+- `PAAS_DEPLOYMENT_ATTEMPT_FILE`: 배포 요청 복구 파일을 별도 위치에 둘 때만 설정한다. 생략하면 사용자 설정 폴더 안에 저장한다.
 
 Credential 원문은 프로젝트 파일, 커밋이나 대화에 기록하지 않는다. Claude Code 환경 설정을 바꾼 뒤에는 `/reload-plugins`로 현재 대화의 MCP를 다시 읽는다. Codex는 현재 클라이언트가 제공하는 플러그인 재로딩 절차를 사용한다.
 
 로그인이 필요하면 `start_paas_login`이 승인 주소를 기본 브라우저에서 연다. Agent는 사용자에게 완료 응답을 요구하지 않고 `complete_paas_login`을 바로 호출해 승인 상태를 polling한다. 브라우저를 열 수 없는 환경에서만 주소와 코드를 직접 안내한다.
 
-`deploy_project`는 같은 MCP 프로세스에서 동일한 소스와 설정을 다시 요청하면 30분 동안 같은 멱등 키를 사용한다. 응답이 끊겨도 Agent는 먼저 `deployment_status`로 기존 작업을 복구한다. 직전 Revision이 명확히 실패했고 새 빌드가 필요한 경우에만 `forceNewRevision`을 사용한다.
+`deploy_project`는 동일한 소스와 설정의 요청 지문과 임의 멱등 키를 권한 0600인 로컬 파일에 30분 동안 보관한다. MCP가 재시작되거나 응답이 끊겨도 Agent는 먼저 `deployment_status`로 기존 작업을 확인하고, 필요하면 같은 요청을 보내 서버가 기존 Revision을 반환하게 한다. 소스, 설정값과 비밀값 원문은 복구 파일에 저장하지 않는다. 직전 Revision이 명확히 실패했고 새 빌드가 필요한 경우에만 `forceNewRevision`을 사용한다.
 
 앱이 사용하는 비밀번호와 API 키는 Device Credential과 별개다. 플러그인은 소스에 직접 저장된 비밀값을 발견하면 원문을 반복하지 않고 위험과 최소 수정 내용을 설명한다. 사용자가 동의하면 Agent가 코드는 환경변수를 사용하도록 바꾸고 실제 값은 Git에서 제외한 `.env.local`로 옮긴다. 새로 필요한 사용자 지정 비밀번호는 Agent 세션에서 입력할 수 있으며 Agent는 받은 값을 후속 답변에서 되읽지 않는다.
 

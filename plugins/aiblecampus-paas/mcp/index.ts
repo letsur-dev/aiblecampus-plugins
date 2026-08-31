@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
@@ -18,10 +18,9 @@ import {
   snapshotSqlite,
 } from "./persistence-migration.ts";
 import { openVerificationUrl } from "./open-browser.ts";
+import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.16.0";
-const DEPLOYMENT_ATTEMPT_TTL_MS = 30 * 60 * 1000;
-const deploymentAttempts = new Map<string, { key: string; expiresAt: number }>();
+const PLUGIN_VERSION = "0.17.0";
 
 /**
  * PaaS 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -96,6 +95,7 @@ function deploymentFingerprint(input: {
   return createHash("sha256")
     .update(
       JSON.stringify({
+        apiBase: apiBase(),
         source: input.source,
         name: input.name,
         env: sortedEntries(input.env),
@@ -105,26 +105,6 @@ function deploymentFingerprint(input: {
       }),
     )
     .digest("hex");
-}
-
-function deploymentAttempt(
-  fingerprint: string,
-  forceNewRevision: boolean,
-): { key: string; recovered: boolean } {
-  const now = Date.now();
-  for (const [candidate, attempt] of deploymentAttempts) {
-    if (attempt.expiresAt <= now) deploymentAttempts.delete(candidate);
-  }
-  const existing = deploymentAttempts.get(fingerprint);
-  if (!forceNewRevision && existing !== undefined && existing.expiresAt > now) {
-    return { key: existing.key, recovered: true };
-  }
-  const attempt = {
-    key: randomUUID(),
-    expiresAt: now + DEPLOYMENT_ATTEMPT_TTL_MS,
-  };
-  deploymentAttempts.set(fingerprint, attempt);
-  return { key: attempt.key, recovered: false };
 }
 
 const WorkspaceInputSchema = z
@@ -567,21 +547,28 @@ server.registerTool(
       const deploymentName = toDeploymentName(
         name ?? gitRepoNameOf(projectPath),
       );
-      const attempt = deploymentAttempt(
-        deploymentFingerprint({
-          source: JSON.stringify({
-            url: projectPath,
-            ref: ref ?? null,
-            subdir: subdir ?? null,
+      let attempt: { key: string; recovered: boolean };
+      try {
+        attempt = await deploymentAttempt(
+          deploymentFingerprint({
+            source: JSON.stringify({
+              url: projectPath,
+              ref: ref ?? null,
+              subdir: subdir ?? null,
+            }),
+            name: deploymentName,
+            env: env ?? {},
+            secrets: secrets ?? {},
+            resources,
+            workspace,
           }),
-          name: deploymentName,
-          env: env ?? {},
-          secrets: secrets ?? {},
-          resources,
-          workspace,
-        }),
-        forceNewRevision ?? false,
-      );
+          forceNewRevision ?? false,
+        );
+      } catch (error) {
+        return errorResult(
+          `배포 요청을 안전하게 준비하지 못했다: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
       const result = await callApi("/v1/deployments/git", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -650,17 +637,24 @@ server.registerTool(
     if (resources !== undefined) {
       form.set("resources", JSON.stringify(resources));
     }
-    const attempt = deploymentAttempt(
-      deploymentFingerprint({
-        source: createHash("sha256").update(tarball).digest("hex"),
-        name: deploymentName,
-        env: resolvedEnv,
-        secrets: resolvedSecrets,
-        resources,
-        workspace,
-      }),
-      forceNewRevision ?? false,
-    );
+    let attempt: { key: string; recovered: boolean };
+    try {
+      attempt = await deploymentAttempt(
+        deploymentFingerprint({
+          source: createHash("sha256").update(tarball).digest("hex"),
+          name: deploymentName,
+          env: resolvedEnv,
+          secrets: resolvedSecrets,
+          resources,
+          workspace,
+        }),
+        forceNewRevision ?? false,
+      );
+    } catch (error) {
+      return errorResult(
+        `배포 요청을 안전하게 준비하지 못했다: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     form.set("idempotencyKey", attempt.key);
 
     const result = await callApi("/v1/deployments", {
@@ -865,7 +859,7 @@ server.registerTool(
   {
     title: "배포 상태 조회",
     description:
-      "배포의 현재 상태, 접속 URL, 현재 revision 을 조회한다. 이름이나 배포 id 로 찾는다.",
+      "배포의 접속 URL, 현재 서비스 중인 revision과 가장 최근 배포 작업의 queued, building, healthcheck, running 또는 failed 상태를 조회한다. 이름이나 배포 id 로 찾는다.",
     inputSchema: {
       deployment: z.string().describe("배포 이름 또는 배포 id"),
       workspace: WorkspaceInputSchema,
