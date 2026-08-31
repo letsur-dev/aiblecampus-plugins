@@ -24,15 +24,17 @@ Claude Code에서는 저장소의 `.claude-plugin/marketplace.json`을 사용한
 
 플랫폼 연결에는 다음 환경변수를 사용한다.
 
-- `PAAS_API_URL`: 플랫폼 제어 API 주소. 생략하면 `https://api.aible-campus.com`을 사용한다.
-- `PAAS_IDENTITY_URL`: Identity 주소. DNS 전에는 환경별 nip.io 주소를 사용한다.
-- `PAAS_DEVICE_CLIENT_ID`: Device Flow client ID. 기본값은 `paas-mcp`다.
+- `PAAS_API_URL`: 플랫폼 제어 API 주소. 생략하면 현재 nip.io 운영 주소를 사용한다.
+- `PAAS_IDENTITY_URL`: Identity 주소. 생략하면 API 주소의 `api.`를 `auth.`로 바꿔 계산한다.
+- `PAAS_DEVICE_CLIENT_ID`: Device Flow client ID. 기본값은 `aiblecampus-paas-device`다.
 - `PAAS_TOKEN`: 이전 운영 및 CI용 service Credential. 개인 기기 로그인보다 우선 적용된다.
 
 Credential 원문은 프로젝트 파일, 커밋이나 대화에 기록하지 않는다. 값을 설정한 뒤 사용하는 클라이언트를 다시 시작한다.
 
 플러그인은 Identity 계약 버전 1의 `/device/auth`와 `/token`을 사용하며
-`urn:aiblecampus:paas` resource와 `paas:access` scope를 요청한다.
+`urn:aiblecampus:paas` resource와 `paas:access` scope를 요청한다. 기기별 ES256
+DPoP 키와 회전 refresh token은 권한이 0600인 로컬 Credential 파일에만 저장하고,
+PaaS 요청마다 access token과 요청 URL 및 method를 새 proof로 묶는다.
 
 ## 현재 범위
 

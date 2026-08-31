@@ -3217,10 +3217,10 @@ var require_utils = __commonJS({
         return { host, isIPV6: false };
       }
     }
-    function findToken(str, token2) {
+    function findToken(str, token) {
       let ind = 0;
       for (let i = 0; i < str.length; i++) {
-        if (str[i] === token2) ind++;
+        if (str[i] === token) ind++;
       }
       return ind;
     }
@@ -13205,9 +13205,9 @@ var $ZodE164 = /* @__PURE__ */ $constructor("$ZodE164", (inst, def) => {
   def.pattern ?? (def.pattern = e164);
   $ZodStringFormat.init(inst, def);
 });
-function isValidJWT2(token2, algorithm = null) {
+function isValidJWT2(token, algorithm = null) {
   try {
-    const tokensParts = token2.split(".");
+    const tokensParts = token.split(".");
     if (tokensParts.length !== 3)
       return false;
     const [header] = tokensParts;
@@ -34007,9 +34007,79 @@ async function packDirectory(root, excludes = []) {
 
 // mcp/device-auth.ts
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { readFileSync } from "node:fs";
 import { homedir, hostname as hostname3 } from "node:os";
 import path2 from "node:path";
+
+// mcp/dpop.ts
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  generateKeyPairSync,
+  randomUUID,
+  sign
+} from "node:crypto";
+function encodeJson(value) {
+  return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+function normalizedHtu(value) {
+  const url2 = new URL(value);
+  return `${url2.origin}${url2.pathname}`;
+}
+function isPrivateJwk(value) {
+  return value.kty === "EC" && value.crv === "P-256" && typeof value.x === "string" && value.x !== "" && typeof value.y === "string" && value.y !== "" && typeof value.d === "string" && value.d !== "";
+}
+function generateDpopPrivateJwk() {
+  const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+  const jwk = privateKey.export({ format: "jwk" });
+  if (!isPrivateJwk(jwk)) throw new Error("DPoP \uAE30\uAE30 \uD0A4\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uB2E4");
+  return jwk;
+}
+function publicDpopJwk(privateJwk) {
+  if (!isPrivateJwk(privateJwk)) throw new Error("DPoP \uAE30\uAE30 \uD0A4 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+  return {
+    kty: "EC",
+    crv: "P-256",
+    x: privateJwk.x,
+    y: privateJwk.y
+  };
+}
+function accessTokenHash(accessToken) {
+  return createHash("sha256").update(accessToken).digest("base64url");
+}
+function createDpopProof(args) {
+  const publicJwk = publicDpopJwk(args.privateJwk);
+  const header = encodeJson({
+    alg: "ES256",
+    typ: "dpop+jwt",
+    jwk: publicJwk
+  });
+  const payload = encodeJson({
+    htm: args.method.toUpperCase(),
+    htu: normalizedHtu(args.url),
+    iat: Math.floor((args.now ?? Date.now)() / 1e3),
+    jti: args.jti ?? randomUUID(),
+    ...args.accessToken === void 0 ? {} : { ath: accessTokenHash(args.accessToken) }
+  });
+  const signature = sign(
+    "sha256",
+    Buffer.from(`${header}.${payload}`),
+    {
+      key: createPrivateKey({ key: args.privateJwk, format: "jwk" }),
+      dsaEncoding: "ieee-p1363"
+    }
+  ).toString("base64url");
+  return `${header}.${payload}.${signature}`;
+}
+function assertDpopPrivateJwk(value) {
+  if (!isPrivateJwk(value)) throw new Error("DPoP \uAE30\uAE30 \uD0A4 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+  createPublicKey(createPrivateKey({ key: value, format: "jwk" }));
+}
+
+// mcp/device-auth.ts
+var DEFAULT_DEVICE_CLIENT_ID = "aiblecampus-paas-device";
+var DEFAULT_RESOURCE = "urn:aiblecampus:paas";
+var refreshes = /* @__PURE__ */ new Map();
 function stateFile() {
   const configured = process.env["PAAS_CREDENTIAL_FILE"]?.trim();
   if (configured) return path2.resolve(configured);
@@ -34022,17 +34092,19 @@ function emptyState(apiBase2) {
 function parseState(raw, apiBase2) {
   const parsed = JSON.parse(raw);
   if (parsed.version !== 1 || parsed.apiBase !== apiBase2) return emptyState(apiBase2);
-  return parsed;
-}
-function readStateSync(apiBase2) {
   try {
-    return parseState(readFileSync(stateFile(), "utf8"), apiBase2);
-  } catch (error51) {
-    if (error51.code !== "ENOENT") {
-      throw new Error("\uAE30\uAE30 Credential \uC800\uC7A5 \uD30C\uC77C\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+    if (parsed.credential !== null) {
+      assertDpopPrivateJwk(parsed.credential.privateJwk);
+      if (typeof parsed.credential.accessToken !== "string" || typeof parsed.credential.refreshToken !== "string" || typeof parsed.credential.expiresAt !== "number" || typeof parsed.credential.deviceLabel !== "string") {
+        parsed.credential = null;
+      }
     }
-    return emptyState(apiBase2);
+    if (parsed.pending !== null) assertDpopPrivateJwk(parsed.pending.privateJwk);
+  } catch {
+    parsed.credential = null;
+    parsed.pending = null;
   }
+  return parsed;
 }
 async function readState(apiBase2) {
   try {
@@ -34052,28 +34124,117 @@ async function writeState(state) {
 `, { mode: 384 });
   await rename(temporary, file2);
 }
-function identityBase() {
+function identityBase(apiBase2) {
   const value = process.env["PAAS_IDENTITY_URL"]?.trim();
-  if (!value) throw new Error("PAAS_IDENTITY_URL \uC774 \uC124\uC815\uB418\uC9C0 \uC54A\uC558\uB2E4");
-  return value.replace(/\/+$/, "");
+  if (value) return value.replace(/\/+$/, "");
+  const api = new URL(apiBase2);
+  if (!api.hostname.startsWith("api.")) {
+    throw new Error("PAAS_IDENTITY_URL \uC774 \uC124\uC815\uB418\uC9C0 \uC54A\uC558\uACE0 API \uC8FC\uC18C\uC5D0\uC11C Identity \uC8FC\uC18C\uB97C \uACC4\uC0B0\uD560 \uC218 \uC5C6\uB2E4");
+  }
+  api.hostname = `auth.${api.hostname.slice(4)}`;
+  api.pathname = "";
+  api.search = "";
+  api.hash = "";
+  return api.toString().replace(/\/+$/, "");
 }
 function clientId() {
-  return process.env["PAAS_DEVICE_CLIENT_ID"]?.trim() || "aiblecampus-paas-device";
+  return process.env["PAAS_DEVICE_CLIENT_ID"]?.trim() || DEFAULT_DEVICE_CLIENT_ID;
 }
 function deviceName() {
   return process.env["PAAS_DEVICE_LABEL"]?.trim() || hostname3();
 }
 function resourceIndicator() {
-  return process.env["PAAS_RESOURCE"]?.trim() || "urn:aiblecampus:paas";
+  return process.env["PAAS_RESOURCE"]?.trim() || DEFAULT_RESOURCE;
 }
-function loadDeviceCredential(apiBase2) {
-  const credential = readStateSync(apiBase2).credential;
+function tokenEndpoint(apiBase2) {
+  return `${identityBase(apiBase2)}/token`;
+}
+function tokenCredential(body, args) {
+  if (typeof body["access_token"] !== "string") {
+    throw new Error("Identity \uC751\uB2F5\uC5D0 access_token\uC774 \uC5C6\uB2E4");
+  }
+  if (String(body["token_type"] ?? "").toLowerCase() !== "dpop") {
+    throw new Error("Identity\uAC00 DPoP access token\uC744 \uBC18\uD658\uD558\uC9C0 \uC54A\uC558\uB2E4");
+  }
+  const refreshToken = typeof body["refresh_token"] === "string" ? body["refresh_token"] : args.previousRefreshToken;
+  if (!refreshToken) throw new Error("Identity \uC751\uB2F5\uC5D0 refresh_token\uC774 \uC5C6\uB2E4");
+  const expiresIn = body["expires_in"];
+  if (typeof expiresIn !== "number" || expiresIn <= 0) {
+    throw new Error("Identity access token \uB9CC\uB8CC \uC2DC\uAC04\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+  }
+  return {
+    accessToken: body["access_token"],
+    refreshToken,
+    expiresAt: Date.now() + expiresIn * 1e3,
+    deviceLabel: args.deviceLabel,
+    privateJwk: args.privateJwk
+  };
+}
+async function refreshCredential(apiBase2) {
+  const state = await readState(apiBase2);
+  const credential = state.credential;
   if (credential === null) return null;
-  if (credential.expiresAt !== null && credential.expiresAt <= Date.now()) return null;
-  return credential.accessToken;
+  if (credential.expiresAt > Date.now() + 3e4) return credential;
+  const endpoint = tokenEndpoint(apiBase2);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      accept: "application/json",
+      dpop: createDpopProof({
+        privateJwk: credential.privateJwk,
+        method: "POST",
+        url: endpoint
+      })
+    },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: clientId(),
+      refresh_token: credential.refreshToken,
+      resource: resourceIndicator()
+    })
+  });
+  const body = await response.json();
+  if (!response.ok) {
+    if (body["error"] === "invalid_grant") {
+      state.credential = null;
+      await writeState(state);
+      return null;
+    }
+    throw new Error(`Identity\uAC00 \uAE30\uAE30 Credential\uC744 \uAC31\uC2E0\uD558\uC9C0 \uBABB\uD588\uB2E4: ${String(body["error"] ?? response.status)}`);
+  }
+  const refreshed = tokenCredential(body, {
+    previousRefreshToken: credential.refreshToken,
+    deviceLabel: credential.deviceLabel,
+    privateJwk: credential.privateJwk
+  });
+  state.credential = refreshed;
+  await writeState(state);
+  return refreshed;
+}
+async function activeCredential(apiBase2) {
+  const existing = refreshes.get(apiBase2);
+  if (existing) return existing;
+  const refresh = refreshCredential(apiBase2).finally(() => refreshes.delete(apiBase2));
+  refreshes.set(apiBase2, refresh);
+  return refresh;
+}
+async function deviceRequestHeaders(apiBase2, url2, method) {
+  const credential = await activeCredential(apiBase2);
+  if (credential === null) return null;
+  return {
+    authorization: `DPoP ${credential.accessToken}`,
+    dpop: createDpopProof({
+      privateJwk: credential.privateJwk,
+      method,
+      url: url2,
+      accessToken: credential.accessToken
+    })
+  };
 }
 async function startDeviceLogin(apiBase2) {
-  const response = await fetch(`${identityBase()}/device/auth`, {
+  const privateJwk = generateDpopPrivateJwk();
+  const response = await fetch(`${identityBase(apiBase2)}/device/auth`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
     body: new URLSearchParams({
@@ -34100,7 +34261,8 @@ async function startDeviceLogin(apiBase2) {
     verificationUriComplete: typeof body["verification_uri_complete"] === "string" ? body["verification_uri_complete"] : null,
     intervalSeconds: interval,
     nextPollAt: Date.now() + interval * 1e3,
-    expiresAt: Date.now() + expiresIn * 1e3
+    expiresAt: Date.now() + expiresIn * 1e3,
+    privateJwk
   };
   const state = await readState(apiBase2);
   state.pending = pending;
@@ -34128,9 +34290,18 @@ async function completeDeviceLogin(apiBase2) {
     if (waitMilliseconds > 0) {
       await new Promise((resolve) => setTimeout(resolve, waitMilliseconds));
     }
-    const response = await fetch(`${identityBase()}/token`, {
+    const endpoint = tokenEndpoint(apiBase2);
+    const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        accept: "application/json",
+        dpop: createDpopProof({
+          privateJwk: pending.privateJwk,
+          method: "POST",
+          url: endpoint
+        })
+      },
       body: new URLSearchParams({
         grant_type: "urn:ietf:params:oauth:grant-type:device_code",
         device_code: pending.deviceCode,
@@ -34140,14 +34311,11 @@ async function completeDeviceLogin(apiBase2) {
     });
     const body = await response.json();
     if (response.ok) {
-      if (typeof body["access_token"] !== "string") throw new Error("Identity \uC751\uB2F5\uC5D0 access_token\uC774 \uC5C6\uB2E4");
-      const expiresIn = typeof body["expires_in"] === "number" ? body["expires_in"] : null;
       const deviceLabel = deviceName();
-      state.credential = {
-        accessToken: body["access_token"],
-        expiresAt: expiresIn === null ? null : Date.now() + expiresIn * 1e3,
-        deviceLabel
-      };
+      state.credential = tokenCredential(body, {
+        deviceLabel,
+        privateJwk: pending.privateJwk
+      });
       state.pending = null;
       await writeState(state);
       return { status: "approved", deviceLabel };
@@ -34173,7 +34341,7 @@ async function completeDeviceLogin(apiBase2) {
 }
 
 // mcp/persistence-migration.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 import { mkdir as mkdir2, readFile as readFile2, readdir, stat } from "node:fs/promises";
 import { backup, DatabaseSync } from "node:sqlite";
 import path3 from "node:path";
@@ -34183,7 +34351,7 @@ var MAX_ROWS = 1e5;
 var MAX_FILES = 1e3;
 var MAX_TOTAL_BYTES = 512 * 1024 * 1024;
 function sha256(content) {
-  return createHash("sha256").update(content).digest("hex");
+  return createHash2("sha256").update(content).digest("hex");
 }
 function sqliteIdentifier(value) {
   if (!SAFE_IDENTIFIER.test(value)) {
@@ -34372,10 +34540,7 @@ async function backupAndSnapshotFiles(projectRoot, sourceDirectory) {
 
 // mcp/index.ts
 function apiBase() {
-  return process.env["PAAS_API_URL"]?.trim() || "https://api.aible-campus.com";
-}
-function token() {
-  return process.env["PAAS_TOKEN"]?.trim() || loadDeviceCredential(apiBase());
+  return process.env["PAAS_API_URL"]?.trim() || "https://api.161.33.218.143.nip.io";
 }
 var TOKEN_MISSING = "PaaS Device Credential\uC774 \uC5C6\uB2E4.\nstart_paas_login \uC73C\uB85C \uB85C\uADF8\uC778\uC744 \uC2DC\uC791\uD558\uACE0 \uD45C\uC2DC\uB41C \uC8FC\uC18C\uC640 \uCF54\uB4DC\uB85C \uC2B9\uC778\uD55C \uB4A4 complete_paas_login \uC744 \uC2E4\uD589\uD55C\uB2E4.\n\uC774\uC804 service Credential\uC744 \uC4F0\uB294 \uC6B4\uC601 \uD658\uACBD\uC740 PAAS_TOKEN\uC744 \uACC4\uC18D \uC0AC\uC6A9\uD560 \uC218 \uC788\uB2E4.";
 function toDeploymentName(input) {
@@ -34399,19 +34564,23 @@ var WorkspaceInputSchema = external_exports.string().min(1).optional().describe(
   "\uB300\uC0C1 Workspace\uC758 ID \uB610\uB294 slug. \uC0DD\uB7B5\uD558\uBA74 \uAC1C\uC778 Workspace\uB97C \uC0AC\uC6A9\uD55C\uB2E4"
 );
 async function callApi(urlPath, init = {}, workspace) {
-  const authorization = token();
-  if (authorization === null) {
-    return { ok: false, status: 0, body: TOKEN_MISSING };
-  }
   let response;
   try {
-    response = await fetch(`${apiBase()}${urlPath}`, {
+    const url2 = `${apiBase()}${urlPath}`;
+    const method = init.method ?? "GET";
+    const serviceCredential = process.env["PAAS_TOKEN"]?.trim();
+    const authentication = serviceCredential ? { authorization: `Bearer ${serviceCredential}` } : await deviceRequestHeaders(apiBase(), url2, method);
+    if (authentication === null) {
+      return { ok: false, status: 0, body: TOKEN_MISSING };
+    }
+    const headers = new Headers(init.headers);
+    if (workspace !== void 0) headers.set("x-paas-workspace", workspace);
+    for (const [key, value] of Object.entries(authentication)) {
+      headers.set(key, value);
+    }
+    response = await fetch(url2, {
       ...init,
-      headers: {
-        authorization: `Bearer ${authorization}`,
-        ...workspace === void 0 ? {} : { "x-paas-workspace": workspace },
-        ...init.headers ?? {}
-      }
+      headers
     });
   } catch (error51) {
     return {
@@ -34483,7 +34652,7 @@ ${typeof result.body === "string" ? result.body : JSON.stringify(result.body, nu
 }
 var server = new McpServer({
   name: "aiblecampus-paas",
-  version: "0.12.0"
+  version: "0.13.0"
 });
 server.registerTool(
   "start_paas_login",

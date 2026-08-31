@@ -1,7 +1,12 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { readFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import path from "node:path";
+import type { JsonWebKey } from "node:crypto";
+import {
+  assertDpopPrivateJwk,
+  createDpopProof,
+  generateDpopPrivateJwk,
+} from "./dpop.ts";
 
 type PendingAuthorization = {
   deviceCode: string;
@@ -11,14 +16,27 @@ type PendingAuthorization = {
   intervalSeconds: number;
   nextPollAt: number;
   expiresAt: number;
+  privateJwk: JsonWebKey;
+};
+
+type StoredCredential = {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  deviceLabel: string;
+  privateJwk: JsonWebKey;
 };
 
 type LocalState = {
   version: 1;
   apiBase: string;
-  credential: { accessToken: string; expiresAt: number | null; deviceLabel: string } | null;
+  credential: StoredCredential | null;
   pending: PendingAuthorization | null;
 };
+
+const DEFAULT_DEVICE_CLIENT_ID = "aiblecampus-paas-device";
+const DEFAULT_RESOURCE = "urn:aiblecampus:paas";
+const refreshes = new Map<string, Promise<StoredCredential | null>>();
 
 function stateFile(): string {
   const configured = process.env["PAAS_CREDENTIAL_FILE"]?.trim();
@@ -34,18 +52,24 @@ function emptyState(apiBase: string): LocalState {
 function parseState(raw: string, apiBase: string): LocalState {
   const parsed = JSON.parse(raw) as LocalState;
   if (parsed.version !== 1 || parsed.apiBase !== apiBase) return emptyState(apiBase);
-  return parsed;
-}
-
-function readStateSync(apiBase: string): LocalState {
   try {
-    return parseState(readFileSync(stateFile(), "utf8"), apiBase);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw new Error("기기 Credential 저장 파일이 올바르지 않다");
+    if (parsed.credential !== null) {
+      assertDpopPrivateJwk(parsed.credential.privateJwk);
+      if (
+        typeof parsed.credential.accessToken !== "string" ||
+        typeof parsed.credential.refreshToken !== "string" ||
+        typeof parsed.credential.expiresAt !== "number" ||
+        typeof parsed.credential.deviceLabel !== "string"
+      ) {
+        parsed.credential = null;
+      }
     }
-    return emptyState(apiBase);
+    if (parsed.pending !== null) assertDpopPrivateJwk(parsed.pending.privateJwk);
+  } catch {
+    parsed.credential = null;
+    parsed.pending = null;
   }
+  return parsed;
 }
 
 async function readState(apiBase: string): Promise<LocalState> {
@@ -67,14 +91,22 @@ async function writeState(state: LocalState): Promise<void> {
   await rename(temporary, file);
 }
 
-function identityBase(): string {
+function identityBase(apiBase: string): string {
   const value = process.env["PAAS_IDENTITY_URL"]?.trim();
-  if (!value) throw new Error("PAAS_IDENTITY_URL 이 설정되지 않았다");
-  return value.replace(/\/+$/, "");
+  if (value) return value.replace(/\/+$/, "");
+  const api = new URL(apiBase);
+  if (!api.hostname.startsWith("api.")) {
+    throw new Error("PAAS_IDENTITY_URL 이 설정되지 않았고 API 주소에서 Identity 주소를 계산할 수 없다");
+  }
+  api.hostname = `auth.${api.hostname.slice(4)}`;
+  api.pathname = "";
+  api.search = "";
+  api.hash = "";
+  return api.toString().replace(/\/+$/, "");
 }
 
 function clientId(): string {
-  return process.env["PAAS_DEVICE_CLIENT_ID"]?.trim() || "aiblecampus-paas-device";
+  return process.env["PAAS_DEVICE_CLIENT_ID"]?.trim() || DEFAULT_DEVICE_CLIENT_ID;
 }
 
 function deviceName(): string {
@@ -83,14 +115,108 @@ function deviceName(): string {
 
 /** PaaS access token 의 대상 resource. JWT audience 를 이 값으로 발급받는다. */
 function resourceIndicator(): string {
-  return process.env["PAAS_RESOURCE"]?.trim() || "urn:aiblecampus:paas";
+  return process.env["PAAS_RESOURCE"]?.trim() || DEFAULT_RESOURCE;
 }
 
-export function loadDeviceCredential(apiBase: string): string | null {
-  const credential = readStateSync(apiBase).credential;
+function tokenEndpoint(apiBase: string): string {
+  return `${identityBase(apiBase)}/token`;
+}
+
+function tokenCredential(body: Record<string, unknown>, args: {
+  previousRefreshToken?: string;
+  deviceLabel: string;
+  privateJwk: JsonWebKey;
+}): StoredCredential {
+  if (typeof body["access_token"] !== "string") {
+    throw new Error("Identity 응답에 access_token이 없다");
+  }
+  if (String(body["token_type"] ?? "").toLowerCase() !== "dpop") {
+    throw new Error("Identity가 DPoP access token을 반환하지 않았다");
+  }
+  const refreshToken = typeof body["refresh_token"] === "string"
+    ? body["refresh_token"]
+    : args.previousRefreshToken;
+  if (!refreshToken) throw new Error("Identity 응답에 refresh_token이 없다");
+  const expiresIn = body["expires_in"];
+  if (typeof expiresIn !== "number" || expiresIn <= 0) {
+    throw new Error("Identity access token 만료 시간이 올바르지 않다");
+  }
+  return {
+    accessToken: body["access_token"],
+    refreshToken,
+    expiresAt: Date.now() + expiresIn * 1000,
+    deviceLabel: args.deviceLabel,
+    privateJwk: args.privateJwk,
+  };
+}
+
+async function refreshCredential(apiBase: string): Promise<StoredCredential | null> {
+  const state = await readState(apiBase);
+  const credential = state.credential;
   if (credential === null) return null;
-  if (credential.expiresAt !== null && credential.expiresAt <= Date.now()) return null;
-  return credential.accessToken;
+  if (credential.expiresAt > Date.now() + 30_000) return credential;
+  const endpoint = tokenEndpoint(apiBase);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      accept: "application/json",
+      dpop: createDpopProof({
+        privateJwk: credential.privateJwk,
+        method: "POST",
+        url: endpoint,
+      }),
+    },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: clientId(),
+      refresh_token: credential.refreshToken,
+      resource: resourceIndicator(),
+    }),
+  });
+  const body = await response.json() as Record<string, unknown>;
+  if (!response.ok) {
+    if (body["error"] === "invalid_grant") {
+      state.credential = null;
+      await writeState(state);
+      return null;
+    }
+    throw new Error(`Identity가 기기 Credential을 갱신하지 못했다: ${String(body["error"] ?? response.status)}`);
+  }
+  const refreshed = tokenCredential(body, {
+    previousRefreshToken: credential.refreshToken,
+    deviceLabel: credential.deviceLabel,
+    privateJwk: credential.privateJwk,
+  });
+  state.credential = refreshed;
+  await writeState(state);
+  return refreshed;
+}
+
+async function activeCredential(apiBase: string): Promise<StoredCredential | null> {
+  const existing = refreshes.get(apiBase);
+  if (existing) return existing;
+  const refresh = refreshCredential(apiBase).finally(() => refreshes.delete(apiBase));
+  refreshes.set(apiBase, refresh);
+  return refresh;
+}
+
+export async function deviceRequestHeaders(
+  apiBase: string,
+  url: string,
+  method: string,
+): Promise<Record<string, string> | null> {
+  const credential = await activeCredential(apiBase);
+  if (credential === null) return null;
+  return {
+    authorization: `DPoP ${credential.accessToken}`,
+    dpop: createDpopProof({
+      privateJwk: credential.privateJwk,
+      method,
+      url,
+      accessToken: credential.accessToken,
+    }),
+  };
 }
 
 export async function startDeviceLogin(apiBase: string): Promise<{
@@ -99,7 +225,8 @@ export async function startDeviceLogin(apiBase: string): Promise<{
   verificationUriComplete: string | null;
   expiresAt: string;
 }> {
-  const response = await fetch(`${identityBase()}/device/auth`, {
+  const privateJwk = generateDpopPrivateJwk();
+  const response = await fetch(`${identityBase(apiBase)}/device/auth`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
     body: new URLSearchParams({
@@ -130,6 +257,7 @@ export async function startDeviceLogin(apiBase: string): Promise<{
     intervalSeconds: interval,
     nextPollAt: Date.now() + interval * 1000,
     expiresAt: Date.now() + expiresIn * 1000,
+    privateJwk,
   };
   const state = await readState(apiBase);
   state.pending = pending;
@@ -161,9 +289,18 @@ export async function completeDeviceLogin(apiBase: string): Promise<
     if (waitMilliseconds > 0) {
       await new Promise((resolve) => setTimeout(resolve, waitMilliseconds));
     }
-    const response = await fetch(`${identityBase()}/token`, {
+    const endpoint = tokenEndpoint(apiBase);
+    const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        accept: "application/json",
+        dpop: createDpopProof({
+          privateJwk: pending.privateJwk,
+          method: "POST",
+          url: endpoint,
+        }),
+      },
       body: new URLSearchParams({
         grant_type: "urn:ietf:params:oauth:grant-type:device_code",
         device_code: pending.deviceCode,
@@ -173,14 +310,11 @@ export async function completeDeviceLogin(apiBase: string): Promise<
     });
     const body = await response.json() as Record<string, unknown>;
     if (response.ok) {
-      if (typeof body["access_token"] !== "string") throw new Error("Identity 응답에 access_token이 없다");
-      const expiresIn = typeof body["expires_in"] === "number" ? body["expires_in"] : null;
       const deviceLabel = deviceName();
-      state.credential = {
-        accessToken: body["access_token"],
-        expiresAt: expiresIn === null ? null : Date.now() + expiresIn * 1000,
+      state.credential = tokenCredential(body, {
         deviceLabel,
-      };
+        privateJwk: pending.privateJwk,
+      });
       state.pending = null;
       await writeState(state);
       return { status: "approved", deviceLabel };

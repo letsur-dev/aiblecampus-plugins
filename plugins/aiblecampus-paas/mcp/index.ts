@@ -6,7 +6,7 @@ import { z } from "zod";
 import { packDirectory } from "./pack.ts";
 import {
   completeDeviceLogin,
-  loadDeviceCredential,
+  deviceRequestHeaders,
   startDeviceLogin,
 } from "./device-auth.ts";
 import {
@@ -17,21 +17,11 @@ import {
 } from "./persistence-migration.ts";
 
 /**
- * PaaS 접속 주소. 로컬과 서버를 이 환경변수 하나로 전환한다.
- * 주소를 코드에 넣지 않는다.
+ * PaaS 접속 주소. DNS 전에는 현재 nip.io 운영 주소를 기본값으로 쓰고 환경변수로
+ * 다른 환경과 공식 도메인으로 전환한다.
  */
 function apiBase(): string {
-  return process.env["PAAS_API_URL"]?.trim() || "https://api.aible-campus.com";
-}
-
-/**
- * 인증 토큰.
- *
- * 제어 API 는 소스를 받아 컨테이너로 실행하므로 토큰 없이는 아무것도 하지 않는다.
- * 설정이 없을 때 조용히 실패하지 않고 무엇을 해야 하는지 그대로 알려준다.
- */
-function token(): string | null {
-  return process.env["PAAS_TOKEN"]?.trim() || loadDeviceCredential(apiBase());
+  return process.env["PAAS_API_URL"]?.trim() || "https://api.161.33.218.143.nip.io";
 }
 
 const TOKEN_MISSING =
@@ -95,22 +85,25 @@ async function callApi(
   init: RequestInit = {},
   workspace?: string,
 ): Promise<ApiResult> {
-  const authorization = token();
-  if (authorization === null) {
-    return { ok: false, status: 0, body: TOKEN_MISSING };
-  }
-
   let response: Response;
   try {
-    response = await fetch(`${apiBase()}${urlPath}`, {
+    const url = `${apiBase()}${urlPath}`;
+    const method = init.method ?? "GET";
+    const serviceCredential = process.env["PAAS_TOKEN"]?.trim();
+    const authentication = serviceCredential
+      ? { authorization: `Bearer ${serviceCredential}` }
+      : await deviceRequestHeaders(apiBase(), url, method);
+    if (authentication === null) {
+      return { ok: false, status: 0, body: TOKEN_MISSING };
+    }
+    const headers = new Headers(init.headers);
+    if (workspace !== undefined) headers.set("x-paas-workspace", workspace);
+    for (const [key, value] of Object.entries(authentication)) {
+      headers.set(key, value);
+    }
+    response = await fetch(url, {
       ...init,
-      headers: {
-        authorization: `Bearer ${authorization}`,
-        ...(workspace === undefined
-          ? {}
-          : { "x-paas-workspace": workspace }),
-        ...(init.headers ?? {}),
-      },
+      headers,
     });
   } catch (error) {
     // 네트워크 실패와 인증 실패를 구분해야 사용자가 고칠 곳을 안다.
@@ -205,7 +198,7 @@ function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResu
 
 const server = new McpServer({
   name: "aiblecampus-paas",
-  version: "0.12.0",
+  version: "0.13.0",
 });
 
 server.registerTool(

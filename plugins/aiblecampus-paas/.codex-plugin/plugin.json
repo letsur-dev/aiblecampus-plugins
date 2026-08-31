@@ -1,6 +1,6 @@
 {
   "name": "aiblecampus-paas",
-  "version": "0.12.0+codex.20260830234500",
+  "version": "0.13.0+codex.20260831112000",
   "description": "Build, validate, deploy, and manage web applications on AibleCampus PaaS.",
   "author": {
     "name": "에이블캠퍼스"
@@ -24,7 +24,12 @@
       "cwd": ".",
       "env_vars": [
         "PAAS_API_URL",
-        "PAAS_TOKEN"
+        "PAAS_TOKEN",
+        "PAAS_IDENTITY_URL",
+        "PAAS_DEVICE_CLIENT_ID",
+        "PAAS_RESOURCE",
+        "PAAS_CREDENTIAL_FILE",
+        "PAAS_DEVICE_LABEL"
       ]
     }
   },
