@@ -19,16 +19,16 @@ import {
 } from "./persistence-migration.ts";
 import { openVerificationUrl } from "./open-browser.ts";
 
-const PLUGIN_VERSION = "0.15.0";
+const PLUGIN_VERSION = "0.16.0";
 const DEPLOYMENT_ATTEMPT_TTL_MS = 30 * 60 * 1000;
 const deploymentAttempts = new Map<string, { key: string; expiresAt: number }>();
 
 /**
- * PaaS 접속 주소. DNS 전에는 현재 nip.io 운영 주소를 기본값으로 쓰고 환경변수로
+ * PaaS 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
  * 다른 환경과 공식 도메인으로 전환한다.
  */
 function apiBase(): string {
-  return process.env["PAAS_API_URL"]?.trim() || "https://api.161.33.218.143.nip.io";
+  return process.env["PAAS_API_URL"]?.trim() || "https://api.aible-campus.com";
 }
 
 const TOKEN_MISSING =

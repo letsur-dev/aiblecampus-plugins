@@ -27,7 +27,7 @@ Claude Code에서 설치나 갱신 뒤 새 Skill과 MCP가 현재 대화에 보�
 
 플랫폼 연결에는 다음 환경변수를 사용한다.
 
-- `PAAS_API_URL`: 플랫폼 제어 API 주소. 생략하면 현재 nip.io 운영 주소를 사용한다.
+- `PAAS_API_URL`: 플랫폼 제어 API 주소. 생략하면 `https://api.aible-campus.com`을 사용한다.
 - `PAAS_IDENTITY_URL`: Identity 주소. 생략하면 API 주소의 `api.`를 `auth.`로 바꿔 계산한다.
 - `PAAS_DEVICE_CLIENT_ID`: Device Flow client ID. 기본값은 `aiblecampus-paas-device`다.
 - `PAAS_OPEN_BROWSER`: Device Flow 승인 주소 자동 열기 여부. 기본값은 `1`이며 `0`, `false` 또는 `off`로 끌 수 있다.

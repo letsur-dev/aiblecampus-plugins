@@ -34672,11 +34672,11 @@ async function openVerificationUrl(url2) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.15.0";
+var PLUGIN_VERSION = "0.16.0";
 var DEPLOYMENT_ATTEMPT_TTL_MS = 30 * 60 * 1e3;
 var deploymentAttempts = /* @__PURE__ */ new Map();
 function apiBase() {
-  return process.env["PAAS_API_URL"]?.trim() || "https://api.161.33.218.143.nip.io";
+  return process.env["PAAS_API_URL"]?.trim() || "https://api.aible-campus.com";
 }
 var TOKEN_MISSING = "PaaS Device Credential\uC774 \uC5C6\uB2E4.\nstart_paas_login \uC73C\uB85C \uB85C\uADF8\uC778\uC744 \uC2DC\uC791\uD558\uACE0 \uD45C\uC2DC\uB41C \uC8FC\uC18C\uC640 \uCF54\uB4DC\uB85C \uC2B9\uC778\uD55C \uB4A4 complete_paas_login \uC744 \uC2E4\uD589\uD55C\uB2E4.\n\uC774\uC804 service Credential\uC744 \uC4F0\uB294 \uC6B4\uC601 \uD658\uACBD\uC740 PAAS_TOKEN\uC744 \uACC4\uC18D \uC0AC\uC6A9\uD560 \uC218 \uC788\uB2E4.";
 function toDeploymentName(input) {
