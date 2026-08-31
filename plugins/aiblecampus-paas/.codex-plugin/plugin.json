@@ -1,12 +1,12 @@
 {
   "name": "aiblecampus-paas",
-  "version": "0.13.0+codex.20260831112000",
+  "version": "0.13.1+codex.20260831115000",
   "description": "Build, validate, deploy, and manage web applications on AibleCampus PaaS.",
   "author": {
     "name": "에이블캠퍼스"
   },
-  "homepage": "https://github.com/letsur-dev/aiblecampus-paas-release",
-  "repository": "https://github.com/letsur-dev/aiblecampus-paas-release",
+  "homepage": "https://github.com/letsur-dev/aiblecampus-plugins",
+  "repository": "https://github.com/letsur-dev/aiblecampus-plugins",
   "keywords": [
     "deployment",
     "paas",
@@ -43,7 +43,7 @@
       "Interactive",
       "Write"
     ],
-    "websiteURL": "https://github.com/letsur-dev/aiblecampus-paas-release",
+    "websiteURL": "https://github.com/letsur-dev/aiblecampus-plugins",
     "defaultPrompt": [
       "이 웹앱을 완성해서 배포해줘",
       "현재 프로젝트가 배포 가능한지 확인해줘",

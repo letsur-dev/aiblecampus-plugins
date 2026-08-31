@@ -34652,7 +34652,7 @@ ${typeof result.body === "string" ? result.body : JSON.stringify(result.body, nu
 }
 var server = new McpServer({
   name: "aiblecampus-paas",
-  version: "0.13.0"
+  version: "0.13.1"
 });
 server.registerTool(
   "start_paas_login",

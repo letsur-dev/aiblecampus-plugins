@@ -198,7 +198,7 @@ function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResu
 
 const server = new McpServer({
   name: "aiblecampus-paas",
-  version: "0.13.0",
+  version: "0.13.1",
 });
 
 server.registerTool(

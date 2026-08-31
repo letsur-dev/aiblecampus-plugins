@@ -1,9 +1,9 @@
 {
-  "name": "aiblecampus",
+  "name": "aiblecampus-plugins",
   "owner": {
     "name": "에이블캠퍼스"
   },
-  "description": "에이블캠퍼스 PaaS에 프로젝트를 검증하고 배포하며 설정을 관리하는 Claude Code와 Codex 도구 모음.",
+  "description": "Claude Code와 Codex에서 사용하는 에이블캠퍼스 공용 플러그인 marketplace.",
   "plugins": [
     {
       "name": "aiblecampus-paas",

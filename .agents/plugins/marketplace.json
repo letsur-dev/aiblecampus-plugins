@@ -1,7 +1,7 @@
 {
-  "name": "aiblecampus",
+  "name": "aiblecampus-plugins",
   "interface": {
-    "displayName": "에이블캠퍼스"
+    "displayName": "에이블캠퍼스 플러그인"
   },
   "plugins": [
     {
