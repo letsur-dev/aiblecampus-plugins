@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
@@ -16,6 +17,11 @@ import {
   snapshotFiles,
   snapshotSqlite,
 } from "./persistence-migration.ts";
+import { openVerificationUrl } from "./open-browser.ts";
+
+const PLUGIN_VERSION = "0.15.0";
+const DEPLOYMENT_ATTEMPT_TTL_MS = 30 * 60 * 1000;
+const deploymentAttempts = new Map<string, { key: string; expiresAt: number }>();
 
 /**
  * PaaS 접속 주소. DNS 전에는 현재 nip.io 운영 주소를 기본값으로 쓰고 환경변수로
@@ -72,6 +78,54 @@ type ApiResult = {
   status: number;
   body: JsonRecord | string;
 };
+
+function sortedEntries(values: Record<string, string>): Array<[string, string]> {
+  return Object.entries(values).sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+}
+
+function deploymentFingerprint(input: {
+  source: string;
+  name: string;
+  env: Record<string, string>;
+  secrets: Record<string, string>;
+  resources?: { cpus: number; memoryMb: number } | undefined;
+  workspace?: string | undefined;
+}): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        source: input.source,
+        name: input.name,
+        env: sortedEntries(input.env),
+        secrets: sortedEntries(input.secrets),
+        resources: input.resources ?? null,
+        workspace: input.workspace ?? null,
+      }),
+    )
+    .digest("hex");
+}
+
+function deploymentAttempt(
+  fingerprint: string,
+  forceNewRevision: boolean,
+): { key: string; recovered: boolean } {
+  const now = Date.now();
+  for (const [candidate, attempt] of deploymentAttempts) {
+    if (attempt.expiresAt <= now) deploymentAttempts.delete(candidate);
+  }
+  const existing = deploymentAttempts.get(fingerprint);
+  if (!forceNewRevision && existing !== undefined && existing.expiresAt > now) {
+    return { key: existing.key, recovered: true };
+  }
+  const attempt = {
+    key: randomUUID(),
+    expiresAt: now + DEPLOYMENT_ATTEMPT_TTL_MS,
+  };
+  deploymentAttempts.set(fingerprint, attempt);
+  return { key: attempt.key, recovered: false };
+}
 
 const WorkspaceInputSchema = z
   .string()
@@ -265,7 +319,7 @@ function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResu
 
 const server = new McpServer({
   name: "aiblecampus-paas",
-  version: "0.14.0",
+  version: PLUGIN_VERSION,
 });
 
 server.registerTool(
@@ -283,7 +337,16 @@ server.registerTool(
   },
   async () => {
     try {
-      return textResult(await startDeviceLogin(apiBase()));
+      const login = await startDeviceLogin(apiBase());
+      const approvalUrl = login.verificationUriComplete ?? login.verificationUri;
+      const browserOpened = await openVerificationUrl(approvalUrl);
+      return textResult({
+        ...login,
+        browserOpened,
+        nextAction: browserOpened
+          ? "브라우저에서 승인하는 동안 complete_paas_login을 바로 호출해 polling한다"
+          : "승인 주소를 사용자에게 보여준 뒤 complete_paas_login을 바로 호출해 polling한다",
+      });
     } catch (error) {
       return errorResult(error instanceof Error ? error.message : String(error));
     }
@@ -469,6 +532,12 @@ server.registerTool(
         .describe(
           "프로젝트에 적용할 CPU 수와 메모리 MB. 생략하면 플랫폼 기본값을 사용하며 운영 상한을 넘으면 배포가 거부된다",
         ),
+      forceNewRevision: z
+        .boolean()
+        .optional()
+        .describe(
+          "같은 소스와 설정의 직전 요청이 명확히 실패했고 새 빌드가 필요할 때만 true. 응답 단절 복구에는 사용하지 않는다",
+        ),
       workspace: WorkspaceInputSchema,
     },
     annotations: {
@@ -487,6 +556,7 @@ server.registerTool(
     secrets,
     localEnv,
     resources,
+    forceNewRevision,
     workspace,
   }) => {
     // git 주소면 서버가 직접 clone 한다. 업로드가 없어 큰 저장소에서 훨씬 빠르다.
@@ -496,6 +566,21 @@ server.registerTool(
       }
       const deploymentName = toDeploymentName(
         name ?? gitRepoNameOf(projectPath),
+      );
+      const attempt = deploymentAttempt(
+        deploymentFingerprint({
+          source: JSON.stringify({
+            url: projectPath,
+            ref: ref ?? null,
+            subdir: subdir ?? null,
+          }),
+          name: deploymentName,
+          env: env ?? {},
+          secrets: secrets ?? {},
+          resources,
+          workspace,
+        }),
+        forceNewRevision ?? false,
       );
       const result = await callApi("/v1/deployments/git", {
         method: "POST",
@@ -508,11 +593,13 @@ server.registerTool(
           env: env ?? {},
           ...(secrets === undefined ? {} : { secrets }),
           ...(resources === undefined ? {} : { resources }),
+          idempotencyKey: attempt.key,
         }),
       }, workspace);
       if (!result.ok) return failure("배포에 실패했다", result);
       return textResult({
         배포됨: true,
+        기존_요청_복구: attempt.recovered,
         이름: deploymentName,
         소스: "git",
         ...(typeof result.body === "string" ? { 응답: result.body } : result.body),
@@ -563,6 +650,18 @@ server.registerTool(
     if (resources !== undefined) {
       form.set("resources", JSON.stringify(resources));
     }
+    const attempt = deploymentAttempt(
+      deploymentFingerprint({
+        source: createHash("sha256").update(tarball).digest("hex"),
+        name: deploymentName,
+        env: resolvedEnv,
+        secrets: resolvedSecrets,
+        resources,
+        workspace,
+      }),
+      forceNewRevision ?? false,
+    );
+    form.set("idempotencyKey", attempt.key);
 
     const result = await callApi("/v1/deployments", {
       method: "POST",
@@ -574,6 +673,7 @@ server.registerTool(
 
     return textResult({
       배포됨: true,
+      기존_요청_복구: attempt.recovered,
       이름: deploymentName,
       ...(typeof result.body === "string" ? { 응답: result.body } : result.body),
     });
@@ -1010,6 +1110,27 @@ server.registerTool(
 );
 
 server.registerTool(
+  "paas_plugin_status",
+  {
+    title: "PaaS 플러그인 상태",
+    description:
+      "현재 대화에 실제로 로드된 PaaS 플러그인 버전과 API 주소를 확인한다. 설치 목록이 아니라 실행 중인 MCP 프로세스의 버전을 반환한다.",
+    inputSchema: {},
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async () => textResult({
+    plugin: "aiblecampus-paas",
+    version: PLUGIN_VERSION,
+    apiUrl: apiBase(),
+  }),
+);
+
+server.registerTool(
   "paas_whoami",
   {
     title: "PaaS 연결 확인",
@@ -1026,7 +1147,11 @@ server.registerTool(
   async ({ workspace }) => {
     const result = await callApi("/v1/me", {}, workspace);
     if (!result.ok) return failure("연결을 확인하지 못했다", result);
-    return textResult({ 주소: apiBase(), ...(result.body as JsonRecord) });
+    return textResult({
+      주소: apiBase(),
+      ...(result.body as JsonRecord),
+      client: { plugin: "aiblecampus-paas", version: PLUGIN_VERSION },
+    });
   },
 );
 

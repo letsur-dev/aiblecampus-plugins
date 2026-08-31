@@ -7,7 +7,8 @@
         "PAAS_API_URL": "${PAAS_API_URL:-https://api.161.33.218.143.nip.io}",
         "PAAS_TOKEN": "${PAAS_TOKEN:-}",
         "PAAS_IDENTITY_URL": "${PAAS_IDENTITY_URL:-https://auth.161.33.218.143.nip.io}",
-        "PAAS_DEVICE_CLIENT_ID": "${PAAS_DEVICE_CLIENT_ID:-aiblecampus-paas-device}"
+        "PAAS_DEVICE_CLIENT_ID": "${PAAS_DEVICE_CLIENT_ID:-aiblecampus-paas-device}",
+        "PAAS_OPEN_BROWSER": "${PAAS_OPEN_BROWSER:-1}"
       }
     }
   }

@@ -30997,6 +30997,7 @@ var StdioServerTransport = class {
 };
 
 // mcp/index.ts
+import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
 import { existsSync } from "node:fs";
 import path5 from "node:path";
 
@@ -34636,7 +34637,44 @@ async function backupAndSnapshotFiles(projectRoot, sourceDirectory) {
   return { backupPath, snapshot: await snapshotFiles(source) };
 }
 
+// mcp/open-browser.ts
+import { execFile } from "node:child_process";
+function browserCommandFor(platform, url2) {
+  if (platform === "darwin") return { command: "open", args: [url2] };
+  if (platform === "win32") {
+    return {
+      command: "rundll32.exe",
+      args: ["url.dll,FileProtocolHandler", url2]
+    };
+  }
+  return { command: "xdg-open", args: [url2] };
+}
+async function openVerificationUrl(url2) {
+  const configured = process.env["PAAS_OPEN_BROWSER"]?.trim().toLowerCase();
+  if (configured === "0" || configured === "false" || configured === "off") {
+    return false;
+  }
+  if (process.platform !== "darwin" && process.platform !== "linux" && process.platform !== "win32") {
+    return false;
+  }
+  const { command, args } = browserCommandFor(process.platform, url2);
+  return new Promise((resolve) => {
+    execFile(
+      command,
+      args,
+      {
+        windowsHide: true,
+        timeout: 5e3
+      },
+      (error51) => resolve(error51 === null)
+    );
+  });
+}
+
 // mcp/index.ts
+var PLUGIN_VERSION = "0.15.0";
+var DEPLOYMENT_ATTEMPT_TTL_MS = 30 * 60 * 1e3;
+var deploymentAttempts = /* @__PURE__ */ new Map();
 function apiBase() {
   return process.env["PAAS_API_URL"]?.trim() || "https://api.161.33.218.143.nip.io";
 }
@@ -34657,6 +34695,39 @@ function gitRepoNameOf(url2) {
   const trimmed = withoutQuery.replace(/\/+$/, "");
   const last = trimmed.split(/[/:]/).pop() ?? "app";
   return last.replace(/\.git$/, "") || "app";
+}
+function sortedEntries(values) {
+  return Object.entries(values).sort(
+    ([left], [right]) => left.localeCompare(right)
+  );
+}
+function deploymentFingerprint(input) {
+  return createHash3("sha256").update(
+    JSON.stringify({
+      source: input.source,
+      name: input.name,
+      env: sortedEntries(input.env),
+      secrets: sortedEntries(input.secrets),
+      resources: input.resources ?? null,
+      workspace: input.workspace ?? null
+    })
+  ).digest("hex");
+}
+function deploymentAttempt(fingerprint, forceNewRevision) {
+  const now = Date.now();
+  for (const [candidate, attempt2] of deploymentAttempts) {
+    if (attempt2.expiresAt <= now) deploymentAttempts.delete(candidate);
+  }
+  const existing = deploymentAttempts.get(fingerprint);
+  if (!forceNewRevision && existing !== void 0 && existing.expiresAt > now) {
+    return { key: existing.key, recovered: true };
+  }
+  const attempt = {
+    key: randomUUID2(),
+    expiresAt: now + DEPLOYMENT_ATTEMPT_TTL_MS
+  };
+  deploymentAttempts.set(fingerprint, attempt);
+  return { key: attempt.key, recovered: false };
 }
 var WorkspaceInputSchema = external_exports.string().min(1).optional().describe(
   "\uB300\uC0C1 Workspace\uC758 ID \uB610\uB294 slug. \uC0DD\uB7B5\uD558\uBA74 \uAC1C\uC778 Workspace\uB97C \uC0AC\uC6A9\uD55C\uB2E4"
@@ -34782,7 +34853,7 @@ ${typeof result.body === "string" ? result.body : JSON.stringify(result.body, nu
 }
 var server = new McpServer({
   name: "aiblecampus-paas",
-  version: "0.14.0"
+  version: PLUGIN_VERSION
 });
 server.registerTool(
   "start_paas_login",
@@ -34799,7 +34870,14 @@ server.registerTool(
   },
   async () => {
     try {
-      return textResult(await startDeviceLogin(apiBase()));
+      const login = await startDeviceLogin(apiBase());
+      const approvalUrl = login.verificationUriComplete ?? login.verificationUri;
+      const browserOpened = await openVerificationUrl(approvalUrl);
+      return textResult({
+        ...login,
+        browserOpened,
+        nextAction: browserOpened ? "\uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uC2B9\uC778\uD558\uB294 \uB3D9\uC548 complete_paas_login\uC744 \uBC14\uB85C \uD638\uCD9C\uD574 polling\uD55C\uB2E4" : "\uC2B9\uC778 \uC8FC\uC18C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC\uC900 \uB4A4 complete_paas_login\uC744 \uBC14\uB85C \uD638\uCD9C\uD574 polling\uD55C\uB2E4"
+      });
     } catch (error51) {
       return errorResult(error51 instanceof Error ? error51.message : String(error51));
     }
@@ -34941,6 +35019,9 @@ server.registerTool(
       }).optional().describe(
         "\uD504\uB85C\uC81D\uD2B8\uC5D0 \uC801\uC6A9\uD560 CPU \uC218\uC640 \uBA54\uBAA8\uB9AC MB. \uC0DD\uB7B5\uD558\uBA74 \uD50C\uB7AB\uD3FC \uAE30\uBCF8\uAC12\uC744 \uC0AC\uC6A9\uD558\uBA70 \uC6B4\uC601 \uC0C1\uD55C\uC744 \uB118\uC73C\uBA74 \uBC30\uD3EC\uAC00 \uAC70\uBD80\uB41C\uB2E4"
       ),
+      forceNewRevision: external_exports.boolean().optional().describe(
+        "\uAC19\uC740 \uC18C\uC2A4\uC640 \uC124\uC815\uC758 \uC9C1\uC804 \uC694\uCCAD\uC774 \uBA85\uD655\uD788 \uC2E4\uD328\uD588\uACE0 \uC0C8 \uBE4C\uB4DC\uAC00 \uD544\uC694\uD560 \uB54C\uB9CC true. \uC751\uB2F5 \uB2E8\uC808 \uBCF5\uAD6C\uC5D0\uB294 \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uB294\uB2E4"
+      ),
       workspace: WorkspaceInputSchema
     },
     annotations: {
@@ -34959,6 +35040,7 @@ server.registerTool(
     secrets,
     localEnv,
     resources,
+    forceNewRevision,
     workspace
   }) => {
     if (looksLikeGitUrl(projectPath)) {
@@ -34967,6 +35049,21 @@ server.registerTool(
       }
       const deploymentName2 = toDeploymentName(
         name ?? gitRepoNameOf(projectPath)
+      );
+      const attempt2 = deploymentAttempt(
+        deploymentFingerprint({
+          source: JSON.stringify({
+            url: projectPath,
+            ref: ref ?? null,
+            subdir: subdir ?? null
+          }),
+          name: deploymentName2,
+          env: env ?? {},
+          secrets: secrets ?? {},
+          resources,
+          workspace
+        }),
+        forceNewRevision ?? false
       );
       const result2 = await callApi("/v1/deployments/git", {
         method: "POST",
@@ -34978,12 +35075,14 @@ server.registerTool(
           ...subdir === void 0 ? {} : { subdir },
           env: env ?? {},
           ...secrets === void 0 ? {} : { secrets },
-          ...resources === void 0 ? {} : { resources }
+          ...resources === void 0 ? {} : { resources },
+          idempotencyKey: attempt2.key
         })
       }, workspace);
       if (!result2.ok) return failure("\uBC30\uD3EC\uC5D0 \uC2E4\uD328\uD588\uB2E4", result2);
       return textResult({
         \uBC30\uD3EC\uB428: true,
+        \uAE30\uC874_\uC694\uCCAD_\uBCF5\uAD6C: attempt2.recovered,
         \uC774\uB984: deploymentName2,
         \uC18C\uC2A4: "git",
         ...typeof result2.body === "string" ? { \uC751\uB2F5: result2.body } : result2.body
@@ -35029,6 +35128,18 @@ server.registerTool(
     if (resources !== void 0) {
       form.set("resources", JSON.stringify(resources));
     }
+    const attempt = deploymentAttempt(
+      deploymentFingerprint({
+        source: createHash3("sha256").update(tarball).digest("hex"),
+        name: deploymentName,
+        env: resolvedEnv,
+        secrets: resolvedSecrets,
+        resources,
+        workspace
+      }),
+      forceNewRevision ?? false
+    );
+    form.set("idempotencyKey", attempt.key);
     const result = await callApi("/v1/deployments", {
       method: "POST",
       body: form
@@ -35036,6 +35147,7 @@ server.registerTool(
     if (!result.ok) return failure("\uBC30\uD3EC\uC5D0 \uC2E4\uD328\uD588\uB2E4", result);
     return textResult({
       \uBC30\uD3EC\uB428: true,
+      \uAE30\uC874_\uC694\uCCAD_\uBCF5\uAD6C: attempt.recovered,
       \uC774\uB984: deploymentName,
       ...typeof result.body === "string" ? { \uC751\uB2F5: result.body } : result.body
     });
@@ -35426,6 +35538,25 @@ server.registerTool(
   }
 );
 server.registerTool(
+  "paas_plugin_status",
+  {
+    title: "PaaS \uD50C\uB7EC\uADF8\uC778 \uC0C1\uD0DC",
+    description: "\uD604\uC7AC \uB300\uD654\uC5D0 \uC2E4\uC81C\uB85C \uB85C\uB4DC\uB41C PaaS \uD50C\uB7EC\uADF8\uC778 \uBC84\uC804\uACFC API \uC8FC\uC18C\uB97C \uD655\uC778\uD55C\uB2E4. \uC124\uCE58 \uBAA9\uB85D\uC774 \uC544\uB2C8\uB77C \uC2E4\uD589 \uC911\uC778 MCP \uD504\uB85C\uC138\uC2A4\uC758 \uBC84\uC804\uC744 \uBC18\uD658\uD55C\uB2E4.",
+    inputSchema: {},
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async () => textResult({
+    plugin: "aiblecampus-paas",
+    version: PLUGIN_VERSION,
+    apiUrl: apiBase()
+  })
+);
+server.registerTool(
   "paas_whoami",
   {
     title: "PaaS \uC5F0\uACB0 \uD655\uC778",
@@ -35441,7 +35572,11 @@ server.registerTool(
   async ({ workspace }) => {
     const result = await callApi("/v1/me", {}, workspace);
     if (!result.ok) return failure("\uC5F0\uACB0\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
-    return textResult({ \uC8FC\uC18C: apiBase(), ...result.body });
+    return textResult({
+      \uC8FC\uC18C: apiBase(),
+      ...result.body,
+      client: { plugin: "aiblecampus-paas", version: PLUGIN_VERSION }
+    });
   }
 );
 var transport = new StdioServerTransport();

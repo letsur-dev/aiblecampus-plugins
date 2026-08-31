@@ -7,6 +7,18 @@ description: 웹사이트나 웹앱을 완성하고 에이블캠퍼스 PaaS에 �
 
 사용자가 인프라를 이해하지 않아도 요청한 웹앱을 완성하고 접속 가능한 상태로 만든다. 소스 패키징, 컨테이너, revision과 내부 API는 작업 수단이지 사용자에게 설명할 기본 내용이 아니다.
 
+## 플러그인 설치와 현재 대화 활성화
+
+Console에서 복사한 요청으로 처음 설치하거나 marketplace 갱신 뒤 이 스킬과 MCP가 현재 대화에 보이지 않을 수 있다. 설치 목록의 버전과 실제 MCP 프로세스의 버전은 다를 수 있으므로 설치 목록만 보고 새 버전이 로드됐다고 판단하지 않는다.
+
+- Claude Code에서는 완전 종료를 요구하지 않는다. 사용자에게 입력창에서 `/reload-plugins`를 한 번 실행해 달라고 짧게 안내한다.
+- `/reload-skills`는 Skill만 다시 찾고 이미 실행 중인 MCP를 교체하지 않으므로 플러그인 설치와 갱신에는 사용하지 않는다.
+- Claude는 자기 입력창의 slash command를 직접 실행할 수 없다. 중첩 Claude 프로세스를 실행하거나 설정 파일을 수정해 우회하지 않는다.
+- 사용자가 `/reload-plugins`를 실행하면 같은 대화에서 `paas_plugin_status`를 호출한다. 설치된 버전과 실제 로드 버전이 일치하는지 확인한 뒤 원래 요청을 다시 묻지 않고 이어간다.
+- Codex에서는 현재 클라이언트가 제공하는 플러그인 재로딩 절차만 사용한다. Claude Code 전용 slash command를 안내하지 않는다.
+
+`paas_plugin_status`는 인증 전에도 호출할 수 있다. 응답의 version은 설치 목록이 아니라 현재 대화에 연결된 MCP 프로세스의 버전이다.
+
 ## 기본 행동
 
 - 사용자가 로컬에서만 작업해 달라고 하지 않았다면 구현과 검증 뒤 배포한다.
@@ -67,6 +79,7 @@ description: 웹사이트나 웹앱을 완성하고 에이블캠퍼스 PaaS에 �
 - 앱의 주요 기능, 오류 상태, 모바일 사용성과 접근성을 요청 범위에 맞게 구현한다.
 - 장식용 기능, 불필요한 상태 관리와 요청하지 않은 외부 서비스를 추가하지 않는다.
 - 앱에 자체 로그인이 필요하면 플랫폼 로그인과 섞지 않고 앱 기능으로 구현한다.
+- 현재 프로젝트 밖에서 `.npmrc`, env 파일, 개인 token이나 Credential을 검색하지 않는다.
 
 Node 서버는 `process.env.PORT`를 사용하고 외부에서 접근할 수 있게 listen해야 한다. 루트에 `index.html`만 있는 정적 사이트는 별도 서버 코드 없이 배포할 수 있다. 자체 Dockerfile은 `package.json` 없이도 사용할 수 있다. 구체적인 실행 계약이나 Dockerfile 판단이 필요하면 [배포 계약과 복구](references/deployment-contract.md)를 읽는다.
 
@@ -187,6 +200,8 @@ SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 구체�
 
 배포 요청은 빌드, 실행과 healthcheck가 끝날 때까지 기다린다. 성공 응답의 `url`을 사용하고 주소를 이름으로 직접 조립하지 않는다.
 
+응답이 끊기거나 제한 시간을 넘겨도 서버 작업은 계속될 수 있다. 같은 이름으로 `deploy_project`를 바로 다시 호출하지 않고 아래 실패 처리 절차로 기존 작업을 먼저 복구한다.
+
 ### 5. 결과를 전달한다
 
 성공하면 다음 순서로 짧게 답한다.
@@ -209,9 +224,18 @@ SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 구체�
 - 실패 응답의 `stage`를 먼저 확인한다.
 - build, run 또는 health 실패는 `deployment_logs`로 원인을 확인하고 수정한 뒤 다시 검증한다.
 - 원인을 확인하지 않은 동일 배포 반복은 하지 않는다.
+- `deploy_project`가 연결 오류, 제한 시간 초과 또는 응답 없음으로 끝나면 같은 이름으로 `deployment_status`를 먼저 호출한다.
+- 상태가 queued, building 또는 healthcheck면 새 Revision을 만들지 않고 기존 작업이 끝날 때까지 상태와 로그를 조회한다.
+- 상태가 running이면 기존 요청이 성공한 것으로 보고 응답의 URL을 사용한다.
+- 상태가 failed면 해당 Revision 로그를 확인해 원인을 수정하고 다시 검증한 뒤에만 재배포한다.
+- 대상이 두 번 연속 404이고 진행 중인 Revision이 없음을 확인한 경우에만 같은 요청을 한 번 다시 보낼 수 있다.
+- 연결 오류와 응답 없음 복구에는 `forceNewRevision`을 사용하지 않는다. 같은 요청의 멱등 키를 재사용해야 기존 Revision을 돌려받는다.
+- 직전 Revision이 명확히 failed이고 소스 변경 없이 외부 장애만 해소해 새 빌드가 필요한 경우에만 `forceNewRevision: true`를 한 번 사용한다.
 - queue 실패의 `details.retryable`을 확인한다. `true`면 짧게 기다린 뒤 한 번만
   다시 시도한다. `false`인 `disk-capacity`와 `port-capacity`는 반복하지 않고
   기존 앱이 계속 제공된다는 점과 운영자에게 필요한 용량 조치를 설명한다.
+- build 로그가 exit 137 또는 메모리 부족을 명확히 나타내면 기존 작업이 종료됐는지 확인한 뒤 플랫폼 상한 안에서 메모리를 높여 한 번만 다시 시도한다. 다른 오류에 메모리 증설을 적용하지 않는다.
+- private package registry가 401 또는 403을 반환하면 사용자 홈이나 다른 프로젝트에서 token과 `.npmrc`를 찾지 않는다. 개인 Credential을 소스나 배포 비밀값으로 복사하지 않는다. 공개 의존성으로 교체, 조직이 관리하는 빌드 Credential 지원 또는 패키지 공개 중 가능한 선택지를 설명하고 사용자 결정을 기다린다.
 - 인증, 권한, 사용량 제한과 접근 오류는 임의로 우회하지 않는다.
 - 배포 이름 충돌 외에는 이름을 추측해서 바꾸지 않는다. 기존 URL이 불필요하게 달라질 수 있다.
 - 새 revision이 실패해도 이전 revision은 계속 서비스된다. 이전 앱을 중지하거나 삭제하지 않는다.
@@ -220,9 +244,11 @@ SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 구체�
 
 ## 연결과 인증
 
-연결이나 인증이 의심되면 `paas_whoami`를 한 번 호출한다.
+먼저 `paas_plugin_status`로 현재 대화에 로드된 플러그인 버전을 확인한다. 연결이나 인증이 의심되면 `paas_whoami`를 한 번 호출한다.
 
-- Credential이 없으면 `start_paas_login`으로 로그인 주소와 코드를 받은 뒤 사용자가 승인하면 `complete_paas_login`을 실행한다.
+- Credential이 없으면 `start_paas_login`을 실행한다. 기본 브라우저가 자동으로 열리면 사용자가 승인하는 동안 `complete_paas_login`을 바로 호출해 polling한다.
+- 브라우저가 열리지 않았을 때만 로그인 주소와 코드를 알려 준다. 사용자가 완료했다고 다시 말할 때까지 기다리지 않고 `complete_paas_login`을 호출한다.
+- polling 결과가 pending 또는 polling_limit이면 승인 페이지가 열려 있는지 확인하고 같은 pending 요청을 이어간다. 새 Device Flow를 중복 시작하지 않는다.
 - `PAAS_TOKEN`은 이전 운영 및 CI용 service Credential 호환 경계이며 개인 기기 로그인과 구분한다.
 - 401이면 Credential이 잘못됐거나 폐기된 것이다. 재발급이 필요하다고 설명한다.
 - 연결 실패면 PaaS 주소나 서비스 상태를 확인해야 한다.

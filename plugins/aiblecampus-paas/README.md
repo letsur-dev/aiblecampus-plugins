@@ -23,14 +23,21 @@ Claude Code와 Codex에서 웹앱을 완성하고 검증한 뒤 에이블캠퍼�
 
 Claude Code에서는 저장소의 `.claude-plugin/marketplace.json`을 사용한다. Codex에서는 저장소의 `.agents/plugins/marketplace.json`을 사용한다.
 
+Claude Code에서 설치나 갱신 뒤 새 Skill과 MCP가 현재 대화에 보이지 않으면 클라이언트를 종료하지 않고 입력창에서 `/reload-plugins`를 실행한다. `/reload-skills`만으로는 MCP가 바뀌지 않는다. Claude는 자기 입력창의 slash command를 직접 실행할 수 없으므로 사용자가 한 번 입력해야 하지만, 같은 대화와 요청은 그대로 유지된다. 재로딩 뒤 `paas_plugin_status`를 호출하면 설치 목록이 아니라 실제로 실행 중인 MCP 버전을 확인할 수 있다.
+
 플랫폼 연결에는 다음 환경변수를 사용한다.
 
 - `PAAS_API_URL`: 플랫폼 제어 API 주소. 생략하면 현재 nip.io 운영 주소를 사용한다.
 - `PAAS_IDENTITY_URL`: Identity 주소. 생략하면 API 주소의 `api.`를 `auth.`로 바꿔 계산한다.
 - `PAAS_DEVICE_CLIENT_ID`: Device Flow client ID. 기본값은 `aiblecampus-paas-device`다.
+- `PAAS_OPEN_BROWSER`: Device Flow 승인 주소 자동 열기 여부. 기본값은 `1`이며 `0`, `false` 또는 `off`로 끌 수 있다.
 - `PAAS_TOKEN`: 이전 운영 및 CI용 service Credential. 개인 기기 로그인보다 우선 적용된다.
 
-Credential 원문은 프로젝트 파일, 커밋이나 대화에 기록하지 않는다. 값을 설정한 뒤 사용하는 클라이언트를 다시 시작한다.
+Credential 원문은 프로젝트 파일, 커밋이나 대화에 기록하지 않는다. Claude Code 환경 설정을 바꾼 뒤에는 `/reload-plugins`로 현재 대화의 MCP를 다시 읽는다. Codex는 현재 클라이언트가 제공하는 플러그인 재로딩 절차를 사용한다.
+
+로그인이 필요하면 `start_paas_login`이 승인 주소를 기본 브라우저에서 연다. Agent는 사용자에게 완료 응답을 요구하지 않고 `complete_paas_login`을 바로 호출해 승인 상태를 polling한다. 브라우저를 열 수 없는 환경에서만 주소와 코드를 직접 안내한다.
+
+`deploy_project`는 같은 MCP 프로세스에서 동일한 소스와 설정을 다시 요청하면 30분 동안 같은 멱등 키를 사용한다. 응답이 끊겨도 Agent는 먼저 `deployment_status`로 기존 작업을 복구한다. 직전 Revision이 명확히 실패했고 새 빌드가 필요한 경우에만 `forceNewRevision`을 사용한다.
 
 앱이 사용하는 비밀번호와 API 키는 Device Credential과 별개다. 플러그인은 소스에 직접 저장된 비밀값을 발견하면 원문을 반복하지 않고 위험과 최소 수정 내용을 설명한다. 사용자가 동의하면 Agent가 코드는 환경변수를 사용하도록 바꾸고 실제 값은 Git에서 제외한 `.env.local`로 옮긴다. 새로 필요한 사용자 지정 비밀번호는 Agent 세션에서 입력할 수 있으며 Agent는 받은 값을 후속 답변에서 되읽지 않는다.
 
