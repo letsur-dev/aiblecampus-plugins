@@ -18,7 +18,16 @@ const SKIP = new Set([
   "dist",
   ".next",
   "coverage",
+  ".direnv",
 ]);
+
+/** 실제 값 파일은 제외하고 키 이름만 담는 예시 env 파일은 보존한다. */
+export function isSensitiveEnvName(name: string): boolean {
+  if (name === ".envrc") return true;
+  if (name === ".env") return true;
+  if (!name.startsWith(".env.")) return false;
+  return !/\.(?:example|sample|template)$/i.test(name);
+}
 
 export async function packDirectory(
   root: string,
@@ -36,7 +45,9 @@ export async function packDirectory(
       noMtime: true,
       filter: (entryPath) => {
         const segments = entryPath.split(path.sep);
-        return !segments.some((segment) => skip.has(segment));
+        return !segments.some(
+          (segment) => skip.has(segment) || isSensitiveEnvName(segment),
+        );
       },
     },
     ["."],

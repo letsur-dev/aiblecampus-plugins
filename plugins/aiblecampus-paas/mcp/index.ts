@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { packDirectory } from "./pack.ts";
+import { loadSelectedLocalEnv } from "./local-env.ts";
 import {
   completeDeviceLogin,
   deviceRequestHeaders,
@@ -79,6 +80,72 @@ const WorkspaceInputSchema = z
   .describe(
     "대상 Workspace의 ID 또는 slug. 생략하면 개인 Workspace를 사용한다",
   );
+
+const EnvironmentKeySchema = z
+  .string()
+  .regex(/^[A-Z_][A-Z0-9_]*$/, "환경변수 키 형식이 올바르지 않다");
+
+const LocalEnvInputSchema = z
+  .object({
+    file: z
+      .string()
+      .describe("프로젝트 루트의 실제 값 파일. .env 또는 .env.local 계열만 허용한다"),
+    envKeys: z
+      .array(EnvironmentKeySchema)
+      .optional()
+      .describe("파일에서 읽어 일반 설정으로 전달하도록 사용자가 승인한 키 이름"),
+    secretKeys: z
+      .array(EnvironmentKeySchema)
+      .optional()
+      .describe("파일에서 읽어 암호화 비밀값으로 전달하도록 사용자가 승인한 키 이름"),
+  })
+  .optional()
+  .describe(
+    "로컬 env 파일에서 승인한 키만 MCP 내부가 읽는다. 값은 Agent 응답과 도구 결과에 반환하지 않는다",
+  );
+
+type LocalEnvInput = {
+  file: string;
+  envKeys?: string[] | undefined;
+  secretKeys?: string[] | undefined;
+};
+
+function mergeConfigurationValues(
+  direct: Record<string, string> | undefined,
+  fromFile: Record<string, string>,
+  kind: string,
+): Record<string, string> {
+  const merged = { ...(direct ?? {}) };
+  for (const [key, value] of Object.entries(fromFile)) {
+    if (merged[key] !== undefined) {
+      throw new Error(`${kind} 키 ${key}가 도구 인자와 로컬 env 파일에 중복됐다`);
+    }
+    merged[key] = value;
+  }
+  return merged;
+}
+
+async function selectedLocalConfiguration(
+  projectPath: string,
+  localEnv: LocalEnvInput | undefined,
+): Promise<{ env: Record<string, string>; secrets: Record<string, string> }> {
+  if (localEnv === undefined) return { env: {}, secrets: {} };
+  return loadSelectedLocalEnv(projectPath, {
+    file: localEnv.file,
+    envKeys: localEnv.envKeys ?? [],
+    secretKeys: localEnv.secretKeys ?? [],
+  });
+}
+
+function assertConfigurationSeparation(
+  env: Record<string, string>,
+  secrets: Record<string, string>,
+): void {
+  const overlap = Object.keys(env).find((key) => secrets[key] !== undefined);
+  if (overlap !== undefined) {
+    throw new Error(`같은 키를 일반 설정과 비밀값으로 함께 전달할 수 없다: ${overlap}`);
+  }
+}
 
 async function callApi(
   urlPath: string,
@@ -198,7 +265,7 @@ function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResu
 
 const server = new McpServer({
   name: "aiblecampus-paas",
-  version: "0.13.1",
+  version: "0.14.0",
 });
 
 server.registerTool(
@@ -273,6 +340,7 @@ server.registerTool(
         .array(z.string())
         .optional()
         .describe("비밀값으로 주입할 환경변수 키 이름. 값은 검증 도구에 넘기지 않는다"),
+      localEnv: LocalEnvInputSchema,
       workspace: WorkspaceInputSchema,
     },
     annotations: {
@@ -282,8 +350,11 @@ server.registerTool(
       openWorldHint: true,
     },
   },
-  async ({ path: projectPath, ref, subdir, env, secretKeys, workspace }) => {
+  async ({ path: projectPath, ref, subdir, env, secretKeys, localEnv, workspace }) => {
     if (looksLikeGitUrl(projectPath)) {
+      if (localEnv !== undefined) {
+        return errorResult("localEnv는 로컬 프로젝트 경로를 검증할 때만 사용할 수 있다");
+      }
       const result = await callApi("/v1/preflight/git", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -303,6 +374,22 @@ server.registerTool(
       return errorResult(`경로가 없다: ${projectPath}`);
     }
 
+    let resolvedEnv: Record<string, string>;
+    let resolvedSecretKeys: string[];
+    try {
+      const local = await selectedLocalConfiguration(projectPath, localEnv);
+      resolvedEnv = mergeConfigurationValues(env, local.env, "일반 설정");
+      resolvedSecretKeys = [...new Set([...(secretKeys ?? []), ...Object.keys(local.secrets)])];
+      assertConfigurationSeparation(
+        resolvedEnv,
+        Object.fromEntries(resolvedSecretKeys.map((key) => [key, "provided"])),
+      );
+    } catch (error) {
+      return errorResult(
+        `로컬 환경 설정을 준비하지 못했다: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
     let tarball: Buffer;
     try {
       tarball = await packDirectory(projectPath);
@@ -318,9 +405,11 @@ server.registerTool(
       new Blob([new Uint8Array(tarball)], { type: "application/gzip" }),
       "source.tar.gz",
     );
-    if (env !== undefined) form.set("env", JSON.stringify(env));
-    if (secretKeys !== undefined) {
-      form.set("secretKeys", JSON.stringify(secretKeys));
+    if (Object.keys(resolvedEnv).length > 0) {
+      form.set("env", JSON.stringify(resolvedEnv));
+    }
+    if (resolvedSecretKeys.length > 0) {
+      form.set("secretKeys", JSON.stringify(resolvedSecretKeys));
     }
 
     const result = await callApi("/v1/preflight", {
@@ -370,6 +459,7 @@ server.registerTool(
         .describe(
           "배포 컨테이너에 안전하게 주입할 비밀값. 응답과 로그에는 값이 표시되지 않는다",
         ),
+      localEnv: LocalEnvInputSchema,
       resources: z
         .object({
           cpus: z.number().positive(),
@@ -395,11 +485,15 @@ server.registerTool(
     subdir,
     env,
     secrets,
+    localEnv,
     resources,
     workspace,
   }) => {
     // git 주소면 서버가 직접 clone 한다. 업로드가 없어 큰 저장소에서 훨씬 빠르다.
     if (looksLikeGitUrl(projectPath)) {
+      if (localEnv !== undefined) {
+        return errorResult("localEnv는 로컬 프로젝트 경로를 배포할 때만 사용할 수 있다");
+      }
       const deploymentName = toDeploymentName(
         name ?? gitRepoNameOf(projectPath),
       );
@@ -429,6 +523,19 @@ server.registerTool(
       return errorResult(`경로가 없다: ${projectPath}`);
     }
 
+    let resolvedEnv: Record<string, string>;
+    let resolvedSecrets: Record<string, string>;
+    try {
+      const local = await selectedLocalConfiguration(projectPath, localEnv);
+      resolvedEnv = mergeConfigurationValues(env, local.env, "일반 설정");
+      resolvedSecrets = mergeConfigurationValues(secrets, local.secrets, "비밀값");
+      assertConfigurationSeparation(resolvedEnv, resolvedSecrets);
+    } catch (error) {
+      return errorResult(
+        `로컬 환경 설정을 준비하지 못했다: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
     const deploymentName = toDeploymentName(name ?? path.basename(projectPath));
 
     let tarball: Buffer;
@@ -447,8 +554,12 @@ server.registerTool(
       new Blob([new Uint8Array(tarball)], { type: "application/gzip" }),
       "source.tar.gz",
     );
-    if (env !== undefined) form.set("env", JSON.stringify(env));
-    if (secrets !== undefined) form.set("secrets", JSON.stringify(secrets));
+    if (Object.keys(resolvedEnv).length > 0) {
+      form.set("env", JSON.stringify(resolvedEnv));
+    }
+    if (Object.keys(resolvedSecrets).length > 0) {
+      form.set("secrets", JSON.stringify(resolvedSecrets));
+    }
     if (resources !== undefined) {
       form.set("resources", JSON.stringify(resources));
     }

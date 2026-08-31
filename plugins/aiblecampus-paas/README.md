@@ -10,6 +10,7 @@ Claude Code와 Codex에서 웹앱을 완성하고 검증한 뒤 에이블캠퍼�
 - 배포 중지와 영속 자원 정책을 지정한 삭제
 - 배포 상태, 빌드 로그와 실행 로그 조회
 - 일반 환경변수와 암호화된 비밀값 관리
+- 하드코딩된 비밀값 설명과 승인 기반 로컬 env 정리
 - 개인 및 Team Workspace 선택
 - PostgreSQL과 파일 Storage 자동 연결
 - SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 읽기 전용 진단
@@ -30,6 +31,10 @@ Claude Code에서는 저장소의 `.claude-plugin/marketplace.json`을 사용한
 - `PAAS_TOKEN`: 이전 운영 및 CI용 service Credential. 개인 기기 로그인보다 우선 적용된다.
 
 Credential 원문은 프로젝트 파일, 커밋이나 대화에 기록하지 않는다. 값을 설정한 뒤 사용하는 클라이언트를 다시 시작한다.
+
+앱이 사용하는 비밀번호와 API 키는 Device Credential과 별개다. 플러그인은 소스에 직접 저장된 비밀값을 발견하면 원문을 반복하지 않고 위험과 최소 수정 내용을 설명한다. 사용자가 동의하면 Agent가 코드는 환경변수를 사용하도록 바꾸고 실제 값은 Git에서 제외한 `.env.local`로 옮긴다. 새로 필요한 사용자 지정 비밀번호는 Agent 세션에서 입력할 수 있으며 Agent는 받은 값을 후속 답변에서 되읽지 않는다.
+
+`validate_project`와 `deploy_project`의 `localEnv`에는 파일 이름과 사용자가 승인한 키 이름만 전달한다. MCP는 선택한 키만 로컬 파일에서 읽어 PaaS 일반 설정 또는 암호화 비밀값으로 전달한다. 실제 env 파일은 소스 압축에서 제외하고 `.env.example`, `.env.sample`과 `env.example` 같은 키 예시는 유지한다.
 
 플러그인은 Identity 계약 버전 1의 `/device/auth`와 `/token`을 사용하며
 `urn:aiblecampus:paas` resource와 `paas:access` scope를 요청한다. 기기별 ES256

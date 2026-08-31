@@ -3224,8 +3224,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path5) {
-      let input = path5;
+    function removeDotSegments(path6) {
+      let input = path6;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3477,8 +3477,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path5, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path5 && path5 !== "/" ? path5 : void 0;
+        const [path6, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path6 && path6 !== "/" ? path6 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7269,8 +7269,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path5, errorMaps, issueData } = params;
-  const fullPath = [...path5, ...issueData.path || []];
+  const { data, path: path6, errorMaps, issueData } = params;
+  const fullPath = [...path6, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7385,11 +7385,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path5, key) {
+  constructor(parent, value, path6, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path5;
+    this._path = path6;
     this._key = key;
   }
   get path() {
@@ -11310,10 +11310,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path5) {
-  if (!path5)
+function getElementAtPath(obj, path6) {
+  if (!path6)
     return obj;
-  return path5.reduce((acc, key) => acc?.[key], obj);
+  return path6.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11722,11 +11722,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path5, issues) {
+function prefixIssues(path6, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path5);
+    iss.path.unshift(path6);
     return iss;
   });
 }
@@ -11873,16 +11873,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path5 = []) => {
+  const processError = (error52, path6 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path5, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else {
-        const fullpath = [...path5, ...issue2.path];
+        const fullpath = [...path6, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -11909,17 +11909,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path5 = []) => {
+  const processError = (error52, path6 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path5, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path6, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path5, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path6, ...issue2.path]);
       } else {
-        const fullpath = [...path5, ...issue2.path];
+        const fullpath = [...path6, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -11951,8 +11951,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path5 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path5) {
+  const path6 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path6) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -23064,11 +23064,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path5) {
-  if (path5.length === 0) {
+function getDotPath(path6) {
+  if (path6.length === 0) {
     return "object root";
   }
-  return path5.reduce((acc, seg, index) => {
+  return path6.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -25093,13 +25093,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path5 = ref.slice(1).split("/").filter(Boolean);
-  if (path5.length === 0) {
+  const path6 = ref.slice(1).split("/").filter(Boolean);
+  if (path6.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path5[0] === defsKey) {
-    const key = path5[1];
+  if (path6[0] === defsKey) {
+    const key = path6[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -30998,7 +30998,7 @@ var StdioServerTransport = class {
 
 // mcp/index.ts
 import { existsSync } from "node:fs";
-import path4 from "node:path";
+import path5 from "node:path";
 
 // mcp/pack.ts
 import path from "node:path";
@@ -33980,8 +33980,15 @@ var SKIP = /* @__PURE__ */ new Set([
   ".paas-backups",
   "dist",
   ".next",
-  "coverage"
+  "coverage",
+  ".direnv"
 ]);
+function isSensitiveEnvName(name) {
+  if (name === ".envrc") return true;
+  if (name === ".env") return true;
+  if (!name.startsWith(".env.")) return false;
+  return !/\.(?:example|sample|template)$/i.test(name);
+}
 async function packDirectory(root, excludes = []) {
   const skip = /* @__PURE__ */ new Set([...SKIP, ...excludes]);
   const chunks = [];
@@ -33994,7 +34001,9 @@ async function packDirectory(root, excludes = []) {
       noMtime: true,
       filter: (entryPath) => {
         const segments = entryPath.split(path.sep);
-        return !segments.some((segment) => skip.has(segment));
+        return !segments.some(
+          (segment) => skip.has(segment) || isSensitiveEnvName(segment)
+        );
       }
     },
     ["."]
@@ -34005,10 +34014,99 @@ async function packDirectory(root, excludes = []) {
   return Buffer.concat(chunks);
 }
 
-// mcp/device-auth.ts
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { homedir, hostname as hostname3 } from "node:os";
+// mcp/local-env.ts
+import { readFile, realpath } from "node:fs/promises";
 import path2 from "node:path";
+var ENVIRONMENT_KEY = /^[A-Z_][A-Z0-9_]*$/;
+function parseDoubleQuoted(value, file2, line) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    throw new Error(`${file2} ${line}\uBC88\uC9F8 \uC904\uC758 \uD070\uB530\uC634\uD45C \uAC12\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4`);
+  }
+}
+function parseLocalEnv(source, file2 = ".env.local") {
+  const values = {};
+  const lines = source.replace(/^\uFEFF/, "").split(/\r?\n/);
+  for (const [index, original] of lines.entries()) {
+    const trimmed = original.trim();
+    if (trimmed === "" || trimmed.startsWith("#")) continue;
+    const withoutExport = trimmed.startsWith("export ") ? trimmed.slice("export ".length).trimStart() : trimmed;
+    const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(withoutExport);
+    if (match === null || match[1] === void 0 || match[2] === void 0) {
+      throw new Error(`${file2} ${index + 1}\uBC88\uC9F8 \uC904\uC758 KEY=value \uD615\uC2DD\uC744 \uD655\uC778\uD55C\uB2E4`);
+    }
+    const key = match[1];
+    const raw = match[2].trim();
+    let value;
+    if (raw.startsWith('"')) {
+      if (!raw.endsWith('"')) {
+        throw new Error(`${file2} ${index + 1}\uBC88\uC9F8 \uC904\uC758 \uD070\uB530\uC634\uD45C\uB97C \uB2EB\uB294\uB2E4`);
+      }
+      value = parseDoubleQuoted(raw, file2, index + 1);
+    } else if (raw.startsWith("'")) {
+      if (!raw.endsWith("'")) {
+        throw new Error(`${file2} ${index + 1}\uBC88\uC9F8 \uC904\uC758 \uC791\uC740\uB530\uC634\uD45C\uB97C \uB2EB\uB294\uB2E4`);
+      }
+      value = raw.slice(1, -1);
+    } else {
+      value = raw.replace(/\s+#.*$/, "").trimEnd();
+    }
+    values[key] = value;
+  }
+  return values;
+}
+function uniqueKeys(keys, kind) {
+  const unique = [...new Set(keys)];
+  for (const key of unique) {
+    if (!ENVIRONMENT_KEY.test(key)) {
+      throw new Error(`${kind} \uD0A4 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4: ${key}`);
+    }
+  }
+  return unique;
+}
+async function loadSelectedLocalEnv(projectRoot, selection) {
+  if (path2.basename(selection.file) !== selection.file || !isSensitiveEnvName(selection.file)) {
+    throw new Error("localEnv.file\uC740 \uD504\uB85C\uC81D\uD2B8 \uB8E8\uD2B8\uC758 \uC2E4\uC81C .env \uACC4\uC5F4 \uD30C\uC77C\uC774\uC5B4\uC57C \uD55C\uB2E4");
+  }
+  const root = await realpath(projectRoot);
+  const selectedPath = path2.join(root, selection.file);
+  const resolved = await realpath(selectedPath).catch(() => null);
+  if (resolved === null || !resolved.startsWith(`${root}${path2.sep}`)) {
+    throw new Error(`\uB85C\uCEEC env \uD30C\uC77C\uC744 \uCC3E\uC9C0 \uBABB\uD588\uB2E4: ${selection.file}`);
+  }
+  const envKeys = uniqueKeys(selection.envKeys, "\uC77C\uBC18 \uC124\uC815");
+  const secretKeys = uniqueKeys(selection.secretKeys, "\uBE44\uBC00\uAC12");
+  if (envKeys.length === 0 && secretKeys.length === 0) {
+    throw new Error("localEnv\uC5D0 \uC0AC\uC6A9\uD560 \uC77C\uBC18 \uC124\uC815 \uB610\uB294 \uBE44\uBC00\uAC12 \uD0A4\uB97C \uD558\uB098 \uC774\uC0C1 \uC9C0\uC815\uD55C\uB2E4");
+  }
+  const overlap = envKeys.find((key) => secretKeys.includes(key));
+  if (overlap !== void 0) {
+    throw new Error(`\uAC19\uC740 \uD0A4\uB97C \uC77C\uBC18 \uC124\uC815\uACFC \uBE44\uBC00\uAC12\uC73C\uB85C \uD568\uAED8 \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uB2E4: ${overlap}`);
+  }
+  const parsed = parseLocalEnv(await readFile(resolved, "utf8"), selection.file);
+  const env = {};
+  const secrets = {};
+  for (const key of envKeys) {
+    if (parsed[key] === void 0) {
+      throw new Error(`${selection.file}\uC5D0 \uC77C\uBC18 \uC124\uC815 \uD0A4 ${key}\uAC00 \uC5C6\uB2E4`);
+    }
+    env[key] = parsed[key];
+  }
+  for (const key of secretKeys) {
+    const value = parsed[key];
+    if (value === void 0 || value === "") {
+      throw new Error(`${selection.file}\uC5D0 \uBE44\uBC00\uAC12 \uD0A4 ${key}\uAC00 \uC5C6\uAC70\uB098 \uBE44\uC5B4 \uC788\uB2E4`);
+    }
+    secrets[key] = value;
+  }
+  return { env, secrets };
+}
+
+// mcp/device-auth.ts
+import { mkdir, readFile as readFile2, rename, writeFile } from "node:fs/promises";
+import { homedir, hostname as hostname3 } from "node:os";
+import path3 from "node:path";
 
 // mcp/dpop.ts
 import {
@@ -34082,9 +34180,9 @@ var DEFAULT_RESOURCE = "urn:aiblecampus:paas";
 var refreshes = /* @__PURE__ */ new Map();
 function stateFile() {
   const configured = process.env["PAAS_CREDENTIAL_FILE"]?.trim();
-  if (configured) return path2.resolve(configured);
-  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path2.join(homedir(), ".config");
-  return path2.join(configRoot, "aiblecampus-paas", "device.json");
+  if (configured) return path3.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path3.join(homedir(), ".config");
+  return path3.join(configRoot, "aiblecampus-paas", "device.json");
 }
 function emptyState(apiBase2) {
   return { version: 1, apiBase: apiBase2, credential: null, pending: null };
@@ -34108,7 +34206,7 @@ function parseState(raw, apiBase2) {
 }
 async function readState(apiBase2) {
   try {
-    return parseState(await readFile(stateFile(), "utf8"), apiBase2);
+    return parseState(await readFile2(stateFile(), "utf8"), apiBase2);
   } catch (error51) {
     if (error51.code !== "ENOENT") {
       throw new Error("\uAE30\uAE30 Credential \uC800\uC7A5 \uD30C\uC77C\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
@@ -34118,7 +34216,7 @@ async function readState(apiBase2) {
 }
 async function writeState(state) {
   const file2 = stateFile();
-  await mkdir(path2.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir(path3.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.tmp`;
   await writeFile(temporary, `${JSON.stringify(state, null, 2)}
 `, { mode: 384 });
@@ -34342,9 +34440,9 @@ async function completeDeviceLogin(apiBase2) {
 
 // mcp/persistence-migration.ts
 import { createHash as createHash2 } from "node:crypto";
-import { mkdir as mkdir2, readFile as readFile2, readdir, stat } from "node:fs/promises";
+import { mkdir as mkdir2, readFile as readFile3, readdir, stat } from "node:fs/promises";
 import { backup, DatabaseSync } from "node:sqlite";
-import path3 from "node:path";
+import path4 from "node:path";
 var SAFE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 var MAX_TABLES = 100;
 var MAX_ROWS = 1e5;
@@ -34374,8 +34472,8 @@ function snapshotValue(value) {
   throw new Error(`\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 SQLite \uAC12 \uD615\uC2DD\uC774\uB2E4: ${typeof value}`);
 }
 async function snapshotSqlite(databasePath) {
-  const absolute = path3.resolve(databasePath);
-  const source = await readFile2(absolute);
+  const absolute = path4.resolve(databasePath);
+  const source = await readFile3(absolute);
   const database = new DatabaseSync(absolute, { readOnly: true });
   try {
     const tableStatement = database.prepare(
@@ -34434,9 +34532,9 @@ async function snapshotSqlite(databasePath) {
   }
 }
 function withinProject(projectRoot, candidate) {
-  const root = path3.resolve(projectRoot);
-  const absolute = path3.resolve(candidate);
-  if (absolute !== root && !absolute.startsWith(`${root}${path3.sep}`)) {
+  const root = path4.resolve(projectRoot);
+  const absolute = path4.resolve(candidate);
+  if (absolute !== root && !absolute.startsWith(`${root}${path4.sep}`)) {
     throw new Error("\uC774\uC804 \uB300\uC0C1\uC740 \uD504\uB85C\uC81D\uD2B8 \uD3F4\uB354 \uC548\uC5D0 \uC788\uC5B4\uC57C \uD55C\uB2E4");
   }
   return absolute;
@@ -34447,11 +34545,11 @@ function backupName(label, extension) {
 }
 async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   const source = withinProject(projectRoot, databasePath);
-  const backupRoot = path3.join(path3.resolve(projectRoot), ".paas-backups");
+  const backupRoot = path4.join(path4.resolve(projectRoot), ".paas-backups");
   await mkdir2(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path3.join(
+  const backupPath = path4.join(
     backupRoot,
-    backupName(path3.basename(source), ".sqlite")
+    backupName(path4.basename(source), ".sqlite")
   );
   const database = new DatabaseSync(source, { readOnly: true });
   try {
@@ -34462,7 +34560,7 @@ async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   return { backupPath, snapshot: await snapshotSqlite(backupPath) };
 }
 function contentType(file2) {
-  const extension = path3.extname(file2).toLowerCase();
+  const extension = path4.extname(file2).toLowerCase();
   if (extension === ".json") return "application/json";
   if (extension === ".html") return "text/html; charset=utf-8";
   if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
@@ -34479,31 +34577,31 @@ async function collectFiles(root, current, files) {
     if (files.length >= MAX_FILES) {
       throw new Error(`\uD30C\uC77C\uC740 ${MAX_FILES}\uAC1C\uAE4C\uC9C0 \uC790\uB3D9 \uC774\uC804\uD560 \uC218 \uC788\uB2E4`);
     }
-    const absolute = path3.join(current, entry.name);
+    const absolute = path4.join(current, entry.name);
     if (entry.isSymbolicLink()) {
       throw new Error(`\uC2EC\uBCFC\uB9AD \uB9C1\uD06C\uB294 \uC790\uB3D9 \uC774\uC804\uD558\uC9C0 \uC54A\uB294\uB2E4: ${absolute}`);
     }
     if (entry.isDirectory()) await collectFiles(root, absolute, files);
-    else if (entry.isFile()) files.push(path3.relative(root, absolute));
+    else if (entry.isFile()) files.push(path4.relative(root, absolute));
   }
 }
 async function snapshotFiles(sourceDirectory) {
-  const root = path3.resolve(sourceDirectory);
+  const root = path4.resolve(sourceDirectory);
   const files = [];
   await collectFiles(root, root, files);
   files.sort();
   const objects = [];
   let totalBytes = 0;
   for (const key of files) {
-    const absolute = path3.join(root, key);
+    const absolute = path4.join(root, key);
     const info = await stat(absolute);
     totalBytes += info.size;
     if (totalBytes > MAX_TOTAL_BYTES) {
       throw new Error("\uD30C\uC77C \uC774\uC804 \uC804\uCCB4 \uD06C\uAE30\uB294 512MB \uC774\uD558\uC5EC\uC57C \uD55C\uB2E4");
     }
-    const content = await readFile2(absolute);
+    const content = await readFile3(absolute);
     objects.push({
-      key: key.split(path3.sep).join("/"),
+      key: key.split(path4.sep).join("/"),
       contentType: contentType(key),
       size: content.byteLength,
       sha256: sha256(content),
@@ -34525,11 +34623,11 @@ async function snapshotFiles(sourceDirectory) {
 }
 async function backupAndSnapshotFiles(projectRoot, sourceDirectory) {
   const source = withinProject(projectRoot, sourceDirectory);
-  const backupRoot = path3.join(path3.resolve(projectRoot), ".paas-backups");
+  const backupRoot = path4.join(path4.resolve(projectRoot), ".paas-backups");
   await mkdir2(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path3.join(
+  const backupPath = path4.join(
     backupRoot,
-    backupName(path3.basename(source), ".tar.gz")
+    backupName(path4.basename(source), ".tar.gz")
   );
   await Qn(
     { cwd: source, file: backupPath, gzip: true, portable: true },
@@ -34563,6 +34661,38 @@ function gitRepoNameOf(url2) {
 var WorkspaceInputSchema = external_exports.string().min(1).optional().describe(
   "\uB300\uC0C1 Workspace\uC758 ID \uB610\uB294 slug. \uC0DD\uB7B5\uD558\uBA74 \uAC1C\uC778 Workspace\uB97C \uC0AC\uC6A9\uD55C\uB2E4"
 );
+var EnvironmentKeySchema = external_exports.string().regex(/^[A-Z_][A-Z0-9_]*$/, "\uD658\uACBD\uBCC0\uC218 \uD0A4 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+var LocalEnvInputSchema = external_exports.object({
+  file: external_exports.string().describe("\uD504\uB85C\uC81D\uD2B8 \uB8E8\uD2B8\uC758 \uC2E4\uC81C \uAC12 \uD30C\uC77C. .env \uB610\uB294 .env.local \uACC4\uC5F4\uB9CC \uD5C8\uC6A9\uD55C\uB2E4"),
+  envKeys: external_exports.array(EnvironmentKeySchema).optional().describe("\uD30C\uC77C\uC5D0\uC11C \uC77D\uC5B4 \uC77C\uBC18 \uC124\uC815\uC73C\uB85C \uC804\uB2EC\uD558\uB3C4\uB85D \uC0AC\uC6A9\uC790\uAC00 \uC2B9\uC778\uD55C \uD0A4 \uC774\uB984"),
+  secretKeys: external_exports.array(EnvironmentKeySchema).optional().describe("\uD30C\uC77C\uC5D0\uC11C \uC77D\uC5B4 \uC554\uD638\uD654 \uBE44\uBC00\uAC12\uC73C\uB85C \uC804\uB2EC\uD558\uB3C4\uB85D \uC0AC\uC6A9\uC790\uAC00 \uC2B9\uC778\uD55C \uD0A4 \uC774\uB984")
+}).optional().describe(
+  "\uB85C\uCEEC env \uD30C\uC77C\uC5D0\uC11C \uC2B9\uC778\uD55C \uD0A4\uB9CC MCP \uB0B4\uBD80\uAC00 \uC77D\uB294\uB2E4. \uAC12\uC740 Agent \uC751\uB2F5\uACFC \uB3C4\uAD6C \uACB0\uACFC\uC5D0 \uBC18\uD658\uD558\uC9C0 \uC54A\uB294\uB2E4"
+);
+function mergeConfigurationValues(direct, fromFile, kind) {
+  const merged = { ...direct ?? {} };
+  for (const [key, value] of Object.entries(fromFile)) {
+    if (merged[key] !== void 0) {
+      throw new Error(`${kind} \uD0A4 ${key}\uAC00 \uB3C4\uAD6C \uC778\uC790\uC640 \uB85C\uCEEC env \uD30C\uC77C\uC5D0 \uC911\uBCF5\uB410\uB2E4`);
+    }
+    merged[key] = value;
+  }
+  return merged;
+}
+async function selectedLocalConfiguration(projectPath, localEnv) {
+  if (localEnv === void 0) return { env: {}, secrets: {} };
+  return loadSelectedLocalEnv(projectPath, {
+    file: localEnv.file,
+    envKeys: localEnv.envKeys ?? [],
+    secretKeys: localEnv.secretKeys ?? []
+  });
+}
+function assertConfigurationSeparation(env, secrets) {
+  const overlap = Object.keys(env).find((key) => secrets[key] !== void 0);
+  if (overlap !== void 0) {
+    throw new Error(`\uAC19\uC740 \uD0A4\uB97C \uC77C\uBC18 \uC124\uC815\uACFC \uBE44\uBC00\uAC12\uC73C\uB85C \uD568\uAED8 \uC804\uB2EC\uD560 \uC218 \uC5C6\uB2E4: ${overlap}`);
+  }
+}
 async function callApi(urlPath, init = {}, workspace) {
   let response;
   try {
@@ -34652,7 +34782,7 @@ ${typeof result.body === "string" ? result.body : JSON.stringify(result.body, nu
 }
 var server = new McpServer({
   name: "aiblecampus-paas",
-  version: "0.13.1"
+  version: "0.14.0"
 });
 server.registerTool(
   "start_paas_login",
@@ -34709,6 +34839,7 @@ server.registerTool(
       subdir: external_exports.string().optional().describe("git \uC800\uC7A5\uC18C \uC548\uC5D0\uC11C \uAC80\uC99D\uD560 \uD558\uC704 \uB514\uB809\uD1A0\uB9AC"),
       env: external_exports.record(external_exports.string(), external_exports.string()).optional().describe("\uBC30\uD3EC\uD560 \uB54C \uC8FC\uC785\uD560 \uC77C\uBC18 \uD658\uACBD\uBCC0\uC218. \uD544\uC694\uD55C \uD0A4 \uB204\uB77D \uD310\uC815\uC5D0 \uC0AC\uC6A9\uD55C\uB2E4"),
       secretKeys: external_exports.array(external_exports.string()).optional().describe("\uBE44\uBC00\uAC12\uC73C\uB85C \uC8FC\uC785\uD560 \uD658\uACBD\uBCC0\uC218 \uD0A4 \uC774\uB984. \uAC12\uC740 \uAC80\uC99D \uB3C4\uAD6C\uC5D0 \uB118\uAE30\uC9C0 \uC54A\uB294\uB2E4"),
+      localEnv: LocalEnvInputSchema,
       workspace: WorkspaceInputSchema
     },
     annotations: {
@@ -34718,8 +34849,11 @@ server.registerTool(
       openWorldHint: true
     }
   },
-  async ({ path: projectPath, ref, subdir, env, secretKeys, workspace }) => {
+  async ({ path: projectPath, ref, subdir, env, secretKeys, localEnv, workspace }) => {
     if (looksLikeGitUrl(projectPath)) {
+      if (localEnv !== void 0) {
+        return errorResult("localEnv\uB294 \uB85C\uCEEC \uD504\uB85C\uC81D\uD2B8 \uACBD\uB85C\uB97C \uAC80\uC99D\uD560 \uB54C\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uB2E4");
+      }
       const result2 = await callApi("/v1/preflight/git", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -34737,6 +34871,21 @@ server.registerTool(
     if (!existsSync(projectPath)) {
       return errorResult(`\uACBD\uB85C\uAC00 \uC5C6\uB2E4: ${projectPath}`);
     }
+    let resolvedEnv;
+    let resolvedSecretKeys;
+    try {
+      const local = await selectedLocalConfiguration(projectPath, localEnv);
+      resolvedEnv = mergeConfigurationValues(env, local.env, "\uC77C\uBC18 \uC124\uC815");
+      resolvedSecretKeys = [.../* @__PURE__ */ new Set([...secretKeys ?? [], ...Object.keys(local.secrets)])];
+      assertConfigurationSeparation(
+        resolvedEnv,
+        Object.fromEntries(resolvedSecretKeys.map((key) => [key, "provided"]))
+      );
+    } catch (error51) {
+      return errorResult(
+        `\uB85C\uCEEC \uD658\uACBD \uC124\uC815\uC744 \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
+      );
+    }
     let tarball;
     try {
       tarball = await packDirectory(projectPath);
@@ -34751,9 +34900,11 @@ server.registerTool(
       new Blob([new Uint8Array(tarball)], { type: "application/gzip" }),
       "source.tar.gz"
     );
-    if (env !== void 0) form.set("env", JSON.stringify(env));
-    if (secretKeys !== void 0) {
-      form.set("secretKeys", JSON.stringify(secretKeys));
+    if (Object.keys(resolvedEnv).length > 0) {
+      form.set("env", JSON.stringify(resolvedEnv));
+    }
+    if (resolvedSecretKeys.length > 0) {
+      form.set("secretKeys", JSON.stringify(resolvedSecretKeys));
     }
     const result = await callApi("/v1/preflight", {
       method: "POST",
@@ -34783,6 +34934,7 @@ server.registerTool(
       secrets: external_exports.record(external_exports.string(), external_exports.string().min(1)).optional().describe(
         "\uBC30\uD3EC \uCEE8\uD14C\uC774\uB108\uC5D0 \uC548\uC804\uD558\uAC8C \uC8FC\uC785\uD560 \uBE44\uBC00\uAC12. \uC751\uB2F5\uACFC \uB85C\uADF8\uC5D0\uB294 \uAC12\uC774 \uD45C\uC2DC\uB418\uC9C0 \uC54A\uB294\uB2E4"
       ),
+      localEnv: LocalEnvInputSchema,
       resources: external_exports.object({
         cpus: external_exports.number().positive(),
         memoryMb: external_exports.number().int().min(64)
@@ -34805,10 +34957,14 @@ server.registerTool(
     subdir,
     env,
     secrets,
+    localEnv,
     resources,
     workspace
   }) => {
     if (looksLikeGitUrl(projectPath)) {
+      if (localEnv !== void 0) {
+        return errorResult("localEnv\uB294 \uB85C\uCEEC \uD504\uB85C\uC81D\uD2B8 \uACBD\uB85C\uB97C \uBC30\uD3EC\uD560 \uB54C\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uB2E4");
+      }
       const deploymentName2 = toDeploymentName(
         name ?? gitRepoNameOf(projectPath)
       );
@@ -34836,7 +34992,19 @@ server.registerTool(
     if (!existsSync(projectPath)) {
       return errorResult(`\uACBD\uB85C\uAC00 \uC5C6\uB2E4: ${projectPath}`);
     }
-    const deploymentName = toDeploymentName(name ?? path4.basename(projectPath));
+    let resolvedEnv;
+    let resolvedSecrets;
+    try {
+      const local = await selectedLocalConfiguration(projectPath, localEnv);
+      resolvedEnv = mergeConfigurationValues(env, local.env, "\uC77C\uBC18 \uC124\uC815");
+      resolvedSecrets = mergeConfigurationValues(secrets, local.secrets, "\uBE44\uBC00\uAC12");
+      assertConfigurationSeparation(resolvedEnv, resolvedSecrets);
+    } catch (error51) {
+      return errorResult(
+        `\uB85C\uCEEC \uD658\uACBD \uC124\uC815\uC744 \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
+      );
+    }
+    const deploymentName = toDeploymentName(name ?? path5.basename(projectPath));
     let tarball;
     try {
       tarball = await packDirectory(projectPath);
@@ -34852,8 +35020,12 @@ server.registerTool(
       new Blob([new Uint8Array(tarball)], { type: "application/gzip" }),
       "source.tar.gz"
     );
-    if (env !== void 0) form.set("env", JSON.stringify(env));
-    if (secrets !== void 0) form.set("secrets", JSON.stringify(secrets));
+    if (Object.keys(resolvedEnv).length > 0) {
+      form.set("env", JSON.stringify(resolvedEnv));
+    }
+    if (Object.keys(resolvedSecrets).length > 0) {
+      form.set("secrets", JSON.stringify(resolvedSecrets));
+    }
     if (resources !== void 0) {
       form.set("resources", JSON.stringify(resources));
     }
