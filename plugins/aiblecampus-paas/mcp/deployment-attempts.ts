@@ -1,14 +1,8 @@
 import { randomUUID } from "node:crypto";
-import {
-  mkdir,
-  readFile,
-  rename,
-  rmdir,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { withFileLock } from "./file-lock.ts";
 
 type DeploymentAttempt = {
   key: string;
@@ -21,9 +15,6 @@ type DeploymentAttemptState = {
 };
 
 const DEFAULT_TTL_MS = 30 * 60 * 1000;
-const LOCK_STALE_MS = 10_000;
-const LOCK_RETRY_MS = 25;
-const LOCK_RETRIES = 200;
 
 function defaultAttemptFile(): string {
   const configured = process.env["PAAS_DEPLOYMENT_ATTEMPT_FILE"]?.trim();
@@ -102,44 +93,6 @@ async function writeState(
   await rename(temporary, file);
 }
 
-async function acquireLock(lockDirectory: string): Promise<void> {
-  for (let attempt = 0; attempt < LOCK_RETRIES; attempt += 1) {
-    try {
-      await mkdir(lockDirectory, { mode: 0o700 });
-      return;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      try {
-        const current = await stat(lockDirectory);
-        if (Date.now() - current.mtimeMs > LOCK_STALE_MS) {
-          await rmdir(lockDirectory);
-          continue;
-        }
-      } catch (inspectionError) {
-        const code = (inspectionError as NodeJS.ErrnoException).code;
-        if (code === "ENOENT") continue;
-        if (code !== "ENOTEMPTY") throw inspectionError;
-      }
-      await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
-    }
-  }
-  throw new Error("배포 요청 복구 파일을 잠그지 못했다. 잠시 후 다시 시도한다");
-}
-
-async function withFileLock<T>(file: string, work: () => Promise<T>): Promise<T> {
-  await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
-  const lockDirectory = `${file}.lock`;
-  await acquireLock(lockDirectory);
-  try {
-    return await work();
-  } finally {
-    try {
-      await rmdir(lockDirectory);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-  }
-}
 
 export async function deploymentAttempt(
   fingerprint: string,

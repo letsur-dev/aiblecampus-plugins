@@ -16,6 +16,7 @@ import {
   backupAndSnapshotSqlite,
   snapshotFiles,
   snapshotSqlite,
+  withinProject,
 } from "./persistence-migration.ts";
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
@@ -83,6 +84,11 @@ function sortedEntries(values: Record<string, string>): Array<[string, string]> 
     left.localeCompare(right),
   );
 }
+
+// git 배포의 멱등 재사용 창. 커밋 내용을 fingerprint 에 넣을 수 없으므로,
+// 응답이 끊긴 직후의 재시도만 같은 revision 으로 합치고 그 뒤 재배포는 새로
+// 처리한다. tarball 은 내용 해시라 이 제한이 필요 없다.
+const GIT_ATTEMPT_TTL_MS = 90 * 1000;
 
 function deploymentFingerprint(input: {
   source: string;
@@ -563,6 +569,10 @@ server.registerTool(
             workspace,
           }),
           forceNewRevision ?? false,
+          // git 소스는 fingerprint 에 커밋 내용이 없어, 같은 branch 에 새 커밋을
+          // push 하고 다시 배포해도 fingerprint 가 같다. 기본 30분 재사용을 두면
+          // 새 커밋 배포가 조용히 무시되므로, 응답 단절 복구만 덮는 짧은 창을 쓴다.
+          { ttlMs: GIT_ATTEMPT_TTL_MS },
         );
       } catch (error) {
         return errorResult(
@@ -681,6 +691,7 @@ server.registerTool(
     description:
       "SQLite 원본을 변경하지 않고 table, 행 수와 checksum을 확인한다. 사용자 승인 전 단계에서만 사용한다.",
     inputSchema: {
+      projectRoot: z.string().describe("확인 기준이 되는 프로젝트 루트 절대 경로"),
       databasePath: z.string().describe("프로젝트 안 SQLite 파일의 절대 경로"),
     },
     annotations: {
@@ -690,9 +701,9 @@ server.registerTool(
       openWorldHint: false,
     },
   },
-  async ({ databasePath }) => {
+  async ({ projectRoot, databasePath }) => {
     try {
-      const snapshot = await snapshotSqlite(databasePath);
+      const snapshot = await snapshotSqlite(withinProject(projectRoot, databasePath));
       return textResult({
         읽기_전용_미리보기: true,
         sourceSha256: snapshot.sourceSha256,
@@ -771,6 +782,7 @@ server.registerTool(
     description:
       "로컬 파일을 변경하지 않고 파일 수, 전체 크기와 checksum을 확인한다. 사용자 승인 전 단계에서만 사용한다.",
     inputSchema: {
+      projectRoot: z.string().describe("확인 기준이 되는 프로젝트 루트 절대 경로"),
       sourceDirectory: z.string().describe("프로젝트 안 로컬 업로드 폴더의 절대 경로"),
     },
     annotations: {
@@ -780,9 +792,11 @@ server.registerTool(
       openWorldHint: false,
     },
   },
-  async ({ sourceDirectory }) => {
+  async ({ projectRoot, sourceDirectory }) => {
     try {
-      const snapshot = await snapshotFiles(sourceDirectory);
+      const snapshot = await snapshotFiles(
+        withinProject(projectRoot, sourceDirectory),
+      );
       return textResult({
         읽기_전용_미리보기: true,
         sourceSha256: snapshot.sourceSha256,

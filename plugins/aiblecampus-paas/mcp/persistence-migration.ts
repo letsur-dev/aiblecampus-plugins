@@ -143,7 +143,7 @@ export async function snapshotSqlite(databasePath: string): Promise<SqliteSnapsh
   }
 }
 
-function withinProject(projectRoot: string, candidate: string): string {
+export function withinProject(projectRoot: string, candidate: string): string {
   const root = path.resolve(projectRoot);
   const absolute = path.resolve(candidate);
   if (absolute !== root && !absolute.startsWith(`${root}${path.sep}`)) {

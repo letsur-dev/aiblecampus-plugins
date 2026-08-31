@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
 import path from "node:path";
 import type { JsonWebKey } from "node:crypto";
+import { withFileLock } from "./file-lock.ts";
 import {
   assertDpopPrivateJwk,
   createDpopProof,
@@ -151,10 +152,23 @@ function tokenCredential(body: Record<string, unknown>, args: {
 }
 
 async function refreshCredential(apiBase: string): Promise<StoredCredential | null> {
-  const state = await readState(apiBase);
-  const credential = state.credential;
-  if (credential === null) return null;
-  if (credential.expiresAt > Date.now() + 30_000) return credential;
+  // 여러 프로세스(Claude Code 와 Codex)가 같은 device.json 을 동시에 갱신하면
+  // 회전된 refresh token 이 유실되므로 갱신 전체를 파일 잠금으로 직렬화한다.
+  // 잠금을 잡은 뒤 다시 읽어, 다른 프로세스가 방금 갱신했으면 그 값을 쓴다.
+  return withFileLock(stateFile(), async () => {
+    const state = await readState(apiBase);
+    const credential = state.credential;
+    if (credential === null) return null;
+    if (credential.expiresAt > Date.now() + 30_000) return credential;
+    return refreshLocked(apiBase, state, credential);
+  });
+}
+
+async function refreshLocked(
+  apiBase: string,
+  state: LocalState,
+  credential: StoredCredential,
+): Promise<StoredCredential | null> {
   const endpoint = tokenEndpoint(apiBase);
   const response = await fetch(endpoint, {
     method: "POST",

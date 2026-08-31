@@ -3224,8 +3224,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path7) {
-      let input = path7;
+    function removeDotSegments(path8) {
+      let input = path8;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3477,8 +3477,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path7, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
+        const [path8, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7269,8 +7269,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path7, errorMaps, issueData } = params;
-  const fullPath = [...path7, ...issueData.path || []];
+  const { data, path: path8, errorMaps, issueData } = params;
+  const fullPath = [...path8, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -7385,11 +7385,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path7, key) {
+  constructor(parent, value, path8, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path7;
+    this._path = path8;
     this._key = key;
   }
   get path() {
@@ -11310,10 +11310,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path7) {
-  if (!path7)
+function getElementAtPath(obj, path8) {
+  if (!path8)
     return obj;
-  return path7.reduce((acc, key) => acc?.[key], obj);
+  return path8.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -11722,11 +11722,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path7, issues) {
+function prefixIssues(path8, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path7);
+    iss.path.unshift(path8);
     return iss;
   });
 }
@@ -11873,16 +11873,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path7 = []) => {
+  const processError = (error52, path8 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else {
-        const fullpath = [...path7, ...issue2.path];
+        const fullpath = [...path8, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -11909,17 +11909,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path7 = []) => {
+  const processError = (error52, path8 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else {
-        const fullpath = [...path7, ...issue2.path];
+        const fullpath = [...path8, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -11951,8 +11951,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path7 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path7) {
+  const path8 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path8) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -23064,11 +23064,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path7) {
-  if (path7.length === 0) {
+function getDotPath(path8) {
+  if (path8.length === 0) {
     return "object root";
   }
-  return path7.reduce((acc, seg, index) => {
+  return path8.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -25093,13 +25093,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path7 = ref.slice(1).split("/").filter(Boolean);
-  if (path7.length === 0) {
+  const path8 = ref.slice(1).split("/").filter(Boolean);
+  if (path8.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path7[0] === defsKey) {
-    const key = path7[1];
+  if (path8[0] === defsKey) {
+    const key = path8[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -30999,7 +30999,7 @@ var StdioServerTransport = class {
 // mcp/index.ts
 import { createHash as createHash3 } from "node:crypto";
 import { existsSync } from "node:fs";
-import path6 from "node:path";
+import path7 from "node:path";
 
 // mcp/pack.ts
 import path from "node:path";
@@ -34105,9 +34105,53 @@ async function loadSelectedLocalEnv(projectRoot, selection) {
 }
 
 // mcp/device-auth.ts
-import { mkdir, readFile as readFile2, rename, writeFile } from "node:fs/promises";
+import { mkdir as mkdir2, readFile as readFile2, rename, writeFile } from "node:fs/promises";
 import { homedir, hostname as hostname3 } from "node:os";
+import path4 from "node:path";
+
+// mcp/file-lock.ts
+import { mkdir, rmdir, stat } from "node:fs/promises";
 import path3 from "node:path";
+var LOCK_STALE_MS = 1e4;
+var LOCK_RETRY_MS = 25;
+var LOCK_RETRIES = 500;
+async function acquireLock(lockDirectory) {
+  for (let attempt = 0; attempt < LOCK_RETRIES; attempt += 1) {
+    try {
+      await mkdir(lockDirectory, { mode: 448 });
+      return;
+    } catch (error51) {
+      if (error51.code !== "EEXIST") throw error51;
+      try {
+        const current = await stat(lockDirectory);
+        if (Date.now() - current.mtimeMs > LOCK_STALE_MS) {
+          await rmdir(lockDirectory);
+          continue;
+        }
+      } catch (inspectionError) {
+        const code = inspectionError.code;
+        if (code === "ENOENT") continue;
+        if (code !== "ENOTEMPTY") throw inspectionError;
+      }
+      await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
+    }
+  }
+  throw new Error("\uD30C\uC77C \uC7A0\uAE08\uC744 \uC5BB\uC9C0 \uBABB\uD588\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD55C\uB2E4");
+}
+async function withFileLock(file2, work) {
+  await mkdir(path3.dirname(file2), { recursive: true, mode: 448 });
+  const lockDirectory = `${file2}.lock`;
+  await acquireLock(lockDirectory);
+  try {
+    return await work();
+  } finally {
+    try {
+      await rmdir(lockDirectory);
+    } catch (error51) {
+      if (error51.code !== "ENOENT") throw error51;
+    }
+  }
+}
 
 // mcp/dpop.ts
 import {
@@ -34181,9 +34225,9 @@ var DEFAULT_RESOURCE = "urn:aiblecampus:paas";
 var refreshes = /* @__PURE__ */ new Map();
 function stateFile() {
   const configured = process.env["PAAS_CREDENTIAL_FILE"]?.trim();
-  if (configured) return path3.resolve(configured);
-  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path3.join(homedir(), ".config");
-  return path3.join(configRoot, "aiblecampus-paas", "device.json");
+  if (configured) return path4.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path4.join(homedir(), ".config");
+  return path4.join(configRoot, "aiblecampus-paas", "device.json");
 }
 function emptyState(apiBase2) {
   return { version: 1, apiBase: apiBase2, credential: null, pending: null };
@@ -34217,7 +34261,7 @@ async function readState(apiBase2) {
 }
 async function writeState(state) {
   const file2 = stateFile();
-  await mkdir(path3.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir2(path4.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.tmp`;
   await writeFile(temporary, `${JSON.stringify(state, null, 2)}
 `, { mode: 384 });
@@ -34270,10 +34314,15 @@ function tokenCredential(body, args) {
   };
 }
 async function refreshCredential(apiBase2) {
-  const state = await readState(apiBase2);
-  const credential = state.credential;
-  if (credential === null) return null;
-  if (credential.expiresAt > Date.now() + 3e4) return credential;
+  return withFileLock(stateFile(), async () => {
+    const state = await readState(apiBase2);
+    const credential = state.credential;
+    if (credential === null) return null;
+    if (credential.expiresAt > Date.now() + 3e4) return credential;
+    return refreshLocked(apiBase2, state, credential);
+  });
+}
+async function refreshLocked(apiBase2, state, credential) {
   const endpoint = tokenEndpoint(apiBase2);
   const response = await fetch(endpoint, {
     method: "POST",
@@ -34441,9 +34490,9 @@ async function completeDeviceLogin(apiBase2) {
 
 // mcp/persistence-migration.ts
 import { createHash as createHash2 } from "node:crypto";
-import { mkdir as mkdir2, readFile as readFile3, readdir, stat } from "node:fs/promises";
+import { mkdir as mkdir3, readFile as readFile3, readdir, stat as stat2 } from "node:fs/promises";
 import { backup, DatabaseSync } from "node:sqlite";
-import path4 from "node:path";
+import path5 from "node:path";
 var SAFE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 var MAX_TABLES = 100;
 var MAX_ROWS = 1e5;
@@ -34473,7 +34522,7 @@ function snapshotValue(value) {
   throw new Error(`\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 SQLite \uAC12 \uD615\uC2DD\uC774\uB2E4: ${typeof value}`);
 }
 async function snapshotSqlite(databasePath) {
-  const absolute = path4.resolve(databasePath);
+  const absolute = path5.resolve(databasePath);
   const source = await readFile3(absolute);
   const database = new DatabaseSync(absolute, { readOnly: true });
   try {
@@ -34533,9 +34582,9 @@ async function snapshotSqlite(databasePath) {
   }
 }
 function withinProject(projectRoot, candidate) {
-  const root = path4.resolve(projectRoot);
-  const absolute = path4.resolve(candidate);
-  if (absolute !== root && !absolute.startsWith(`${root}${path4.sep}`)) {
+  const root = path5.resolve(projectRoot);
+  const absolute = path5.resolve(candidate);
+  if (absolute !== root && !absolute.startsWith(`${root}${path5.sep}`)) {
     throw new Error("\uC774\uC804 \uB300\uC0C1\uC740 \uD504\uB85C\uC81D\uD2B8 \uD3F4\uB354 \uC548\uC5D0 \uC788\uC5B4\uC57C \uD55C\uB2E4");
   }
   return absolute;
@@ -34546,11 +34595,11 @@ function backupName(label, extension) {
 }
 async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   const source = withinProject(projectRoot, databasePath);
-  const backupRoot = path4.join(path4.resolve(projectRoot), ".paas-backups");
-  await mkdir2(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path4.join(
+  const backupRoot = path5.join(path5.resolve(projectRoot), ".paas-backups");
+  await mkdir3(backupRoot, { recursive: true, mode: 448 });
+  const backupPath = path5.join(
     backupRoot,
-    backupName(path4.basename(source), ".sqlite")
+    backupName(path5.basename(source), ".sqlite")
   );
   const database = new DatabaseSync(source, { readOnly: true });
   try {
@@ -34561,7 +34610,7 @@ async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   return { backupPath, snapshot: await snapshotSqlite(backupPath) };
 }
 function contentType(file2) {
-  const extension = path4.extname(file2).toLowerCase();
+  const extension = path5.extname(file2).toLowerCase();
   if (extension === ".json") return "application/json";
   if (extension === ".html") return "text/html; charset=utf-8";
   if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
@@ -34578,31 +34627,31 @@ async function collectFiles(root, current, files) {
     if (files.length >= MAX_FILES) {
       throw new Error(`\uD30C\uC77C\uC740 ${MAX_FILES}\uAC1C\uAE4C\uC9C0 \uC790\uB3D9 \uC774\uC804\uD560 \uC218 \uC788\uB2E4`);
     }
-    const absolute = path4.join(current, entry.name);
+    const absolute = path5.join(current, entry.name);
     if (entry.isSymbolicLink()) {
       throw new Error(`\uC2EC\uBCFC\uB9AD \uB9C1\uD06C\uB294 \uC790\uB3D9 \uC774\uC804\uD558\uC9C0 \uC54A\uB294\uB2E4: ${absolute}`);
     }
     if (entry.isDirectory()) await collectFiles(root, absolute, files);
-    else if (entry.isFile()) files.push(path4.relative(root, absolute));
+    else if (entry.isFile()) files.push(path5.relative(root, absolute));
   }
 }
 async function snapshotFiles(sourceDirectory) {
-  const root = path4.resolve(sourceDirectory);
+  const root = path5.resolve(sourceDirectory);
   const files = [];
   await collectFiles(root, root, files);
   files.sort();
   const objects = [];
   let totalBytes = 0;
   for (const key of files) {
-    const absolute = path4.join(root, key);
-    const info = await stat(absolute);
+    const absolute = path5.join(root, key);
+    const info = await stat2(absolute);
     totalBytes += info.size;
     if (totalBytes > MAX_TOTAL_BYTES) {
       throw new Error("\uD30C\uC77C \uC774\uC804 \uC804\uCCB4 \uD06C\uAE30\uB294 512MB \uC774\uD558\uC5EC\uC57C \uD55C\uB2E4");
     }
     const content = await readFile3(absolute);
     objects.push({
-      key: key.split(path4.sep).join("/"),
+      key: key.split(path5.sep).join("/"),
       contentType: contentType(key),
       size: content.byteLength,
       sha256: sha256(content),
@@ -34624,11 +34673,11 @@ async function snapshotFiles(sourceDirectory) {
 }
 async function backupAndSnapshotFiles(projectRoot, sourceDirectory) {
   const source = withinProject(projectRoot, sourceDirectory);
-  const backupRoot = path4.join(path4.resolve(projectRoot), ".paas-backups");
-  await mkdir2(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path4.join(
+  const backupRoot = path5.join(path5.resolve(projectRoot), ".paas-backups");
+  await mkdir3(backupRoot, { recursive: true, mode: 448 });
+  const backupPath = path5.join(
     backupRoot,
-    backupName(path4.basename(source), ".tar.gz")
+    backupName(path5.basename(source), ".tar.gz")
   );
   await Qn(
     { cwd: source, file: backupPath, gzip: true, portable: true },
@@ -34673,25 +34722,15 @@ async function openVerificationUrl(url2) {
 
 // mcp/deployment-attempts.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import {
-  mkdir as mkdir3,
-  readFile as readFile4,
-  rename as rename2,
-  rmdir,
-  stat as stat2,
-  writeFile as writeFile2
-} from "node:fs/promises";
+import { mkdir as mkdir4, readFile as readFile4, rename as rename2, writeFile as writeFile2 } from "node:fs/promises";
 import { homedir as homedir2 } from "node:os";
-import path5 from "node:path";
+import path6 from "node:path";
 var DEFAULT_TTL_MS = 30 * 60 * 1e3;
-var LOCK_STALE_MS = 1e4;
-var LOCK_RETRY_MS = 25;
-var LOCK_RETRIES = 200;
 function defaultAttemptFile() {
   const configured = process.env["PAAS_DEPLOYMENT_ATTEMPT_FILE"]?.trim();
-  if (configured) return path5.resolve(configured);
-  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path5.join(homedir2(), ".config");
-  return path5.join(
+  if (configured) return path6.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path6.join(homedir2(), ".config");
+  return path6.join(
     configRoot,
     "aiblecampus-paas",
     "deployment-attempts.json"
@@ -34731,50 +34770,13 @@ async function readState2(file2) {
   }
 }
 async function writeState2(file2, state) {
-  await mkdir3(path5.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir4(path6.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.${randomUUID2()}.tmp`;
   await writeFile2(temporary, `${JSON.stringify(state, null, 2)}
 `, {
     mode: 384
   });
   await rename2(temporary, file2);
-}
-async function acquireLock(lockDirectory) {
-  for (let attempt = 0; attempt < LOCK_RETRIES; attempt += 1) {
-    try {
-      await mkdir3(lockDirectory, { mode: 448 });
-      return;
-    } catch (error51) {
-      if (error51.code !== "EEXIST") throw error51;
-      try {
-        const current = await stat2(lockDirectory);
-        if (Date.now() - current.mtimeMs > LOCK_STALE_MS) {
-          await rmdir(lockDirectory);
-          continue;
-        }
-      } catch (inspectionError) {
-        const code = inspectionError.code;
-        if (code === "ENOENT") continue;
-        if (code !== "ENOTEMPTY") throw inspectionError;
-      }
-      await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
-    }
-  }
-  throw new Error("\uBC30\uD3EC \uC694\uCCAD \uBCF5\uAD6C \uD30C\uC77C\uC744 \uC7A0\uADF8\uC9C0 \uBABB\uD588\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD55C\uB2E4");
-}
-async function withFileLock(file2, work) {
-  await mkdir3(path5.dirname(file2), { recursive: true, mode: 448 });
-  const lockDirectory = `${file2}.lock`;
-  await acquireLock(lockDirectory);
-  try {
-    return await work();
-  } finally {
-    try {
-      await rmdir(lockDirectory);
-    } catch (error51) {
-      if (error51.code !== "ENOENT") throw error51;
-    }
-  }
 }
 async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
   const file2 = options.file ?? defaultAttemptFile();
@@ -34828,6 +34830,7 @@ function sortedEntries(values) {
     ([left], [right]) => left.localeCompare(right)
   );
 }
+var GIT_ATTEMPT_TTL_MS = 90 * 1e3;
 function deploymentFingerprint(input) {
   return createHash3("sha256").update(
     JSON.stringify({
@@ -35177,7 +35180,11 @@ server.registerTool(
             resources,
             workspace
           }),
-          forceNewRevision ?? false
+          forceNewRevision ?? false,
+          // git 소스는 fingerprint 에 커밋 내용이 없어, 같은 branch 에 새 커밋을
+          // push 하고 다시 배포해도 fingerprint 가 같다. 기본 30분 재사용을 두면
+          // 새 커밋 배포가 조용히 무시되므로, 응답 단절 복구만 덮는 짧은 창을 쓴다.
+          { ttlMs: GIT_ATTEMPT_TTL_MS }
         );
       } catch (error51) {
         return errorResult(
@@ -35222,7 +35229,7 @@ server.registerTool(
         `\uB85C\uCEEC \uD658\uACBD \uC124\uC815\uC744 \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
       );
     }
-    const deploymentName = toDeploymentName(name ?? path6.basename(projectPath));
+    const deploymentName = toDeploymentName(name ?? path7.basename(projectPath));
     let tarball;
     try {
       tarball = await packDirectory(projectPath);
@@ -35285,6 +35292,7 @@ server.registerTool(
     title: "SQLite \uC774\uC804 \uBBF8\uB9AC\uBCF4\uAE30",
     description: "SQLite \uC6D0\uBCF8\uC744 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uACE0 table, \uD589 \uC218\uC640 checksum\uC744 \uD655\uC778\uD55C\uB2E4. \uC0AC\uC6A9\uC790 \uC2B9\uC778 \uC804 \uB2E8\uACC4\uC5D0\uC11C\uB9CC \uC0AC\uC6A9\uD55C\uB2E4.",
     inputSchema: {
+      projectRoot: external_exports.string().describe("\uD655\uC778 \uAE30\uC900\uC774 \uB418\uB294 \uD504\uB85C\uC81D\uD2B8 \uB8E8\uD2B8 \uC808\uB300 \uACBD\uB85C"),
       databasePath: external_exports.string().describe("\uD504\uB85C\uC81D\uD2B8 \uC548 SQLite \uD30C\uC77C\uC758 \uC808\uB300 \uACBD\uB85C")
     },
     annotations: {
@@ -35294,9 +35302,9 @@ server.registerTool(
       openWorldHint: false
     }
   },
-  async ({ databasePath }) => {
+  async ({ projectRoot, databasePath }) => {
     try {
-      const snapshot = await snapshotSqlite(databasePath);
+      const snapshot = await snapshotSqlite(withinProject(projectRoot, databasePath));
       return textResult({
         \uC77D\uAE30_\uC804\uC6A9_\uBBF8\uB9AC\uBCF4\uAE30: true,
         sourceSha256: snapshot.sourceSha256,
@@ -35367,6 +35375,7 @@ server.registerTool(
     title: "\uB85C\uCEEC \uD30C\uC77C \uC774\uC804 \uBBF8\uB9AC\uBCF4\uAE30",
     description: "\uB85C\uCEEC \uD30C\uC77C\uC744 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uACE0 \uD30C\uC77C \uC218, \uC804\uCCB4 \uD06C\uAE30\uC640 checksum\uC744 \uD655\uC778\uD55C\uB2E4. \uC0AC\uC6A9\uC790 \uC2B9\uC778 \uC804 \uB2E8\uACC4\uC5D0\uC11C\uB9CC \uC0AC\uC6A9\uD55C\uB2E4.",
     inputSchema: {
+      projectRoot: external_exports.string().describe("\uD655\uC778 \uAE30\uC900\uC774 \uB418\uB294 \uD504\uB85C\uC81D\uD2B8 \uB8E8\uD2B8 \uC808\uB300 \uACBD\uB85C"),
       sourceDirectory: external_exports.string().describe("\uD504\uB85C\uC81D\uD2B8 \uC548 \uB85C\uCEEC \uC5C5\uB85C\uB4DC \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C")
     },
     annotations: {
@@ -35376,9 +35385,11 @@ server.registerTool(
       openWorldHint: false
     }
   },
-  async ({ sourceDirectory }) => {
+  async ({ projectRoot, sourceDirectory }) => {
     try {
-      const snapshot = await snapshotFiles(sourceDirectory);
+      const snapshot = await snapshotFiles(
+        withinProject(projectRoot, sourceDirectory)
+      );
       return textResult({
         \uC77D\uAE30_\uC804\uC6A9_\uBBF8\uB9AC\uBCF4\uAE30: true,
         sourceSha256: snapshot.sourceSha256,
