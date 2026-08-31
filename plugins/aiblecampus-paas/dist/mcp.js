@@ -34801,7 +34801,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.17.0";
+var PLUGIN_VERSION = "0.18.0";
 function apiBase() {
   return process.env["PAAS_API_URL"]?.trim() || "https://api.aible-campus.com";
 }

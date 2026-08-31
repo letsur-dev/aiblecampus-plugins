@@ -20,7 +20,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.17.0";
+const PLUGIN_VERSION = "0.18.0";
 
 /**
  * PaaS 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로

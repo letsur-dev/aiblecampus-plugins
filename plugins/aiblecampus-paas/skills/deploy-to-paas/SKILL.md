@@ -11,10 +11,12 @@ description: 웹사이트나 웹앱을 완성하고 에이블캠퍼스 PaaS에 �
 
 Console에서 복사한 요청으로 처음 설치하거나 marketplace 갱신 뒤 이 스킬과 MCP가 현재 대화에 보이지 않을 수 있다. 설치 목록의 버전과 실제 MCP 프로세스의 버전은 다를 수 있으므로 설치 목록만 보고 새 버전이 로드됐다고 판단하지 않는다.
 
-- Claude Code에서는 완전 종료를 요구하지 않는다. 사용자에게 입력창에서 `/reload-plugins`를 한 번 실행해 달라고 짧게 안내한다.
+- Claude Code에서는 사용자에게 입력창에서 `/reload-plugins`를 한 번 실행해 달라고 짧게 안내한다.
 - `/reload-skills`는 Skill만 다시 찾고 이미 실행 중인 MCP를 교체하지 않으므로 플러그인 설치와 갱신에는 사용하지 않는다.
 - Claude는 자기 입력창의 slash command를 직접 실행할 수 없다. 중첩 Claude 프로세스를 실행하거나 설정 파일을 수정해 우회하지 않는다.
 - 사용자가 `/reload-plugins`를 실행하면 같은 대화에서 `paas_plugin_status`를 호출한다. 설치된 버전과 실제 로드 버전이 일치하는지 확인한 뒤 원래 요청을 다시 묻지 않고 이어간다.
+- Paseo와 같은 실행 환경이 `/reload-plugins`를 지원하지 않으면 같은 명령을 반복하거나 Claude Code 전체를 종료하라고 하지 않는다. 같은 프로젝트에서 새 Claude Code 대화를 열고 원래 요청을 그대로 붙여넣도록 한 번만 안내한다.
+- 새 대화에서는 `paas_plugin_status`로 실제 로드 버전을 먼저 확인한다. 최신 버전이면 marketplace 등록과 설치를 반복하지 않고 원래 배포 흐름을 이어간다.
 - Codex에서는 현재 클라이언트가 제공하는 플러그인 재로딩 절차만 사용한다. Claude Code 전용 slash command를 안내하지 않는다.
 
 `paas_plugin_status`는 인증 전에도 호출할 수 있다. 응답의 version은 설치 목록이 아니라 현재 대화에 연결된 MCP 프로세스의 버전이다.

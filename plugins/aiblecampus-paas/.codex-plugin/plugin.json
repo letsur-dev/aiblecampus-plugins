@@ -1,6 +1,6 @@
 {
   "name": "aiblecampus-paas",
-  "version": "0.17.0+codex.20260831181724",
+  "version": "0.18.0+codex.20260831200247",
   "description": "Build, validate, deploy, and manage web applications on AibleCampus PaaS.",
   "author": {
     "name": "에이블캠퍼스"
