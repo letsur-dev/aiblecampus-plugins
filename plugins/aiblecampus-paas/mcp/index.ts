@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { packDirectory } from "./pack.ts";
@@ -21,7 +22,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.19.0";
+const PLUGIN_VERSION = "0.20.0";
 
 /**
  * PaaS 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -1159,6 +1160,132 @@ server.registerTool(
       주소: apiBase(),
       ...(result.body as JsonRecord),
       client: { plugin: "aiblecampus-paas", version: PLUGIN_VERSION },
+    });
+  },
+);
+
+// ---- 산출물 갤러리 ----
+//
+// 공개 설정과 슬라이드는 팀을 대표해 내보내는 결정이라 서버가 manage 능력
+// (팀 관리자 이상)을 요구한다. 개발자 역할이면 403 이 온다.
+
+server.registerTool(
+  "set_artifact_visibility",
+  {
+    title: "산출물 갤러리 공개 설정",
+    description:
+      "배포한 앱을 산출물 갤러리에 공개하거나 내린다. 갤러리 제목과 설명도 함께 정한다. " +
+      "앱 주소는 원래 공개이므로 이 설정은 접근 통제가 아니라 갤러리 노출 여부다. " +
+      "팀 관리자 이상만 바꿀 수 있다.",
+    inputSchema: {
+      name: z.string().describe("배포 이름 또는 배포 ID"),
+      visibility: z
+        .enum(["public", "private"])
+        .optional()
+        .describe("public 이면 갤러리에 싣고 private 이면 내린다"),
+      title: z.string().max(120).optional().describe("갤러리에 보여줄 제목"),
+      description: z
+        .string()
+        .max(2000)
+        .optional()
+        .describe("심사위원과 관람자에게 보여줄 설명"),
+      workspace: WorkspaceInputSchema,
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  },
+  async ({ name, visibility, title, description, workspace }) => {
+    const result = await callApi(
+      `/v1/deployments/${encodeURIComponent(name)}/artifact`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...(visibility === undefined ? {} : { visibility }),
+          ...(title === undefined ? {} : { title }),
+          ...(description === undefined ? {} : { description }),
+        }),
+      },
+      workspace,
+    );
+    if (!result.ok) {
+      return errorResult(
+        typeof result.body === "string"
+          ? result.body
+          : JSON.stringify(result.body),
+      );
+    }
+    return textResult(result.body);
+  },
+);
+
+server.registerTool(
+  "upload_artifact_slides",
+  {
+    title: "산출물 설명 슬라이드 업로드",
+    description:
+      "발표자료 PDF 를 올려 산출물 갤러리에서 넘겨 볼 수 있게 한다. 서버가 페이지 이미지로 바꾸고 " +
+      "첫 장이 갤러리 카드의 대표 이미지가 된다. PDF 만 받는다. PPT 는 PDF 로 내보낸 뒤 올린다. " +
+      "팀 관리자 이상만 올릴 수 있다.",
+    inputSchema: {
+      name: z.string().describe("배포 이름 또는 배포 ID"),
+      pdfPath: z.string().describe("올릴 PDF 파일의 절대 경로"),
+      workspace: WorkspaceInputSchema,
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+  },
+  async ({ name, pdfPath, workspace }) => {
+    if (!path.isAbsolute(pdfPath)) {
+      return errorResult("pdfPath 는 절대 경로여야 한다");
+    }
+    if (!existsSync(pdfPath)) {
+      return errorResult(`파일을 찾지 못했다: ${pdfPath}`);
+    }
+    let pdf: Buffer;
+    try {
+      pdf = await readFile(pdfPath);
+    } catch (error) {
+      return errorResult(
+        `파일을 읽지 못했다: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    // 서버도 검사하지만 여기서 걸러야 사용자가 무엇이 잘못됐는지 바로 안다.
+    if (pdf.subarray(0, 5).toString("latin1") !== "%PDF-") {
+      return errorResult(
+        "PDF 파일이 아니다. PPT 나 Keynote 는 PDF 로 내보낸 뒤 올린다.",
+      );
+    }
+
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([new Uint8Array(pdf)], { type: "application/pdf" }),
+      path.basename(pdfPath),
+    );
+    const result = await callApi(
+      `/v1/deployments/${encodeURIComponent(name)}/slides`,
+      { method: "POST", body: form },
+      workspace,
+    );
+    if (!result.ok) {
+      return errorResult(
+        typeof result.body === "string"
+          ? result.body
+          : JSON.stringify(result.body),
+      );
+    }
+    return textResult({
+      ...(result.body as JsonRecord),
+      안내: "갤러리에 실으려면 set_artifact_visibility 로 public 으로 바꾼다",
     });
   },
 );
