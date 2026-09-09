@@ -162,7 +162,7 @@ export async function backupAndSnapshotSqlite(
   databasePath: string,
 ): Promise<{ backupPath: string; snapshot: SqliteSnapshot }> {
   const source = withinProject(projectRoot, databasePath);
-  const backupRoot = path.join(path.resolve(projectRoot), ".paas-backups");
+  const backupRoot = path.join(path.resolve(projectRoot), ".apps-backups");
   await mkdir(backupRoot, { recursive: true, mode: 0o700 });
   const backupPath = path.join(
     backupRoot,
@@ -251,7 +251,7 @@ export async function backupAndSnapshotFiles(
   sourceDirectory: string,
 ): Promise<{ backupPath: string; snapshot: FileSnapshot }> {
   const source = withinProject(projectRoot, sourceDirectory);
-  const backupRoot = path.join(path.resolve(projectRoot), ".paas-backups");
+  const backupRoot = path.join(path.resolve(projectRoot), ".apps-backups");
   await mkdir(backupRoot, { recursive: true, mode: 0o700 });
   const backupPath = path.join(
     backupRoot,

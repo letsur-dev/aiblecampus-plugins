@@ -1,3 +1,4 @@
+import { appsEnv } from "./config.ts";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -17,13 +18,13 @@ type DeploymentAttemptState = {
 const DEFAULT_TTL_MS = 30 * 60 * 1000;
 
 function defaultAttemptFile(): string {
-  const configured = process.env["PAAS_DEPLOYMENT_ATTEMPT_FILE"]?.trim();
+  const configured = appsEnv("DEPLOYMENT_ATTEMPT_FILE");
   if (configured) return path.resolve(configured);
   const configRoot =
     process.env["XDG_CONFIG_HOME"]?.trim() || path.join(homedir(), ".config");
   return path.join(
     configRoot,
-    "aiblecampus-paas",
+    "aiblecampus-apps",
     "deployment-attempts.json",
   );
 }

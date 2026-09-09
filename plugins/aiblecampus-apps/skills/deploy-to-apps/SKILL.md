@@ -1,9 +1,9 @@
 ---
-name: deploy-to-paas
-description: 웹사이트나 웹앱을 에이블캠퍼스 PaaS에 검증하고 배포한다. "에이블캠퍼스에 배포해줘", "배포해줘", "올려줘", "공개해줘", "앱 만들어서 배포해줘", "사이트 공개해줘", "PaaS에 올려줘", "다시 배포해줘", "환경변수 설정해줘", "비밀값 넣어줘", "배포 상태 확인", "배포 로그 봐줘", "산출물 공개해줘", "발표자료 올려줘" 같은 짧은 요청에도 바로 사용한다. 경로와 이름은 묻지 않고 현재 프로젝트에서 알아낸다. 사용자가 로컬 전용을 명시하지 않으면 검증한 정확한 소스를 배포한 뒤 접속 URL을 전달한다.
+name: deploy-to-apps
+description: 웹사이트나 웹앱을 에이블캠퍼스 Apps에 검증하고 배포한다. "에이블캠퍼스에 배포해줘", "배포해줘", "올려줘", "공개해줘", "앱 만들어서 배포해줘", "사이트 공개해줘", "Apps에 올려줘", "다시 배포해줘", "환경변수 설정해줘", "비밀값 넣어줘", "배포 상태 확인", "배포 로그 봐줘", "산출물 공개해줘", "발표자료 올려줘" 같은 짧은 요청에도 바로 사용한다. 경로와 이름은 묻지 않고 현재 프로젝트에서 알아낸다. 사용자가 로컬 전용을 명시하지 않으면 검증한 정확한 소스를 배포한 뒤 접속 URL을 전달한다.
 ---
 
-# 에이블캠퍼스 PaaS 앱 완성과 배포
+# 에이블캠퍼스 Apps 앱 완성과 배포
 
 사용자가 인프라를 이해하지 않아도 요청한 웹앱을 완성하고 접속 가능한 상태로 만든다. 소스 패키징, 컨테이너, revision과 내부 API는 작업 수단이지 사용자에게 설명할 기본 내용이 아니다.
 
@@ -21,7 +21,7 @@ description: 웹사이트나 웹앱을 에이블캠퍼스 PaaS에 검증하고 �
 
 이미 같은 이름으로 배포한 앱이 있으면 새로 만들지 않고 그 배포를 갱신한다. 접속 주소가 그대로 유지된다.
 
-인증이 안 돼 있으면 `start_paas_login`을 먼저 부르고, 사용자가 승인하면 원래 요청을 다시 묻지 않고 이어간다.
+인증이 안 돼 있으면 `start_apps_login`을 먼저 부르고, 사용자가 승인하면 원래 요청을 다시 묻지 않고 이어간다.
 
 ### 이럴 때만 되묻는다
 
@@ -179,7 +179,7 @@ Credential의 교체나 이력 정리는 별도 승인을 받는다.
 4. 기존 데이터가 있으면 실제 import 명령을 실행하기 전에 데이터 이전 승인을 한 번 더 받는다.
 5. 승인한 codeChanges만 적용하고 로컬 테스트를 실행한다.
 6. 변경한 소스를 배포해 빈 PostgreSQL 또는 Storage binding을 먼저 준비한다.
-7. SQLite는 `migrate_sqlite_data`, 로컬 파일은 `migrate_local_files`를 `approved: true`로 호출한다. 도구가 `.paas-backups/`에 원본 백업을 만든 뒤 승인한 데이터만 새 대상으로 이전한다.
+7. SQLite는 `migrate_sqlite_data`, 로컬 파일은 `migrate_local_files`를 `approved: true`로 호출한다. 도구가 `.apps-backups/`에 원본 백업을 만든 뒤 승인한 데이터만 새 대상으로 이전한다.
 8. 원본과 백업은 수정하지 않는다. 실패하면 도구가 대상 transaction 또는 이번에 올린 파일만 정리한다.
 9. 배포 앱에서 CRUD와 파일 다운로드를 검증한다.
 10. 같은 이름으로 다시 배포한 뒤 데이터와 파일이 유지되는지 확인한다.
@@ -206,7 +206,13 @@ SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 구체�
 
 ### 4. 검증한 소스를 배포한다
 
+팀 앱을 수정하기 전에 `checkout_app_source`로 최신 기본 브랜치를 새 폴더에 받는다. 기존 작업 폴더를 덮어쓰지 않는다. 작업 시작 당시 `.apps-source.json`의 커밋을 `checkout_app_source`의 `commit`으로 지정하면 기준 소스도 별도 폴더에 받을 수 있다. 기준 소스, 현재 작업과 최신 소스를 비교해 자신의 변경만 반영하고 기능과 빌드를 검증한다. 같은 부분을 서로 다르게 수정했거나 동작 의도를 확정할 수 없으면 충돌 위치, 각 변경의 목적과 선택지를 사용자에게 설명하고 결정을 받은 뒤 통합한다.
+
+`source-conflict`가 반환되면 다른 팀원의 코드가 먼저 통합된 상태다. 최신 소스를 다시 받아 자신의 변경을 통합하고 검증한다. `.apps-source.json`의 기준 커밋이나 `sourceBaseCommit` 값만 최신 값으로 바꾸어 재시도하지 않는다. 서버는 사용자별 작업 브랜치에서 빌드와 healthcheck를 수행한 뒤 기본 브랜치에 통합한다. 실패한 새 버전은 기존 서비스를 교체하지 않는다.
+
 `deploy_project`에 검증할 때 사용한 것과 같은 소스를 전달한다.
+
+새 개인 앱은 `list_deployment_organizations`로 소속 조직을 조회한다. 조직이 하나면 해당 조직을 사용하고 여러 개면 사용자의 요청에서 조직을 확인한다. 요청에 조직이 없으면 선택을 요청하며 임의로 첫 조직을 고르지 않는다. 선택한 ID 또는 slug를 `organization`으로 전달한다. 팀 앱은 팀의 소속 조직을 사용한다. 기존 앱의 재배포는 저장된 조직을 유지하며 현재 선택한 조직으로 바꾸지 않는다.
 
 - 커밋하지 않은 로컬 변경이 있으면 로컬 경로를 사용한다.
 - Git 주소를 사용하면 원격 저장소에 올라간 내용만 배포된다.
@@ -263,18 +269,18 @@ SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 구체�
 
 ## 연결과 인증
 
-먼저 `paas_plugin_status`로 현재 대화에 로드된 플러그인 버전을 확인한다. 연결이나 인증이 의심되면 `paas_whoami`를 한 번 호출한다.
+먼저 `apps_plugin_status`로 현재 대화에 로드된 플러그인 버전을 확인한다. 연결이나 인증이 의심되면 `apps_whoami`를 한 번 호출한다.
 
-- Credential이 없으면 `start_paas_login`을 실행한다. 기본 브라우저가 자동으로 열리면 사용자가 승인하는 동안 `complete_paas_login`을 바로 호출해 polling한다.
-- 브라우저가 열리지 않았을 때만 로그인 주소와 코드를 알려 준다. 사용자가 완료했다고 다시 말할 때까지 기다리지 않고 `complete_paas_login`을 호출한다.
+- Credential이 없으면 `start_apps_login`을 실행한다. 기본 브라우저가 자동으로 열리면 사용자가 승인하는 동안 `complete_apps_login`을 바로 호출해 polling한다.
+- 브라우저가 열리지 않았을 때만 로그인 주소와 코드를 알려 준다. 사용자가 완료했다고 다시 말할 때까지 기다리지 않고 `complete_apps_login`을 호출한다.
 - polling 결과가 pending 또는 polling_limit이면 승인 페이지가 열려 있는지 확인하고 같은 pending 요청을 이어간다. 새 Device Flow를 중복 시작하지 않는다.
-- `PAAS_TOKEN`은 이전 운영 및 CI용 service Credential 호환 경계이며 개인 기기 로그인과 구분한다.
+- `APPS_TOKEN`은 이전 운영 및 CI용 service Credential 호환 경계이며 개인 기기 로그인과 구분한다.
 - 401이면 Credential이 잘못됐거나 폐기된 것이다. 재발급이 필요하다고 설명한다.
-- 연결 실패면 PaaS 주소나 서비스 상태를 확인해야 한다.
+- 연결 실패면 Apps 주소나 서비스 상태를 확인해야 한다.
 - 토큰 원문을 사용자에게 되읽거나 로그에 남기지 않는다.
 - Workspace를 생략하면 개인 Workspace를 사용한다.
 - Team Workspace에서 작업할 때는 모든 관련 도구에 같은 `workspace` ID 또는 slug를 전달한다.
-- 대상이 불분명하면 `paas_whoami`로 접근 가능한 Workspace를 확인하고 임의로 고르지 않는다.
+- 대상이 불분명하면 `apps_whoami`로 접근 가능한 Workspace를 확인하고 임의로 고르지 않는다.
 
 ## 기존 배포 관리
 
@@ -285,7 +291,7 @@ SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 구체�
 - `deployment_logs`: build 또는 runtime 문제 확인
 - `deployment_config`: 일반 설정과 비밀값 키 이름 확인
 - `set_deployment_config`: 설정 추가, 변경과 삭제
-- `paas_whoami`: 사용자, Workspace와 연결 상태 확인
+- `apps_whoami`: 사용자, Workspace와 연결 상태 확인
 
 다른 Workspace의 배포는 존재 여부를 추측하지 않는다. 404면 권한이 없거나 대상이 없는 것으로만 설명한다.
 
@@ -318,9 +324,9 @@ Console에서 복사한 요청으로 처음 설치하거나 marketplace 갱신 �
 - Claude Code에서는 사용자에게 입력창에서 `/reload-plugins`를 한 번 실행해 달라고 짧게 안내한다.
 - `/reload-skills`는 Skill만 다시 찾고 이미 실행 중인 MCP를 교체하지 않으므로 플러그인 설치와 갱신에는 사용하지 않는다.
 - Claude는 자기 입력창의 slash command를 직접 실행할 수 없다. 중첩 Claude 프로세스를 실행하거나 설정 파일을 수정해 우회하지 않는다.
-- 사용자가 `/reload-plugins`를 실행하면 같은 대화에서 `paas_plugin_status`를 호출한다. 설치된 버전과 실제 로드 버전이 일치하는지 확인한 뒤 원래 요청을 다시 묻지 않고 이어간다.
+- 사용자가 `/reload-plugins`를 실행하면 같은 대화에서 `apps_plugin_status`를 호출한다. 설치된 버전과 실제 로드 버전이 일치하는지 확인한 뒤 원래 요청을 다시 묻지 않고 이어간다.
 - Paseo와 같은 실행 환경이 `/reload-plugins`를 지원하지 않으면 같은 명령을 반복하거나 Claude Code 전체를 종료하라고 하지 않는다. 같은 프로젝트에서 새 Claude Code 대화를 열고 원래 요청을 그대로 붙여넣도록 한 번만 안내한다.
-- 새 대화에서는 `paas_plugin_status`로 실제 로드 버전을 먼저 확인한다. 최신 버전이면 marketplace 등록과 설치를 반복하지 않고 원래 배포 흐름을 이어간다.
+- 새 대화에서는 `apps_plugin_status`로 실제 로드 버전을 먼저 확인한다. 최신 버전이면 marketplace 등록과 설치를 반복하지 않고 원래 배포 흐름을 이어간다.
 - Codex에서는 현재 클라이언트가 제공하는 플러그인 재로딩 절차만 사용한다. Claude Code 전용 slash command를 안내하지 않는다.
 
-`paas_plugin_status`는 인증 전에도 호출할 수 있다. 응답의 version은 설치 목록이 아니라 현재 대화에 연결된 MCP 프로세스의 버전이다.
+`apps_plugin_status`는 인증 전에도 호출할 수 있다. 응답의 version은 설치 목록이 아니라 현재 대화에 연결된 MCP 프로세스의 버전이다.

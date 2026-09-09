@@ -1,3 +1,4 @@
+import { appsEnv } from "./config.ts";
 import { execFile } from "node:child_process";
 
 type SupportedPlatform = "darwin" | "linux" | "win32";
@@ -18,7 +19,7 @@ export function browserCommandFor(
 
 /** Device Flow 승인 주소를 사용자의 기본 브라우저에서 연다. 실패하면 URL 안내로 복구한다. */
 export async function openVerificationUrl(url: string): Promise<boolean> {
-  const configured = process.env["PAAS_OPEN_BROWSER"]?.trim().toLowerCase();
+  const configured = appsEnv("OPEN_BROWSER")?.toLowerCase();
   if (configured === "0" || configured === "false" || configured === "off") {
     return false;
   }

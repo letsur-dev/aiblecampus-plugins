@@ -1,7 +1,7 @@
 {
-  "name": "aiblecampus-paas",
-  "version": "0.21.0+codex.20260907030000",
-  "description": "Build, validate, deploy, and manage web applications on AibleCampus PaaS.",
+  "name": "aiblecampus-apps",
+  "version": "0.23.0+codex.20260909074500",
+  "description": "Build, validate, deploy, and manage web applications on AibleCampus Apps.",
   "author": {
     "name": "에이블캠퍼스"
   },
@@ -9,36 +9,36 @@
   "repository": "https://github.com/letsur-dev/aiblecampus-plugins",
   "keywords": [
     "deployment",
-    "paas",
+    "apps",
     "web app",
     "hosting",
     "mcp"
   ],
   "skills": "./skills/",
   "mcpServers": {
-    "paas": {
+    "apps": {
       "command": "node",
       "args": [
         "dist/mcp.js"
       ],
       "cwd": ".",
       "env_vars": [
-        "PAAS_API_URL",
-        "PAAS_TOKEN",
-        "PAAS_IDENTITY_URL",
-        "PAAS_DEVICE_CLIENT_ID",
-        "PAAS_RESOURCE",
-        "PAAS_CREDENTIAL_FILE",
-        "PAAS_DEPLOYMENT_ATTEMPT_FILE",
-        "PAAS_DEVICE_LABEL",
-        "PAAS_OPEN_BROWSER"
+        "APPS_API_URL",
+        "APPS_TOKEN",
+        "APPS_IDENTITY_URL",
+        "APPS_DEVICE_CLIENT_ID",
+        "APPS_RESOURCE",
+        "APPS_CREDENTIAL_FILE",
+        "APPS_DEPLOYMENT_ATTEMPT_FILE",
+        "APPS_DEVICE_LABEL",
+        "APPS_OPEN_BROWSER"
       ]
     }
   },
   "interface": {
-    "displayName": "에이블캠퍼스 PaaS",
+    "displayName": "에이블캠퍼스 Apps",
     "shortDescription": "웹앱을 완성하고 검증해 바로 배포합니다",
-    "longDescription": "요청한 웹사이트나 웹앱을 완성하고 배포 가능 여부를 검증한 뒤 에이블캠퍼스 PaaS에 배포합니다. 배포 상태, 로그, 환경변수, 비밀값, PostgreSQL과 파일 Storage도 함께 관리할 수 있습니다.",
+    "longDescription": "요청한 웹사이트나 웹앱을 완성하고 배포 가능 여부를 검증한 뒤 에이블캠퍼스 Apps에 배포합니다. 배포 상태, 로그, 환경변수, 비밀값, PostgreSQL과 파일 Storage도 함께 관리할 수 있습니다.",
     "developerName": "에이블캠퍼스",
     "category": "Developer Tools",
     "capabilities": [

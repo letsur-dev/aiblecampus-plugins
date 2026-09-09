@@ -1,3 +1,4 @@
+import { appsEnv } from "./config.ts";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
 import path from "node:path";
@@ -35,15 +36,15 @@ type LocalState = {
   pending: PendingAuthorization | null;
 };
 
-const DEFAULT_DEVICE_CLIENT_ID = "aiblecampus-paas-device";
-const DEFAULT_RESOURCE = "urn:aiblecampus:paas";
+const DEFAULT_DEVICE_CLIENT_ID = "aiblecampus-apps-device";
+const DEFAULT_RESOURCE = "urn:aiblecampus:apps";
 const refreshes = new Map<string, Promise<StoredCredential | null>>();
 
 function stateFile(): string {
-  const configured = process.env["PAAS_CREDENTIAL_FILE"]?.trim();
+  const configured = appsEnv("CREDENTIAL_FILE");
   if (configured) return path.resolve(configured);
   const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path.join(homedir(), ".config");
-  return path.join(configRoot, "aiblecampus-paas", "device.json");
+  return path.join(configRoot, "aiblecampus-apps", "device.json");
 }
 
 function emptyState(apiBase: string): LocalState {
@@ -93,11 +94,11 @@ async function writeState(state: LocalState): Promise<void> {
 }
 
 function identityBase(apiBase: string): string {
-  const value = process.env["PAAS_IDENTITY_URL"]?.trim();
+  const value = appsEnv("IDENTITY_URL");
   if (value) return value.replace(/\/+$/, "");
   const api = new URL(apiBase);
   if (!api.hostname.startsWith("api.")) {
-    throw new Error("PAAS_IDENTITY_URL 이 설정되지 않았고 API 주소에서 Identity 주소를 계산할 수 없다");
+    throw new Error("APPS_IDENTITY_URL 이 설정되지 않았고 API 주소에서 Identity 주소를 계산할 수 없다");
   }
   api.hostname = `auth.${api.hostname.slice(4)}`;
   api.pathname = "";
@@ -107,16 +108,16 @@ function identityBase(apiBase: string): string {
 }
 
 function clientId(): string {
-  return process.env["PAAS_DEVICE_CLIENT_ID"]?.trim() || DEFAULT_DEVICE_CLIENT_ID;
+  return appsEnv("DEVICE_CLIENT_ID") || DEFAULT_DEVICE_CLIENT_ID;
 }
 
 function deviceName(): string {
-  return process.env["PAAS_DEVICE_LABEL"]?.trim() || hostname();
+  return appsEnv("DEVICE_LABEL") || hostname();
 }
 
-/** PaaS access token 의 대상 resource. JWT audience 를 이 값으로 발급받는다. */
+/** Apps access token 의 대상 resource. JWT audience 를 이 값으로 발급받는다. */
 function resourceIndicator(): string {
-  return process.env["PAAS_RESOURCE"]?.trim() || DEFAULT_RESOURCE;
+  return appsEnv("RESOURCE") || DEFAULT_RESOURCE;
 }
 
 function tokenEndpoint(apiBase: string): string {
@@ -245,7 +246,7 @@ export async function startDeviceLogin(apiBase: string): Promise<{
     headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
     body: new URLSearchParams({
       client_id: clientId(),
-      scope: "openid profile paas:access offline_access",
+      scope: "openid profile apps:access offline_access",
       device_name: deviceName(),
       resource: resourceIndicator(),
     }),
@@ -290,7 +291,7 @@ export async function completeDeviceLogin(apiBase: string): Promise<
 > {
   const state = await readState(apiBase);
   const pending = state.pending;
-  if (pending === null) throw new Error("먼저 start_paas_login 을 실행해야 한다");
+  if (pending === null) throw new Error("먼저 start_apps_login 을 실행해야 한다");
   let intervalSeconds = pending.intervalSeconds;
   let nextPollAt = pending.nextPollAt;
   for (let poll = 0; poll < 12; poll += 1) {

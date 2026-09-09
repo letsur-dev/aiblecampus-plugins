@@ -73,7 +73,7 @@ function uniqueKeys(keys: string[], kind: string): string[] {
 
 /**
  * 사용자가 승인해 도구 인자에 이름을 넣은 키만 로컬 env 파일에서 읽는다.
- * 파일의 다른 값은 조회하거나 PaaS로 전달하지 않는다.
+ * 파일의 다른 값은 조회하거나 Apps로 전달하지 않는다.
  */
 export async function loadSelectedLocalEnv(
   projectRoot: string,

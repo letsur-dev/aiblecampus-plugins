@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "aiblecampus-paas",
+      "name": "aiblecampus-apps",
       "source": {
         "source": "local",
-        "path": "./plugins/aiblecampus-paas"
+        "path": "./plugins/aiblecampus-apps"
       },
       "policy": {
         "installation": "AVAILABLE",

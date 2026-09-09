@@ -1,3 +1,5 @@
+import { checkoutSnapshot, readSourceBase, saveSourceBase } from "./source-checkout.ts";
+import { appsEnv } from "./config.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createHash } from "node:crypto";
@@ -22,20 +24,20 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.21.0";
+const PLUGIN_VERSION = "0.23.0";
 
 /**
- * PaaS 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
+ * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
  * 다른 환경과 공식 도메인으로 전환한다.
  */
 function apiBase(): string {
-  return process.env["PAAS_API_URL"]?.trim() || "https://api.aible-campus.com";
+  return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
 
 const TOKEN_MISSING =
-  "PaaS Device Credential이 없다.\n" +
-  "start_paas_login 으로 로그인을 시작하고 표시된 주소와 코드로 승인한 뒤 complete_paas_login 을 실행한다.\n" +
-  "이전 service Credential을 쓰는 운영 환경은 PAAS_TOKEN을 계속 사용할 수 있다.";
+  "Apps Device Credential이 없다.\n" +
+  "start_apps_login 으로 로그인을 시작하고 표시된 주소와 코드로 승인한 뒤 complete_apps_login 을 실행한다.\n" +
+  "이전 service Credential을 쓰는 운영 환경은 APPS_TOKEN을 계속 사용할 수 있다.";
 
 /** 배포 이름 후보를 만든다. 그대로 subdomain 이 되므로 DNS label 규칙에 맞게 정리한다. */
 export function toDeploymentName(input: string): string {
@@ -92,6 +94,8 @@ function sortedEntries(values: Record<string, string>): Array<[string, string]> 
 const GIT_ATTEMPT_TTL_MS = 90 * 1000;
 
 function deploymentFingerprint(input: {
+  sourceBaseCommit?: string | undefined;
+  organization?: string | undefined;
   source: string;
   name: string;
   env: Record<string, string>;
@@ -109,6 +113,8 @@ function deploymentFingerprint(input: {
         secrets: sortedEntries(input.secrets),
         resources: input.resources ?? null,
         workspace: input.workspace ?? null,
+        organization: input.organization ?? null,
+        sourceBaseCommit: input.sourceBaseCommit ?? null,
       }),
     )
     .digest("hex");
@@ -197,7 +203,7 @@ async function callApi(
   try {
     const url = `${apiBase()}${urlPath}`;
     const method = init.method ?? "GET";
-    const serviceCredential = process.env["PAAS_TOKEN"]?.trim();
+    const serviceCredential = appsEnv("TOKEN");
     const authentication = serviceCredential
       ? { authorization: `Bearer ${serviceCredential}` }
       : await deviceRequestHeaders(apiBase(), url, method);
@@ -205,7 +211,7 @@ async function callApi(
       return { ok: false, status: 0, body: TOKEN_MISSING };
     }
     const headers = new Headers(init.headers);
-    if (workspace !== undefined) headers.set("x-paas-workspace", workspace);
+    if (workspace !== undefined) headers.set("x-apps-workspace", workspace);
     for (const [key, value] of Object.entries(authentication)) {
       headers.set(key, value);
     }
@@ -219,9 +225,9 @@ async function callApi(
       ok: false,
       status: 0,
       body:
-        `PaaS 에 연결하지 못했다: ${apiBase()}\n` +
+        `Apps 에 연결하지 못했다: ${apiBase()}\n` +
         `${error instanceof Error ? error.message : String(error)}\n\n` +
-        "PAAS_API_URL 이 올바른지, 플랫폼이 기동 중인지 확인한다.",
+        "APPS_API_URL 이 올바른지, 플랫폼이 기동 중인지 확인한다.",
     };
   }
 
@@ -292,7 +298,7 @@ function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResu
   if (result.status === 0) return errorResult(String(result.body));
   if (result.status === 401) {
     return errorResult(
-      `${prefix}: 인증에 실패했다 (401).\n기기 로그인을 다시 진행한다. PAAS_TOKEN을 쓰는 운영 환경은 해당 service Credential이 폐기됐는지 확인한다.`,
+      `${prefix}: 인증에 실패했다 (401).\n기기 로그인을 다시 진행한다. APPS_TOKEN을 쓰는 운영 환경은 해당 service Credential이 폐기됐는지 확인한다.`,
     );
   }
   return errorResult(
@@ -305,14 +311,14 @@ function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResu
 }
 
 const server = new McpServer({
-  name: "aiblecampus-paas",
+  name: "aiblecampus-apps",
   version: PLUGIN_VERSION,
 });
 
 server.registerTool(
-  "start_paas_login",
+  "start_apps_login",
   {
-    title: "PaaS 기기 로그인 시작",
+    title: "Apps 기기 로그인 시작",
     description: "Identity에서 기기별 로그인 코드와 승인 주소를 발급하고 원문 device code는 로컬 보호 파일에만 저장한다.",
     inputSchema: {},
     annotations: {
@@ -331,8 +337,8 @@ server.registerTool(
         ...login,
         browserOpened,
         nextAction: browserOpened
-          ? "브라우저에서 승인하는 동안 complete_paas_login을 바로 호출해 polling한다"
-          : "승인 주소를 사용자에게 보여준 뒤 complete_paas_login을 바로 호출해 polling한다",
+          ? "브라우저에서 승인하는 동안 complete_apps_login을 바로 호출해 polling한다"
+          : "승인 주소를 사용자에게 보여준 뒤 complete_apps_login을 바로 호출해 polling한다",
       });
     } catch (error) {
       return errorResult(error instanceof Error ? error.message : String(error));
@@ -341,9 +347,9 @@ server.registerTool(
 );
 
 server.registerTool(
-  "complete_paas_login",
+  "complete_apps_login",
   {
-    title: "PaaS 기기 로그인 완료",
+    title: "Apps 기기 로그인 완료",
     description: "사용자 승인 상태를 Identity 표준 polling 간격에 맞춰 확인하고 성공하면 이 기기의 Credential을 0600 로컬 파일에 저장한다.",
     inputSchema: {},
     annotations: {
@@ -476,7 +482,7 @@ server.registerTool(
   {
     title: "프로젝트 배포",
     description:
-      "프로젝트를 에이블캠퍼스 PaaS 에 배포한다. 로컬 디렉토리 경로를 주면 tar.gz 로 묶어 올리고, git 주소를 주면 서버가 직접 clone 한다. 빌드와 실행, 접속 URL 발급까지 수행한다.",
+      "프로젝트를 에이블캠퍼스 Apps 에 배포한다. 로컬 디렉토리 경로를 주면 tar.gz 로 묶어 올리고, git 주소를 주면 서버가 직접 clone 한다. 빌드와 실행, 접속 URL 발급까지 수행한다.",
     inputSchema: {
       path: z
         .string()
@@ -525,6 +531,8 @@ server.registerTool(
         .describe(
           "같은 소스와 설정의 직전 요청이 명확히 실패했고 새 빌드가 필요할 때만 true. 응답 단절 복구에는 사용하지 않는다",
         ),
+      sourceBaseCommit: z.string().regex(/^[a-f0-9]{40}$/).optional().describe("통합할 소스가 기준으로 삼은 GitLab 기본 브랜치 커밋. 최신 코드를 반영하지 않고 이 값만 변경하지 않는다"),
+      organization: z.string().optional().describe("새 개인 앱을 배포할 조직 ID 또는 slug. 소속 조직이 여러 개면 반드시 선택하며 재배포는 기존 조직을 유지한다"),
       workspace: WorkspaceInputSchema,
     },
     annotations: {
@@ -545,6 +553,8 @@ server.registerTool(
     resources,
     forceNewRevision,
     workspace,
+    organization,
+    sourceBaseCommit,
   }) => {
     // git 주소면 서버가 직접 clone 한다. 업로드가 없어 큰 저장소에서 훨씬 빠르다.
     if (looksLikeGitUrl(projectPath)) {
@@ -564,6 +574,8 @@ server.registerTool(
               subdir: subdir ?? null,
             }),
             name: deploymentName,
+          organization,
+            sourceBaseCommit,
             env: env ?? {},
             secrets: secrets ?? {},
             resources,
@@ -585,6 +597,8 @@ server.registerTool(
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: deploymentName,
+          organization,
+          sourceBaseCommit,
           url: projectPath,
           ...(ref === undefined ? {} : { ref }),
           ...(subdir === undefined ? {} : { subdir }),
@@ -623,6 +637,10 @@ server.registerTool(
 
     const deploymentName = toDeploymentName(name ?? path.basename(projectPath));
 
+    let base = sourceBaseCommit;
+    try { base ??= await readSourceBase(projectPath, apiBase(), deploymentName, workspace); }
+    catch (error) { return errorResult(error instanceof Error ? error.message : "소스 기준을 확인하지 못했다"); }
+
     let tarball: Buffer;
     try {
       tarball = await packDirectory(projectPath);
@@ -634,6 +652,8 @@ server.registerTool(
 
     const form = new FormData();
     form.set("name", deploymentName);
+    if (organization !== undefined) form.set("organization", organization);
+    if (base !== undefined) form.set("sourceBaseCommit", base);
     form.set(
       "source",
       new Blob([new Uint8Array(tarball)], { type: "application/gzip" }),
@@ -654,7 +674,8 @@ server.registerTool(
         deploymentFingerprint({
           source: createHash("sha256").update(tarball).digest("hex"),
           name: deploymentName,
-          env: resolvedEnv,
+          organization,
+          sourceBaseCommit: base,          env: resolvedEnv,
           secrets: resolvedSecrets,
           resources,
           workspace,
@@ -675,6 +696,12 @@ server.registerTool(
 
     // 실패 단계와 원인을 그대로 전달해야 agent 가 다음 행동을 판단할 수 있다.
     if (!result.ok) return failure("배포에 실패했다", result);
+
+    const committed = typeof result.body === "object" && result.body !== null ? (result.body as { sourceCommit?: unknown }).sourceCommit : null;
+    if (typeof committed === "string") {
+      try { await saveSourceBase(projectPath, apiBase(), deploymentName, workspace, committed); }
+      catch { return textResult({ 배포됨: true, sourceCommit: committed, 안내: "배포는 완료됐으나 로컬 소스 기준을 기록하지 못했다. 다음 배포 전에 최신 소스를 확인한다", 결과: result.body }); }
+    }
 
     return textResult({
       배포됨: true,
@@ -728,7 +755,7 @@ server.registerTool(
   {
     title: "승인된 SQLite 데이터 이전",
     description:
-      "명시적 사용자 승인 뒤 SQLite 일관 백업을 만들고 이미 생성된 PaaS PostgreSQL binding으로 데이터를 이전한다.",
+      "명시적 사용자 승인 뒤 SQLite 일관 백업을 만들고 이미 생성된 Apps PostgreSQL binding으로 데이터를 이전한다.",
     inputSchema: {
       projectRoot: z.string().describe("백업을 보관할 프로젝트 루트 절대 경로"),
       databasePath: z.string().describe("프로젝트 안 SQLite 파일의 절대 경로"),
@@ -821,7 +848,7 @@ server.registerTool(
   {
     title: "승인된 로컬 파일 이전",
     description:
-      "명시적 사용자 승인 뒤 로컬 파일 tar.gz 백업을 만들고 이미 생성된 PaaS Storage binding으로 파일을 이전한다.",
+      "명시적 사용자 승인 뒤 로컬 파일 tar.gz 백업을 만들고 이미 생성된 Apps Storage binding으로 파일을 이전한다.",
     inputSchema: {
       projectRoot: z.string().describe("백업을 보관할 프로젝트 루트 절대 경로"),
       sourceDirectory: z.string().describe("프로젝트 안 로컬 업로드 폴더의 절대 경로"),
@@ -1099,10 +1126,45 @@ server.registerTool(
 );
 
 server.registerTool(
+  "checkout_app_source",
+  {
+    title: "최신 앱 소스 가져오기",
+    description: "GitLab 기본 브랜치의 소스를 새 폴더로 가져온다. 기존 작업 폴더를 덮어쓰지 않는다. 충돌 시 최신 폴더와 자신의 변경을 비교하고 사용자에게 판단을 요청한다.",
+    inputSchema: { deployment: z.string(), directory: z.string().describe("새로 만들 로컬 폴더의 절대 경로"), commit: z.string().regex(/^[a-f0-9]{40}$/).optional().describe("생략하면 최신 소스. 충돌 비교를 위해 작업 시작 당시 기준 커밋을 지정할 수 있다"), workspace: WorkspaceInputSchema },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  async ({ deployment, directory, commit: reference, workspace }) => {
+    if (!path.isAbsolute(directory)) return errorResult("새 폴더의 절대 경로를 지정한다");
+    const result = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}/source${reference ? `?commit=${reference}` : ""}`, {}, workspace);
+    if (!result.ok) return failure("최신 소스를 가져오지 못했다", result);
+    try {
+      const canonicalName = typeof result.body === "object" && result.body !== null && typeof (result.body as { deployment?: unknown }).deployment === "string" ? (result.body as { deployment: string }).deployment : deployment;
+      const commit = await checkoutSnapshot(directory, result.body, apiBase(), canonicalName, workspace);
+      return textResult({ directory, sourceBaseCommit: commit, 안내: "이 소스를 기준으로 자신의 변경을 통합하고 검증한다. 기준 커밋 값만 바꾸어 제출하지 않는다" });
+    } catch (error) { return errorResult(error instanceof Error ? error.message : "소스를 저장하지 못했다"); }
+  },
+);
+
+server.registerTool(
+  "list_deployment_organizations",
+  {
+    title: "배포 가능한 조직",
+    description: "새 개인 앱의 소속을 정할 때 조회한다. 여러 조직이면 사용자에게 선택을 요청한다. 팀 앱은 팀의 조직을 따르고 재배포는 기존 앱의 조직을 유지한다.",
+    inputSchema: {},
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  },
+  async () => {
+    const result = await callApi("/v1/deployment-organizations", {});
+    if (!result.ok) return failure("조직을 조회하지 못했다", result);
+    return textResult(result.body);
+  },
+);
+
+server.registerTool(
   "list_deployments",
   {
     title: "배포 목록",
-    description: "내가 이 PaaS 에 올린 배포 목록과 각각의 상태를 조회한다.",
+    description: "내가 이 Apps 에 올린 배포 목록과 각각의 상태를 조회한다.",
     inputSchema: { workspace: WorkspaceInputSchema },
     annotations: {
       readOnlyHint: true,
@@ -1119,11 +1181,11 @@ server.registerTool(
 );
 
 server.registerTool(
-  "paas_plugin_status",
+  "apps_plugin_status",
   {
-    title: "PaaS 플러그인 상태",
+    title: "Apps 플러그인 상태",
     description:
-      "현재 대화에 실제로 로드된 PaaS 플러그인 버전과 API 주소를 확인한다. 설치 목록이 아니라 실행 중인 MCP 프로세스의 버전을 반환한다.",
+      "현재 대화에 실제로 로드된 Apps 플러그인 버전과 API 주소를 확인한다. 설치 목록이 아니라 실행 중인 MCP 프로세스의 버전을 반환한다.",
     inputSchema: {},
     annotations: {
       readOnlyHint: true,
@@ -1133,18 +1195,18 @@ server.registerTool(
     },
   },
   async () => textResult({
-    plugin: "aiblecampus-paas",
+    plugin: "aiblecampus-apps",
     version: PLUGIN_VERSION,
     apiUrl: apiBase(),
   }),
 );
 
 server.registerTool(
-  "paas_whoami",
+  "apps_whoami",
   {
-    title: "PaaS 연결 확인",
+    title: "Apps 연결 확인",
     description:
-      "PaaS 주소와 토큰 설정이 올바른지 확인한다. 배포가 인증 문제로 실패할 때 먼저 부른다.",
+      "Apps 주소와 토큰 설정이 올바른지 확인한다. 배포가 인증 문제로 실패할 때 먼저 부른다.",
     inputSchema: { workspace: WorkspaceInputSchema },
     annotations: {
       readOnlyHint: true,
@@ -1159,7 +1221,7 @@ server.registerTool(
     return textResult({
       주소: apiBase(),
       ...(result.body as JsonRecord),
-      client: { plugin: "aiblecampus-paas", version: PLUGIN_VERSION },
+      client: { plugin: "aiblecampus-apps", version: PLUGIN_VERSION },
     });
   },
 );

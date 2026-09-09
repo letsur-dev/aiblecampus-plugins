@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | 일반 설정 | 기능 플래그, 공개 기준 URL, 로그 수준 | `env` |
 | 비밀값 | API 키, 비밀번호, database Credential | `secrets` |
-| 플랫폼 관리 값 | `PORT`, `DATABASE_URL`, `PAAS_DEPLOYMENT_ID`, `PAAS_STORAGE_URL`, `PAAS_STORAGE_TOKEN` | 직접 설정하지 않음 |
+| 플랫폼 관리 값 | `PORT`, `DATABASE_URL`, `APPS_DEPLOYMENT_ID`, `APPS_STORAGE_URL`, `APPS_STORAGE_TOKEN` | 직접 설정하지 않음 |
 
 비밀처럼 보이는 값은 일반 설정으로 넣지 않는다. 사용자에게 분류가 불분명한 값을 받으면 비밀값으로 취급한다.
 

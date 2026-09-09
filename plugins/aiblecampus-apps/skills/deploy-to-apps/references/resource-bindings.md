@@ -40,7 +40,7 @@ Workspace
 
 ## 파일 Storage 연결
 
-- 앱 서버는 `PAAS_DEPLOYMENT_ID`, `PAAS_STORAGE_URL`과 비밀값 `PAAS_STORAGE_TOKEN`을 사용한다.
+- 앱 서버는 `APPS_DEPLOYMENT_ID`, `APPS_STORAGE_URL`과 비밀값 `APPS_STORAGE_TOKEN`을 사용한다.
 - 업로드나 다운로드 직전에 앱 서버가 method, deployment ID, key와 만료 시각을 HMAC-SHA256으로 서명한다.
 - method는 `PUT` 또는 `GET`이고 기본 만료 시간은 5분이다.
 - 앱의 자체 로그인과 파일 권한을 확인한 뒤에만 서명 URL을 브라우저에 돌려준다.
@@ -55,13 +55,13 @@ import { createHmac } from "node:crypto";
 const method = "PUT";
 const key = "uploads/example.png";
 const expires = Math.floor(Date.now() / 1000) + 300;
-const deploymentId = process.env.PAAS_DEPLOYMENT_ID;
-const signature = createHmac("sha256", process.env.PAAS_STORAGE_TOKEN)
+const deploymentId = process.env.APPS_DEPLOYMENT_ID;
+const signature = createHmac("sha256", process.env.APPS_STORAGE_TOKEN)
   .update(`${method}\n${deploymentId}\n${key}\n${expires}`)
   .digest("hex");
 const encodedKey = key.split("/").map(encodeURIComponent).join("/");
 const url =
-  `${process.env.PAAS_STORAGE_URL}/v1/storage/files/` +
+  `${process.env.APPS_STORAGE_URL}/v1/storage/files/` +
   `${deploymentId}/${encodedKey}?expires=${expires}&signature=${signature}`;
 ```
 
@@ -69,7 +69,7 @@ const url =
 
 - 로컬 PostgreSQL과 로컬 파일 디렉토리를 사용한다.
 - 로컬 `.env`와 운영 Credential을 분리한다.
-- 운영 `DATABASE_URL`이나 `PAAS_STORAGE_TOKEN`을 내려받아 로컬에서 쓰지 않는다.
+- 운영 `DATABASE_URL`이나 `APPS_STORAGE_TOKEN`을 내려받아 로컬에서 쓰지 않는다.
 - 저장소에는 값이 없는 예시 키와 로컬 기동 방법만 남긴다.
 
 ## 기존 영속 스택 전환
@@ -98,7 +98,7 @@ const url =
 ### 로컬 파일
 
 - multer disk storage, `writeFile`과 `createWriteStream`으로 영속 파일을 컨테이너 경로에 두지 않는다.
-- 앱 서버가 PaaS Storage 서명 URL을 발급하고 브라우저가 해당 URL로 전송하게 바꾼다.
+- 앱 서버가 Apps Storage 서명 URL을 발급하고 브라우저가 해당 URL로 전송하게 바꾼다.
 - 기존 파일은 상대 key, 바이트 수와 checksum manifest를 만든 뒤 별도 승인 후 업로드한다.
 - import 실패 시 원본 파일과 manifest를 그대로 유지한다.
 - `preview_local_files_transition`으로 key, 바이트 수와 checksum을 먼저 확인한다.
@@ -114,7 +114,7 @@ const url =
 
 ### 백업과 미리보기
 
-- 백업은 프로젝트의 `.paas-backups/`에 두고 커밋하거나 배포하지 않는다.
+- 백업은 프로젝트의 `.apps-backups/`에 두고 커밋하거나 배포하지 않는다.
 - 백업 경로, 생성 시각, source checksum과 예상 건수를 사용자에게 보여준다.
 - 실제 import 전에 대상, 명령, 변경 건수, 검증과 복구 방법을 다시 확인한다.
 - 실패 시 원본과 백업을 수정하지 않고 새 대상의 부분 결과만 정리한다.
