@@ -24,7 +24,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.24.0";
+const PLUGIN_VERSION = "0.25.0";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -532,7 +532,8 @@ server.registerTool(
           "같은 소스와 설정의 직전 요청이 명확히 실패했고 새 빌드가 필요할 때만 true. 응답 단절 복구에는 사용하지 않는다",
         ),
       sourceBaseCommit: z.string().regex(/^[a-f0-9]{40}$/).optional().describe("통합할 소스가 기준으로 삼은 GitLab 기본 브랜치 커밋. 최신 코드를 반영하지 않고 이 값만 변경하지 않는다"),
-      organization: z.string().optional().describe("새 개인 앱을 배포할 조직 ID 또는 slug. 소속 조직이 여러 개면 반드시 선택하며 재배포는 기존 조직을 유지한다"),
+      education: z.string().optional().describe("새 개인 앱을 배포할 교육 ID. list_educations로 확인한다. 여러 교육이면 사용자가 선택한다. 팀 앱은 팀의 교육을 사용한다"),
+      organization: z.string().optional().describe("이전 클라이언트 호환용 교육 소속 ID. 새 호출은 education을 사용한다"),
       workspace: WorkspaceInputSchema,
     },
     annotations: {
@@ -553,9 +554,12 @@ server.registerTool(
     resources,
     forceNewRevision,
     workspace,
-    organization,
+    education,
+    organization: legacyOrganization,
     sourceBaseCommit,
   }) => {
+    if (education && legacyOrganization && education !== legacyOrganization) return errorResult("교육은 한 번만 지정한다");
+    const organization = education ?? legacyOrganization;
     // git 주소면 서버가 직접 clone 한다. 업로드가 없어 큰 저장소에서 훨씬 빠르다.
     if (looksLikeGitUrl(projectPath)) {
       if (localEnv !== undefined) {
@@ -1143,10 +1147,24 @@ server.registerTool(
 );
 
 server.registerTool(
+  "list_educations",
+  {
+    title: "내 교육",
+    description: "참여 중인 교육을 조회한다. 새 개인 앱의 교육을 선택하거나 교육별 작품 팀을 만들 때 사용한다.",
+    inputSchema: {},
+    annotations: {readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true},
+  },
+  async()=>{
+    const result=await callApi("/v1/educations",{});
+    return result.ok ? textResult(result.body) : failure("교육을 조회하지 못했다",result);
+  },
+);
+
+server.registerTool(
   "list_deployment_organizations",
   {
-    title: "배포 가능한 조직",
-    description: "새 개인 앱의 소속을 정할 때 조회한다. 여러 조직이면 사용자에게 선택을 요청한다. 팀 앱은 팀의 조직을 따르고 재배포는 기존 앱의 조직을 유지한다.",
+    title: "배포 가능한 교육 소속 (호환)",
+    description: "이전 클라이언트 호환용 교육 소속 조회. 새 호출은 list_educations를 사용한다.",
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },
