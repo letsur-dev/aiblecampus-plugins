@@ -31047,7 +31047,6 @@ var StdioServerTransport = class {
 // mcp/index.ts
 import { createHash as createHash3 } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile as readFile6 } from "node:fs/promises";
 import path8 from "node:path";
 
 // mcp/pack.ts
@@ -34853,7 +34852,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.23.0";
+var PLUGIN_VERSION = "0.24.0";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -35591,10 +35590,9 @@ server.registerTool(
   "delete_deployment",
   {
     title: "\uBC30\uD3EC \uC0AD\uC81C",
-    description: "\uBC30\uD3EC \uAE30\uB85D\uACFC \uC2E4\uD589 \uC790\uC6D0\uC744 \uC0AD\uC81C\uD55C\uB2E4. \uC601\uC18D \uC790\uC6D0\uC740 \uBCF4\uC874\uD558\uAC70\uB098 \uD568\uAED8 \uC0AD\uC81C\uD560\uC9C0 \uBA85\uC2DC\uD574\uC57C \uD55C\uB2E4.",
+    description: "\uC571\uACFC \uC804\uC6A9 \uB370\uC774\uD130\uBCA0\uC774\uC2A4 \uBC0F \uD30C\uC77C\uC744 \uC601\uAD6C \uC0AD\uC81C\uD55C\uB2E4.",
     inputSchema: {
       deployment: external_exports.string().describe("\uC0AD\uC81C\uD560 \uBC30\uD3EC \uC774\uB984 \uB610\uB294 \uBC30\uD3EC id"),
-      resourcePolicy: external_exports.enum(["retain", "delete"]).describe("retain\uC740 DB\uC640 \uD30C\uC77C\uC744 \uBCF4\uC874\uD558\uACE0 delete\uB294 \uD568\uAED8 \uC0AD\uC81C\uD55C\uB2E4"),
       workspace: WorkspaceInputSchema
     },
     annotations: {
@@ -35604,16 +35602,16 @@ server.registerTool(
       openWorldHint: true
     }
   },
-  async ({ deployment, resourcePolicy, workspace }) => {
+  async ({ deployment, workspace }) => {
     const result = await callApi(
-      `/v1/deployments/${encodeURIComponent(deployment)}?resourcePolicy=${resourcePolicy}`,
+      `/v1/deployments/${encodeURIComponent(deployment)}?resourcePolicy=delete`,
       { method: "DELETE" },
       workspace
     );
     if (!result.ok) return failure("\uBC30\uD3EC\uB97C \uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
     return textResult({
       \uC0AD\uC81C\uB428: true,
-      \uC790\uC6D0\uC815\uCC45: resourcePolicy,
+      \uC790\uC6D0\uC815\uCC45: "delete",
       ...typeof result.body === "string" ? { \uC751\uB2F5: result.body } : result.body
     });
   }
@@ -35826,106 +35824,6 @@ server.registerTool(
       \uC8FC\uC18C: apiBase(),
       ...result.body,
       client: { plugin: "aiblecampus-apps", version: PLUGIN_VERSION }
-    });
-  }
-);
-server.registerTool(
-  "set_artifact_visibility",
-  {
-    title: "\uC0B0\uCD9C\uBB3C \uAC24\uB7EC\uB9AC \uACF5\uAC1C \uC124\uC815",
-    description: "\uBC30\uD3EC\uD55C \uC571\uC744 \uC0B0\uCD9C\uBB3C \uAC24\uB7EC\uB9AC\uC5D0 \uACF5\uAC1C\uD558\uAC70\uB098 \uB0B4\uB9B0\uB2E4. \uAC24\uB7EC\uB9AC \uC81C\uBAA9\uACFC \uC124\uBA85\uB3C4 \uD568\uAED8 \uC815\uD55C\uB2E4. \uC571 \uC8FC\uC18C\uB294 \uC6D0\uB798 \uACF5\uAC1C\uC774\uBBC0\uB85C \uC774 \uC124\uC815\uC740 \uC811\uADFC \uD1B5\uC81C\uAC00 \uC544\uB2C8\uB77C \uAC24\uB7EC\uB9AC \uB178\uCD9C \uC5EC\uBD80\uB2E4. \uD300 \uAD00\uB9AC\uC790 \uC774\uC0C1\uB9CC \uBC14\uAFC0 \uC218 \uC788\uB2E4.",
-    inputSchema: {
-      name: external_exports.string().describe("\uBC30\uD3EC \uC774\uB984 \uB610\uB294 \uBC30\uD3EC ID"),
-      visibility: external_exports.enum(["public", "private"]).optional().describe("public \uC774\uBA74 \uAC24\uB7EC\uB9AC\uC5D0 \uC2E3\uACE0 private \uC774\uBA74 \uB0B4\uB9B0\uB2E4"),
-      title: external_exports.string().max(120).optional().describe("\uAC24\uB7EC\uB9AC\uC5D0 \uBCF4\uC5EC\uC904 \uC81C\uBAA9"),
-      description: external_exports.string().max(2e3).optional().describe("\uC2EC\uC0AC\uC704\uC6D0\uACFC \uAD00\uB78C\uC790\uC5D0\uAC8C \uBCF4\uC5EC\uC904 \uC124\uBA85"),
-      workspace: WorkspaceInputSchema
-    },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: true
-    }
-  },
-  async ({ name, visibility, title, description, workspace }) => {
-    const result = await callApi(
-      `/v1/deployments/${encodeURIComponent(name)}/artifact`,
-      {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ...visibility === void 0 ? {} : { visibility },
-          ...title === void 0 ? {} : { title },
-          ...description === void 0 ? {} : { description }
-        })
-      },
-      workspace
-    );
-    if (!result.ok) {
-      return errorResult(
-        typeof result.body === "string" ? result.body : JSON.stringify(result.body)
-      );
-    }
-    return textResult(result.body);
-  }
-);
-server.registerTool(
-  "upload_artifact_slides",
-  {
-    title: "\uC0B0\uCD9C\uBB3C \uC124\uBA85 \uC2AC\uB77C\uC774\uB4DC \uC5C5\uB85C\uB4DC",
-    description: "\uBC1C\uD45C\uC790\uB8CC PDF \uB97C \uC62C\uB824 \uC0B0\uCD9C\uBB3C \uAC24\uB7EC\uB9AC\uC5D0\uC11C \uB118\uACA8 \uBCFC \uC218 \uC788\uAC8C \uD55C\uB2E4. \uC11C\uBC84\uAC00 \uD398\uC774\uC9C0 \uC774\uBBF8\uC9C0\uB85C \uBC14\uAFB8\uACE0 \uCCAB \uC7A5\uC774 \uAC24\uB7EC\uB9AC \uCE74\uB4DC\uC758 \uB300\uD45C \uC774\uBBF8\uC9C0\uAC00 \uB41C\uB2E4. PDF \uB9CC \uBC1B\uB294\uB2E4. PPT \uB294 PDF \uB85C \uB0B4\uBCF4\uB0B8 \uB4A4 \uC62C\uB9B0\uB2E4. \uD300 \uAD00\uB9AC\uC790 \uC774\uC0C1\uB9CC \uC62C\uB9B4 \uC218 \uC788\uB2E4.",
-    inputSchema: {
-      name: external_exports.string().describe("\uBC30\uD3EC \uC774\uB984 \uB610\uB294 \uBC30\uD3EC ID"),
-      pdfPath: external_exports.string().describe("\uC62C\uB9B4 PDF \uD30C\uC77C\uC758 \uC808\uB300 \uACBD\uB85C"),
-      workspace: WorkspaceInputSchema
-    },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: true
-    }
-  },
-  async ({ name, pdfPath, workspace }) => {
-    if (!path8.isAbsolute(pdfPath)) {
-      return errorResult("pdfPath \uB294 \uC808\uB300 \uACBD\uB85C\uC5EC\uC57C \uD55C\uB2E4");
-    }
-    if (!existsSync(pdfPath)) {
-      return errorResult(`\uD30C\uC77C\uC744 \uCC3E\uC9C0 \uBABB\uD588\uB2E4: ${pdfPath}`);
-    }
-    let pdf;
-    try {
-      pdf = await readFile6(pdfPath);
-    } catch (error51) {
-      return errorResult(
-        `\uD30C\uC77C\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
-      );
-    }
-    if (pdf.subarray(0, 5).toString("latin1") !== "%PDF-") {
-      return errorResult(
-        "PDF \uD30C\uC77C\uC774 \uC544\uB2C8\uB2E4. PPT \uB098 Keynote \uB294 PDF \uB85C \uB0B4\uBCF4\uB0B8 \uB4A4 \uC62C\uB9B0\uB2E4."
-      );
-    }
-    const form = new FormData();
-    form.append(
-      "file",
-      new Blob([new Uint8Array(pdf)], { type: "application/pdf" }),
-      path8.basename(pdfPath)
-    );
-    const result = await callApi(
-      `/v1/deployments/${encodeURIComponent(name)}/slides`,
-      { method: "POST", body: form },
-      workspace
-    );
-    if (!result.ok) {
-      return errorResult(
-        typeof result.body === "string" ? result.body : JSON.stringify(result.body)
-      );
-    }
-    return textResult({
-      ...result.body,
-      \uC548\uB0B4: "\uAC24\uB7EC\uB9AC\uC5D0 \uC2E4\uC73C\uB824\uBA74 set_artifact_visibility \uB85C public \uC73C\uB85C \uBC14\uAFBC\uB2E4"
     });
   }
 );
