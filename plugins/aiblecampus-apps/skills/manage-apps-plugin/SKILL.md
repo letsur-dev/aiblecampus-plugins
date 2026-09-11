@@ -11,7 +11,7 @@ The official marketplace is https://github.com/letsur-dev/aiblecampus-plugins. T
 
 1. Check whether `apps_plugin_status` is callable. If it reports a working plugin, continue the original task without reinstalling.
 2. If absent, register the official marketplace and install `aiblecampus-apps`. If installed but broken, update it first. Reinstall only this plugin if updating does not repair it.
-3. In Claude Code, use `/reload-plugins` when supported to refresh both skills and MCP. `/reload-skills` does not reload MCP. If a user must run the command, provide one short instruction and continue after reload. In Codex, use the provider's available reload mechanism.
+3. Check the active conversation again after installation. In Claude Desktop, if `apps_plugin_status` is already callable, continue immediately without a new session or restart. Do not prescribe Claude Code slash commands to Desktop. In Claude Code, use `/reload-plugins` when supported to refresh both skills and MCP. `/reload-skills` does not reload MCP. If a user must run the command, provide one short instruction and continue after reload. In Codex, use the provider's available reload mechanism.
 4. Verify `apps_plugin_status` in the active conversation. If reloading is unavailable, ask the user to open a new conversation in the same project and carry forward the original request. Do not repeat installation in a loop or require closing the entire application.
 5. Resume `deploy-to-apps`. Authenticate only when required, validate before deploying, recover interrupted deployment status before retrying, and report the final URL.
 

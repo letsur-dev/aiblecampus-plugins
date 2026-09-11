@@ -24,7 +24,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.25.2";
+const PLUGIN_VERSION = "0.25.3";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
