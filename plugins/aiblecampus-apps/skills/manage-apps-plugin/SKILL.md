@@ -1,6 +1,6 @@
 ---
 name: manage-apps-plugin
-description: Install, update, repair, or uninstall the AibleCampus Apps plugin in Claude Code or Codex when requested or when an Apps deployment cannot find its tools.
+description: Install, update, repair, or uninstall the AibleCampus Apps plugin in Claude Desktop Cowork, Claude Code, or Codex when requested or when an Apps deployment cannot find its tools.
 ---
 
 # Manage the Apps plugin
@@ -9,11 +9,34 @@ The official marketplace is https://github.com/letsur-dev/aiblecampus-plugins. T
 
 ## Install or repair
 
-1. Check whether `apps_plugin_status` is callable. If it reports a working plugin and the user did not request an update or repair, continue the original task without reinstalling. For an explicit update, refresh the official marketplace and update this plugin even when the current version works; then verify the active version.
-2. If absent, register the official marketplace and install `aiblecampus-apps`. If installed but broken, update it first. Reinstall only this plugin if updating does not repair it.
-3. Check the active conversation again after installation. In Claude Desktop, if `apps_plugin_status` is already callable, continue immediately without a new session or restart. Do not prescribe Claude Code slash commands to Desktop. In Claude Code, use `/reload-plugins` when supported to refresh both skills and MCP. `/reload-skills` does not reload MCP. If a user must run the command, provide one short instruction and continue after reload. In Codex, use the provider's available reload mechanism.
-4. Verify `apps_plugin_status` in the active conversation. If reloading is unavailable, ask the user to open a new conversation in the same project and carry forward the original request. Do not repeat installation in a loop or require closing the entire application.
-5. Resume `deploy-to-apps`. Authenticate only when required, validate before deploying, recover interrupted deployment status before retrying, and report the final URL.
+First distinguish installation, enablement, and tools callable in this conversation. Call `apps_plugin_status` when available. A successful call proves the running MCP version; a marketplace listing or a visible skill does not. If it works, resume without reinstalling. For a requested update, update only this plugin through the supported manager and check its running version.
+
+### Claude Desktop Cowork
+
+Claude Code installation does not install a Cowork plugin. Do not run CLI installation or Code slash commands for Cowork. When MCP is absent, give the user this tested Desktop procedure:
+
+1. Click the name at the bottom left, then Settings, Plugins, Browse at the top right.
+2. In the modal click the + on the right, Add from repository, and enter https://github.com/letsur-dev/aiblecampus-plugins.
+3. Confirm the Apps plugin was added. Completely quit Claude, including its system tray process, then restart it.
+4. Return to the existing Cowork conversation and check `apps_plugin_status` and the deploy skill again. A new conversation is not required by the observed workflow.
+
+Once the user says installation is complete, check the actual callable tools again. Do not repeatedly claim they used Code instead or that installation is impossible. If tools are still absent, distinguish installed-but-not-loaded from missing installation.
+
+### Claude Code
+
+Use the available `claude plugin` CLI to add the official marketplace, install `aiblecampus-apps@aiblecampus-plugins`, and enable it. Inspect help for supported syntax. The user's installation request authorizes these steps; do not inspect unrelated company projects to prove trust.
+
+After installation, check callable MCP tools. In the observed Code environment, `/reload-plugins` did not load MCP into the existing conversation. Do not promise it will or loop on reload. If tools are absent, prepare the handoff below and have the user open a new Code conversation in the same project. Do not require quitting the whole Desktop application for Code. If tools are already callable, continue immediately.
+
+### Preserve the deployment request
+
+Before asking for a restart or new conversation, provide a ready-to-paste handoff containing the actual project path, personal/team choice, education and team names, exact workspace UUID, new app or existing app ID/name/URL, and any validation/deployment already completed. Never replace a missing team with the personal default. Include this instruction: "Use this workspace for every scoped tool. First call apps_plugin_status; do not reinstall if it works. Validate and deploy the specified project, then verify the final URL."
+
+If the project directory is writable, save the non-secret deployment intent as `.aiblecampus-deploy.json` in that project before handing off. Include `workspace`, `projectPath`, `mode`, `educationName`, `workspaceName`, and optional `deploymentId`/`deploymentName`/`url`. Do not store tokens or secrets. Read it in the new conversation and reconcile it with the user's current explicit request. The current request wins; an ambiguous short request must not discard the stored target.
+
+### Codex
+
+Use its supported plugin manager and reload mechanism. Do not prescribe Claude commands. If a new conversation is needed, use the same complete handoff and target-preservation rules.
 
 Installation authorization does not authorize removing project files, applications, credentials, or data. Preserve other plugins and marketplace entries.
 

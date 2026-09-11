@@ -34028,6 +34028,7 @@ var SKIP = /* @__PURE__ */ new Set([
   ".data",
   ".apps-backups",
   ".apps-source.json",
+  ".aiblecampus-deploy.json",
   "dist",
   ".next",
   "coverage",
@@ -34852,7 +34853,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.25.4";
+var PLUGIN_VERSION = "0.25.5";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -35191,7 +35192,7 @@ server.registerTool(
       sourceBaseCommit: external_exports.string().regex(/^[a-f0-9]{40}$/).optional().describe("\uD1B5\uD569\uD560 \uC18C\uC2A4\uAC00 \uAE30\uC900\uC73C\uB85C \uC0BC\uC740 GitLab \uAE30\uBCF8 \uBE0C\uB79C\uCE58 \uCEE4\uBC0B. \uCD5C\uC2E0 \uCF54\uB4DC\uB97C \uBC18\uC601\uD558\uC9C0 \uC54A\uACE0 \uC774 \uAC12\uB9CC \uBCC0\uACBD\uD558\uC9C0 \uC54A\uB294\uB2E4"),
       education: external_exports.string().optional().describe("\uD300 \uC791\uC5C5 \uACF5\uAC04\uC758 \uAD50\uC721 ID. \uD300\uC5D0\uC11C \uC790\uB3D9 \uACB0\uC815\uD558\uBA70 \uAC1C\uC778 \uBC30\uD3EC\uC5D0\uB294 \uD544\uC694\uD558\uC9C0 \uC54A\uB2E4"),
       organization: external_exports.string().optional().describe("\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658\uC6A9 \uAD50\uC721 \uC18C\uC18D ID. \uC0C8 \uD638\uCD9C\uC740 education\uC744 \uC0AC\uC6A9\uD55C\uB2E4"),
-      workspace: WorkspaceInputSchema
+      workspace: external_exports.string().min(1).describe("\uD655\uC778\uD55C \uB300\uC0C1 workspace UUID \uB610\uB294 slug. \uC694\uCCAD\uACFC \uD504\uB85C\uC81D\uD2B8\uC758 .aiblecampus-deploy.json\uC744 \uD655\uC778\uD55C\uB2E4. \uB204\uB77D\uB41C \uD300 \uB300\uC0C1\uC744 \uAC1C\uC778 \uACF5\uAC04\uC73C\uB85C \uB300\uCCB4\uD558\uC9C0 \uC54A\uB294\uB2E4")
     },
     annotations: {
       readOnlyHint: false,

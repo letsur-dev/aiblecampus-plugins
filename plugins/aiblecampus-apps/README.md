@@ -23,7 +23,9 @@ Claude Code와 Codex에서 웹앱을 완성하고 검증한 뒤 에이블캠퍼�
 
 Claude Code에서는 저장소의 `.claude-plugin/marketplace.json`을 사용한다. Codex에서는 저장소의 `.agents/plugins/marketplace.json`을 사용한다.
 
-Claude Code에서 설치나 갱신 뒤 새 Skill과 MCP가 현재 대화에 보이지 않으면 입력창에서 `/reload-plugins`를 실행한다. `/reload-skills`만으로는 MCP가 바뀌지 않는다. Claude는 자기 입력창의 slash command를 직접 실행할 수 없으므로 사용자가 한 번 입력해야 하지만, 지원되는 환경에서는 같은 대화와 요청이 유지된다. Paseo와 같은 실행 환경에서 이 명령을 지원하지 않으면 반복하지 않고 같은 프로젝트에서 새 Claude Code 대화를 연 뒤 원래 요청을 그대로 붙여넣는다. 새 대화는 `apps_plugin_status`로 실제 실행 중인 MCP 버전을 먼저 확인하고 설치를 반복하지 않은 채 이어간다.
+Cowork는 Desktop 좌측 하단 이름, 설정, 플러그인, 우측 상단 찾아보기, 모달 우측 +, 저장소에서 추가 순으로 공식 저장소를 등록한다. 플러그인 추가를 확인한 뒤 트레이에서도 완전 종료하고 Claude를 재시작한다. 기존 대화에서 `apps_plugin_status`를 호출해 이어간다.
+
+Code는 CLI로 marketplace 추가, 설치 및 활성화를 진행한다. `/reload-plugins` 실행만으로 기존 대화에 MCP가 로드된다고 가정하지 않는다. 도구가 없으면 같은 프로젝트의 새 대화로 인계한다. `.aiblecampus-deploy.json`과 복사용 인계문에 프로젝트 경로, 교육과 팀, workspace UUID, 신규 또는 기존 앱 ID를 보존한다. 새 대화에서는 설치를 반복하지 않고 실제 MCP 버전을 확인한다.
 
 플랫폼 연결에는 다음 환경변수를 사용한다.
 
@@ -34,7 +36,7 @@ Claude Code에서 설치나 갱신 뒤 새 Skill과 MCP가 현재 대화에 보�
 - `APPS_TOKEN`: 이전 운영 및 CI용 service Credential. 개인 기기 로그인보다 우선 적용된다.
 - `APPS_DEPLOYMENT_ATTEMPT_FILE`: 배포 요청 복구 파일을 별도 위치에 둘 때만 설정한다. 생략하면 사용자 설정 폴더 안에 저장한다.
 
-Credential 원문은 프로젝트 파일, 커밋이나 대화에 기록하지 않는다. Claude Code 환경 설정을 바꾼 뒤에는 `/reload-plugins`로 현재 대화의 MCP를 다시 읽는다. 해당 입력 경로가 slash command를 지원하지 않으면 같은 프로젝트의 새 대화에서 확인한다. Codex는 현재 클라이언트가 제공하는 플러그인 재로딩 절차를 사용한다.
+Credential 원문은 프로젝트 파일, 커밋이나 대화에 기록하지 않는다. Claude Code 환경 설정을 바꾼 뒤에는 실제 도구 로드를 확인하고, 없으면 같은 프로젝트의 새 대화에서 확인한다. Codex는 현재 클라이언트가 제공하는 플러그인 재로딩 절차를 사용한다.
 
 로그인이 필요하면 `start_apps_login`이 승인 주소를 기본 브라우저에서 연다. Agent는 사용자에게 완료 응답을 요구하지 않고 `complete_apps_login`을 바로 호출해 승인 상태를 polling한다. 브라우저를 열 수 없는 환경에서만 주소와 코드를 직접 안내한다.
 

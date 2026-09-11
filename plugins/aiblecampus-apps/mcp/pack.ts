@@ -16,6 +16,7 @@ const SKIP = new Set([
   ".data",
   ".apps-backups",
   ".apps-source.json",
+    ".aiblecampus-deploy.json",
   "dist",
   ".next",
   "coverage",

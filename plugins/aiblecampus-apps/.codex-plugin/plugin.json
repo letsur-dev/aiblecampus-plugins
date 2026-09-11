@@ -1,6 +1,6 @@
 {
   "name": "aiblecampus-apps",
-  "version": "0.25.4+codex.20260911065000",
+  "version": "0.25.5+codex.20260911092442",
   "description": "Build, validate, deploy, and manage web applications on AibleCampus Apps.",
   "author": {
     "name": "에이블캠퍼스"
