@@ -34852,7 +34852,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.25.1";
+var PLUGIN_VERSION = "0.25.2";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -35189,7 +35189,7 @@ server.registerTool(
         "\uAC19\uC740 \uC18C\uC2A4\uC640 \uC124\uC815\uC758 \uC9C1\uC804 \uC694\uCCAD\uC774 \uBA85\uD655\uD788 \uC2E4\uD328\uD588\uACE0 \uC0C8 \uBE4C\uB4DC\uAC00 \uD544\uC694\uD560 \uB54C\uB9CC true. \uC751\uB2F5 \uB2E8\uC808 \uBCF5\uAD6C\uC5D0\uB294 \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uB294\uB2E4"
       ),
       sourceBaseCommit: external_exports.string().regex(/^[a-f0-9]{40}$/).optional().describe("\uD1B5\uD569\uD560 \uC18C\uC2A4\uAC00 \uAE30\uC900\uC73C\uB85C \uC0BC\uC740 GitLab \uAE30\uBCF8 \uBE0C\uB79C\uCE58 \uCEE4\uBC0B. \uCD5C\uC2E0 \uCF54\uB4DC\uB97C \uBC18\uC601\uD558\uC9C0 \uC54A\uACE0 \uC774 \uAC12\uB9CC \uBCC0\uACBD\uD558\uC9C0 \uC54A\uB294\uB2E4"),
-      education: external_exports.string().optional().describe("\uC0C8 \uAC1C\uC778 \uC571\uC744 \uBC30\uD3EC\uD560 \uAD50\uC721 ID. list_educations\uB85C \uD655\uC778\uD55C\uB2E4. \uC5EC\uB7EC \uAD50\uC721\uC774\uBA74 \uC0AC\uC6A9\uC790\uAC00 \uC120\uD0DD\uD55C\uB2E4. \uD300 \uC571\uC740 \uD300\uC758 \uAD50\uC721\uC744 \uC0AC\uC6A9\uD55C\uB2E4"),
+      education: external_exports.string().optional().describe("\uD300 \uC791\uC5C5 \uACF5\uAC04\uC758 \uAD50\uC721 ID. \uD300\uC5D0\uC11C \uC790\uB3D9 \uACB0\uC815\uD558\uBA70 \uAC1C\uC778 \uBC30\uD3EC\uC5D0\uB294 \uD544\uC694\uD558\uC9C0 \uC54A\uB2E4"),
       organization: external_exports.string().optional().describe("\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658\uC6A9 \uAD50\uC721 \uC18C\uC18D ID. \uC0C8 \uD638\uCD9C\uC740 education\uC744 \uC0AC\uC6A9\uD55C\uB2E4"),
       workspace: WorkspaceInputSchema
     },
@@ -35760,7 +35760,7 @@ server.registerTool(
   "list_educations",
   {
     title: "\uB0B4 \uAD50\uC721",
-    description: "\uCC38\uC5EC \uC911\uC778 \uAD50\uC721\uC744 \uC870\uD68C\uD55C\uB2E4. \uC0C8 \uAC1C\uC778 \uC571\uC758 \uAD50\uC721\uC744 \uC120\uD0DD\uD558\uAC70\uB098 \uAD50\uC721\uBCC4 \uC791\uD488 \uD300\uC744 \uB9CC\uB4E4 \uB54C \uC0AC\uC6A9\uD55C\uB2E4.",
+    description: "\uCC38\uC5EC \uC911\uC778 \uAD50\uC721\uC744 \uC870\uD68C\uD55C\uB2E4. \uD300\uC740 Portal \uC6B4\uC601\uC790\uAC00 \uBC30\uC815\uD558\uBA70 \uAC1C\uC778 \uBC30\uD3EC\uC5D0\uB294 \uAD50\uC721\uC774 \uD544\uC694\uD558\uC9C0 \uC54A\uB2E4.",
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   },
