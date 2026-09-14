@@ -21610,14 +21610,19 @@ async function managedRequestHeaders(apiBase2, url2, method) {
     throw Error("Managed Apps authentication failed. Ask the event operator to check this laptop registration.");
   }
 }
-async function recordManagedCheck(account) {
+async function recordManagedCheck(identity) {
   const file2 = appsEnv("MANAGED_PROFILE"), receipt = appsEnv("SETUP_RECEIPT");
-  if (!file2 || !receipt) return;
+  if (!file2) return null;
   const profile = JSON.parse(await readFile2(file2, "utf8"));
-  if (typeof account !== "string" || account !== profile.account) throw Error("Managed participant account mismatch.");
-  const temporary = `${receipt}.${process.pid}.tmp`;
-  await writeFile2(temporary, JSON.stringify({ runtime: profile.runtime, account, subject: profile.subject, verifiedAt: (/* @__PURE__ */ new Date()).toISOString() }), { mode: 384 });
-  await rename(temporary, receipt);
+  const authenticated = identity;
+  if (authenticated?.subject !== profile.subject || authenticated?.issuer !== profile.issuer) throw Error("Managed participant identity mismatch.");
+  const result = { runtime: profile.runtime, account: profile.account, subject: profile.subject };
+  if (receipt) {
+    const temporary = `${receipt}.${process.pid}.tmp`;
+    await writeFile2(temporary, JSON.stringify({ ...result, verifiedAt: (/* @__PURE__ */ new Date()).toISOString() }), { mode: 384 });
+    await rename(temporary, receipt);
+  }
+  return result;
 }
 
 // node_modules/zod/v3/helpers/util.js
@@ -34937,7 +34942,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.25.6";
+var PLUGIN_VERSION = "0.25.7";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -35923,12 +35928,12 @@ server.registerTool(
   async ({ workspace }) => {
     const result = await callApi("/v1/me", {}, workspace);
     if (!result.ok) return failure("\uC5F0\uACB0\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
-    const user = result.body.user;
-    await recordManagedCheck(user?.handle);
+    const identity = result.body.identity;
+    const managedIdentity = await recordManagedCheck(identity);
     return textResult({
       \uC8FC\uC18C: apiBase(),
       ...result.body,
-      client: { plugin: "aiblecampus-apps", version: PLUGIN_VERSION }
+      client: { plugin: "aiblecampus-apps", version: PLUGIN_VERSION, managedIdentity }
     });
   }
 );

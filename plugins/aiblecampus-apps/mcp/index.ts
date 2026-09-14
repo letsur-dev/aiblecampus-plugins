@@ -25,7 +25,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.25.6";
+const PLUGIN_VERSION = "0.25.7";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -1235,12 +1235,12 @@ server.registerTool(
   async ({ workspace }) => {
     const result = await callApi("/v1/me", {}, workspace);
     if (!result.ok) return failure("연결을 확인하지 못했다", result);
-    const user = (result.body as {user?:{handle?:unknown}}).user;
-    await recordManagedCheck(user?.handle);
+    const identity = (result.body as {identity?:unknown}).identity;
+    const managedIdentity = await recordManagedCheck(identity);
     return textResult({
       주소: apiBase(),
       ...(result.body as JsonRecord),
-      client: { plugin: "aiblecampus-apps", version: PLUGIN_VERSION },
+      client: { plugin: "aiblecampus-apps", version: PLUGIN_VERSION, managedIdentity },
     });
   },
 );

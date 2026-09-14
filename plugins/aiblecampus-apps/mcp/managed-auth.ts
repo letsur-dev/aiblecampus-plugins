@@ -53,11 +53,16 @@ export async function managedRequestHeaders(apiBase:string,url:string,method:str
 }
 
 /** Optional installer receipt. Only a successful, matching whoami can produce it. */
-export async function recordManagedCheck(account:unknown):Promise<void>{
-  const file=appsEnv("MANAGED_PROFILE"),receipt=appsEnv("SETUP_RECEIPT");if(!file||!receipt)return;
+export async function recordManagedCheck(identity:unknown):Promise<{account:string;subject:string;runtime:string}|null>{
+  const file=appsEnv("MANAGED_PROFILE"),receipt=appsEnv("SETUP_RECEIPT");if(!file)return null;
   const profile=JSON.parse(await readFile(file,"utf8")) as Profile;
-  if(typeof account!=="string"||account!==profile.account)throw Error("Managed participant account mismatch.");
-  const temporary=`${receipt}.${process.pid}.tmp`;
-  await writeFile(temporary,JSON.stringify({runtime:profile.runtime,account,subject:profile.subject,verifiedAt:new Date().toISOString()}),{mode:0o600});
-  await rename(temporary,receipt);
+  const authenticated=identity as {issuer?:unknown;subject?:unknown}|null;
+  if(authenticated?.subject!==profile.subject||authenticated?.issuer!==profile.issuer)throw Error("Managed participant identity mismatch.");
+  const result={runtime:profile.runtime,account:profile.account,subject:profile.subject};
+  if(receipt){
+    const temporary=`${receipt}.${process.pid}.tmp`;
+    await writeFile(temporary,JSON.stringify({...result,verifiedAt:new Date().toISOString()}),{mode:0o600});
+    await rename(temporary,receipt);
+  }
+  return result;
 }
