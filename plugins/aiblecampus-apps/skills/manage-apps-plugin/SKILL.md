@@ -13,7 +13,9 @@ First distinguish installation, enablement, and tools callable in this conversat
 
 ### Claude Desktop Cowork
 
-Claude Code installation does not install a Cowork plugin. Do not run CLI installation or Code slash commands for Cowork. When MCP is absent, give the user this tested Desktop procedure:
+Claude Code installation alone does not install a Cowork plugin. Managed third-party Desktop deployments may provision the official marketplace with `allowedPluginMarketplaces` and its MCP server with `managedMcpServers`. If `apps_plugin_status` works, do not ask for manual installation. A managed-device authentication failure requires the event operator to check that laptop registration; do not copy another runtime's credentials or start a different browser login as a fallback. Do not change administrator policy during an ordinary deployment request.
+
+For an unmanaged Desktop with no callable MCP tools, give the user this tested procedure:
 
 1. Click the name at the bottom left, then Settings, Plugins, Browse at the top right.
 2. In the modal click the + on the right, Add from repository, and enter https://github.com/letsur-dev/aiblecampus-plugins.

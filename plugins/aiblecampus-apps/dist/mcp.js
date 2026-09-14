@@ -21472,6 +21472,154 @@ function appsEnv(name) {
   return process.env[`APPS_${name}`]?.trim();
 }
 
+// mcp/managed-auth.ts
+import { createHash as createHash2, createPrivateKey as createPrivateKey2, randomUUID as randomUUID2, sign as sign2 } from "node:crypto";
+import { readFile as readFile2, writeFile as writeFile2, rename } from "node:fs/promises";
+
+// mcp/dpop.ts
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  generateKeyPairSync,
+  randomUUID,
+  sign
+} from "node:crypto";
+function encodeJson(value) {
+  return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+function normalizedHtu(value) {
+  const url2 = new URL(value);
+  return `${url2.origin}${url2.pathname}`;
+}
+function isPrivateJwk(value) {
+  return value.kty === "EC" && value.crv === "P-256" && typeof value.x === "string" && value.x !== "" && typeof value.y === "string" && value.y !== "" && typeof value.d === "string" && value.d !== "";
+}
+function generateDpopPrivateJwk() {
+  const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+  const jwk = privateKey.export({ format: "jwk" });
+  if (!isPrivateJwk(jwk)) throw new Error("DPoP \uAE30\uAE30 \uD0A4\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uB2E4");
+  return jwk;
+}
+function publicDpopJwk(privateJwk) {
+  if (!isPrivateJwk(privateJwk)) throw new Error("DPoP \uAE30\uAE30 \uD0A4 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+  return {
+    kty: "EC",
+    crv: "P-256",
+    x: privateJwk.x,
+    y: privateJwk.y
+  };
+}
+function dpopJwkThumbprint(publicJwk) {
+  const canonical = JSON.stringify({
+    crv: publicJwk.crv,
+    kty: publicJwk.kty,
+    x: publicJwk.x,
+    y: publicJwk.y
+  });
+  return createHash("sha256").update(canonical).digest("base64url");
+}
+function accessTokenHash(accessToken) {
+  return createHash("sha256").update(accessToken).digest("base64url");
+}
+function createDpopProof(args) {
+  const publicJwk = publicDpopJwk(args.privateJwk);
+  const header = encodeJson({
+    alg: "ES256",
+    typ: "dpop+jwt",
+    jwk: publicJwk
+  });
+  const payload = encodeJson({
+    htm: args.method.toUpperCase(),
+    htu: normalizedHtu(args.url),
+    iat: Math.floor((args.now ?? Date.now)() / 1e3),
+    jti: args.jti ?? randomUUID(),
+    ...args.accessToken === void 0 ? {} : { ath: accessTokenHash(args.accessToken) }
+  });
+  const signature = sign(
+    "sha256",
+    Buffer.from(`${header}.${payload}`),
+    {
+      key: createPrivateKey({ key: args.privateJwk, format: "jwk" }),
+      dsaEncoding: "ieee-p1363"
+    }
+  ).toString("base64url");
+  return `${header}.${payload}.${signature}`;
+}
+function dpopKeyThumbprint(privateJwk) {
+  return dpopJwkThumbprint(publicDpopJwk(privateJwk));
+}
+function assertDpopPrivateJwk(value) {
+  if (!isPrivateJwk(value)) throw new Error("DPoP \uAE30\uAE30 \uD0A4 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+  createPublicKey(createPrivateKey({ key: value, format: "jwk" }));
+}
+
+// mcp/managed-auth.ts
+var cached2 = /* @__PURE__ */ new Map();
+var pending = /* @__PURE__ */ new Map();
+var digest = (value) => createHash2("sha256").update(value).digest("base64url");
+var encode3 = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+function enrollmentProof(key, peer, profile) {
+  const header = encode3({ alg: "ES256", typ: "aible-enrollment+jwt", jwk: publicDpopJwk(key) });
+  const payload = encode3({ htu: `${profile.issuer}/device/enrollment/token`, htm: "POST", iat: Math.floor(Date.now() / 1e3), jti: randomUUID2(), enrollmentId: profile.id, runtime: profile.runtime, secretHash: digest(profile.secret), peer });
+  const signature = sign2("sha256", Buffer.from(`${header}.${payload}`), { key: createPrivateKey2({ key, format: "jwk" }), dsaEncoding: "ieee-p1363" }).toString("base64url");
+  return `${header}.${payload}.${signature}`;
+}
+async function exchange(profile) {
+  const response = await fetch(`${profile.issuer}/device/enrollment/token`, {
+    method: "POST",
+    redirect: "error",
+    signal: AbortSignal.timeout(2e4),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      id: profile.id,
+      secret: profile.secret,
+      runtime: profile.runtime,
+      machineProof: enrollmentProof(profile.machineKey, dpopKeyThumbprint(profile.runtimeKey), profile),
+      runtimeProof: enrollmentProof(profile.runtimeKey, dpopKeyThumbprint(profile.machineKey), profile)
+    })
+  });
+  if (!response.ok) throw Error("Managed device registration rejected. Contact the event operator.");
+  const body = await response.json();
+  if (body["subject"] !== profile.subject || body["token_type"] !== "DPoP" || typeof body["access_token"] !== "string" || typeof body["expires_in"] !== "number" || body["expires_in"] <= 0 || body["expires_in"] > 300) throw Error("Managed device response did not match this participant.");
+  return { token: body["access_token"], expiresAt: Date.now() + body["expires_in"] * 1e3 };
+}
+async function managedRequestHeaders(apiBase2, url2, method) {
+  const file2 = appsEnv("MANAGED_PROFILE");
+  if (!file2) return null;
+  try {
+    const raw = await readFile2(file2, "utf8");
+    if (Buffer.byteLength(raw) > 32768) throw Error("oversize");
+    const profile = JSON.parse(raw);
+    if (profile.version !== 1 || !["code", "cowork"].includes(profile.runtime) || typeof profile.secret !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(profile.secret) || typeof profile.subject !== "string" || profile.apiBase.replace(/\/+$/, "") !== apiBase2.replace(/\/+$/, "") || new URL(profile.issuer).protocol !== "https:" || new URL(profile.issuer).origin !== profile.issuer || new URL(url2).origin !== new URL(apiBase2).origin || !Number.isFinite(Date.parse(profile.expiresAt)) || Date.parse(profile.expiresAt) <= Date.now()) throw Error("invalid profile");
+    assertDpopPrivateJwk(profile.machineKey);
+    assertDpopPrivateJwk(profile.runtimeKey);
+    const key = digest(raw);
+    let credential = cached2.get(key);
+    if (!credential || credential.expiresAt <= Date.now() + 3e4) {
+      let inflight = pending.get(key);
+      if (!inflight) {
+        inflight = exchange(profile).finally(() => pending.delete(key));
+        pending.set(key, inflight);
+      }
+      credential = await inflight;
+      cached2.set(key, credential);
+    }
+    return { authorization: `DPoP ${credential.token}`, dpop: createDpopProof({ privateJwk: profile.runtimeKey, method, url: url2, accessToken: credential.token }) };
+  } catch {
+    throw Error("Managed Apps authentication failed. Ask the event operator to check this laptop registration.");
+  }
+}
+async function recordManagedCheck(account) {
+  const file2 = appsEnv("MANAGED_PROFILE"), receipt = appsEnv("SETUP_RECEIPT");
+  if (!file2 || !receipt) return;
+  const profile = JSON.parse(await readFile2(file2, "utf8"));
+  if (typeof account !== "string" || account !== profile.account) throw Error("Managed participant account mismatch.");
+  const temporary = `${receipt}.${process.pid}.tmp`;
+  await writeFile2(temporary, JSON.stringify({ runtime: profile.runtime, account, subject: profile.subject, verifiedAt: (/* @__PURE__ */ new Date()).toISOString() }), { mode: 384 });
+  await rename(temporary, receipt);
+}
+
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
@@ -31045,7 +31193,7 @@ var StdioServerTransport = class {
 };
 
 // mcp/index.ts
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash4 } from "node:crypto";
 import { existsSync } from "node:fs";
 import path8 from "node:path";
 
@@ -34066,7 +34214,7 @@ async function packDirectory(root, excludes = []) {
 }
 
 // mcp/local-env.ts
-import { readFile as readFile2, realpath } from "node:fs/promises";
+import { readFile as readFile3, realpath } from "node:fs/promises";
 import path3 from "node:path";
 var ENVIRONMENT_KEY = /^[A-Z_][A-Z0-9_]*$/;
 function parseDoubleQuoted(value, file2, line) {
@@ -34135,7 +34283,7 @@ async function loadSelectedLocalEnv(projectRoot, selection) {
   if (overlap !== void 0) {
     throw new Error(`\uAC19\uC740 \uD0A4\uB97C \uC77C\uBC18 \uC124\uC815\uACFC \uBE44\uBC00\uAC12\uC73C\uB85C \uD568\uAED8 \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uB2E4: ${overlap}`);
   }
-  const parsed = parseLocalEnv(await readFile2(resolved, "utf8"), selection.file);
+  const parsed = parseLocalEnv(await readFile3(resolved, "utf8"), selection.file);
   const env = {};
   const secrets = {};
   for (const key of envKeys) {
@@ -34155,7 +34303,7 @@ async function loadSelectedLocalEnv(projectRoot, selection) {
 }
 
 // mcp/device-auth.ts
-import { mkdir as mkdir3, readFile as readFile3, rename, writeFile as writeFile2 } from "node:fs/promises";
+import { mkdir as mkdir3, readFile as readFile4, rename as rename2, writeFile as writeFile3 } from "node:fs/promises";
 import { homedir, hostname as hostname3 } from "node:os";
 import path5 from "node:path";
 
@@ -34203,72 +34351,6 @@ async function withFileLock(file2, work) {
   }
 }
 
-// mcp/dpop.ts
-import {
-  createHash,
-  createPrivateKey,
-  createPublicKey,
-  generateKeyPairSync,
-  randomUUID,
-  sign
-} from "node:crypto";
-function encodeJson(value) {
-  return Buffer.from(JSON.stringify(value)).toString("base64url");
-}
-function normalizedHtu(value) {
-  const url2 = new URL(value);
-  return `${url2.origin}${url2.pathname}`;
-}
-function isPrivateJwk(value) {
-  return value.kty === "EC" && value.crv === "P-256" && typeof value.x === "string" && value.x !== "" && typeof value.y === "string" && value.y !== "" && typeof value.d === "string" && value.d !== "";
-}
-function generateDpopPrivateJwk() {
-  const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
-  const jwk = privateKey.export({ format: "jwk" });
-  if (!isPrivateJwk(jwk)) throw new Error("DPoP \uAE30\uAE30 \uD0A4\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uB2E4");
-  return jwk;
-}
-function publicDpopJwk(privateJwk) {
-  if (!isPrivateJwk(privateJwk)) throw new Error("DPoP \uAE30\uAE30 \uD0A4 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
-  return {
-    kty: "EC",
-    crv: "P-256",
-    x: privateJwk.x,
-    y: privateJwk.y
-  };
-}
-function accessTokenHash(accessToken) {
-  return createHash("sha256").update(accessToken).digest("base64url");
-}
-function createDpopProof(args) {
-  const publicJwk = publicDpopJwk(args.privateJwk);
-  const header = encodeJson({
-    alg: "ES256",
-    typ: "dpop+jwt",
-    jwk: publicJwk
-  });
-  const payload = encodeJson({
-    htm: args.method.toUpperCase(),
-    htu: normalizedHtu(args.url),
-    iat: Math.floor((args.now ?? Date.now)() / 1e3),
-    jti: args.jti ?? randomUUID(),
-    ...args.accessToken === void 0 ? {} : { ath: accessTokenHash(args.accessToken) }
-  });
-  const signature = sign(
-    "sha256",
-    Buffer.from(`${header}.${payload}`),
-    {
-      key: createPrivateKey({ key: args.privateJwk, format: "jwk" }),
-      dsaEncoding: "ieee-p1363"
-    }
-  ).toString("base64url");
-  return `${header}.${payload}.${signature}`;
-}
-function assertDpopPrivateJwk(value) {
-  if (!isPrivateJwk(value)) throw new Error("DPoP \uAE30\uAE30 \uD0A4 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
-  createPublicKey(createPrivateKey({ key: value, format: "jwk" }));
-}
-
 // mcp/device-auth.ts
 var DEFAULT_DEVICE_CLIENT_ID = "aiblecampus-apps-device";
 var DEFAULT_RESOURCE = "urn:aiblecampus:apps";
@@ -34301,7 +34383,7 @@ function parseState(raw, apiBase2) {
 }
 async function readState(apiBase2) {
   try {
-    return parseState(await readFile3(stateFile(), "utf8"), apiBase2);
+    return parseState(await readFile4(stateFile(), "utf8"), apiBase2);
   } catch (error51) {
     if (error51.code !== "ENOENT") {
       throw new Error("\uAE30\uAE30 Credential \uC800\uC7A5 \uD30C\uC77C\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
@@ -34313,9 +34395,9 @@ async function writeState(state) {
   const file2 = stateFile();
   await mkdir3(path5.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.tmp`;
-  await writeFile2(temporary, `${JSON.stringify(state, null, 2)}
+  await writeFile3(temporary, `${JSON.stringify(state, null, 2)}
 `, { mode: 384 });
-  await rename(temporary, file2);
+  await rename2(temporary, file2);
 }
 function identityBase(apiBase2) {
   const value = appsEnv("IDENTITY_URL");
@@ -34418,6 +34500,8 @@ async function activeCredential(apiBase2) {
   return refresh;
 }
 async function deviceRequestHeaders(apiBase2, url2, method) {
+  const managed = await managedRequestHeaders(apiBase2, url2, method);
+  if (managed !== null) return managed;
   const credential = await activeCredential(apiBase2);
   if (credential === null) return null;
   return {
@@ -34452,7 +34536,7 @@ async function startDeviceLogin(apiBase2) {
   if (!deviceCode || !userCode || !verificationUri || !expiresIn || expiresIn <= 0) {
     throw new Error("Identity Device Flow \uC751\uB2F5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
   }
-  const pending = {
+  const pending2 = {
     deviceCode,
     userCode,
     verificationUri,
@@ -34463,23 +34547,23 @@ async function startDeviceLogin(apiBase2) {
     privateJwk
   };
   const state = await readState(apiBase2);
-  state.pending = pending;
+  state.pending = pending2;
   await writeState(state);
   return {
     userCode,
     verificationUri,
-    verificationUriComplete: pending.verificationUriComplete,
-    expiresAt: new Date(pending.expiresAt).toISOString()
+    verificationUriComplete: pending2.verificationUriComplete,
+    expiresAt: new Date(pending2.expiresAt).toISOString()
   };
 }
 async function completeDeviceLogin(apiBase2) {
   const state = await readState(apiBase2);
-  const pending = state.pending;
-  if (pending === null) throw new Error("\uBA3C\uC800 start_apps_login \uC744 \uC2E4\uD589\uD574\uC57C \uD55C\uB2E4");
-  let intervalSeconds = pending.intervalSeconds;
-  let nextPollAt = pending.nextPollAt;
+  const pending2 = state.pending;
+  if (pending2 === null) throw new Error("\uBA3C\uC800 start_apps_login \uC744 \uC2E4\uD589\uD574\uC57C \uD55C\uB2E4");
+  let intervalSeconds = pending2.intervalSeconds;
+  let nextPollAt = pending2.nextPollAt;
   for (let poll = 0; poll < 12; poll += 1) {
-    if (Date.now() >= pending.expiresAt) {
+    if (Date.now() >= pending2.expiresAt) {
       state.pending = null;
       await writeState(state);
       return { status: "expired" };
@@ -34495,14 +34579,14 @@ async function completeDeviceLogin(apiBase2) {
         "content-type": "application/x-www-form-urlencoded",
         accept: "application/json",
         dpop: createDpopProof({
-          privateJwk: pending.privateJwk,
+          privateJwk: pending2.privateJwk,
           method: "POST",
           url: endpoint
         })
       },
       body: new URLSearchParams({
         grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-        device_code: pending.deviceCode,
+        device_code: pending2.deviceCode,
         client_id: clientId(),
         resource: resourceIndicator()
       })
@@ -34512,7 +34596,7 @@ async function completeDeviceLogin(apiBase2) {
       const deviceLabel = deviceName();
       state.credential = tokenCredential(body, {
         deviceLabel,
-        privateJwk: pending.privateJwk
+        privateJwk: pending2.privateJwk
       });
       state.pending = null;
       await writeState(state);
@@ -34539,8 +34623,8 @@ async function completeDeviceLogin(apiBase2) {
 }
 
 // mcp/persistence-migration.ts
-import { createHash as createHash2 } from "node:crypto";
-import { mkdir as mkdir4, readFile as readFile4, readdir, stat as stat2 } from "node:fs/promises";
+import { createHash as createHash3 } from "node:crypto";
+import { mkdir as mkdir4, readFile as readFile5, readdir, stat as stat2 } from "node:fs/promises";
 import { backup, DatabaseSync } from "node:sqlite";
 import path6 from "node:path";
 var SAFE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -34549,7 +34633,7 @@ var MAX_ROWS = 1e5;
 var MAX_FILES = 1e3;
 var MAX_TOTAL_BYTES = 512 * 1024 * 1024;
 function sha256(content) {
-  return createHash2("sha256").update(content).digest("hex");
+  return createHash3("sha256").update(content).digest("hex");
 }
 function sqliteIdentifier(value) {
   if (!SAFE_IDENTIFIER.test(value)) {
@@ -34573,7 +34657,7 @@ function snapshotValue(value) {
 }
 async function snapshotSqlite(databasePath) {
   const absolute = path6.resolve(databasePath);
-  const source = await readFile4(absolute);
+  const source = await readFile5(absolute);
   const database = new DatabaseSync(absolute, { readOnly: true });
   try {
     const tableStatement = database.prepare(
@@ -34699,7 +34783,7 @@ async function snapshotFiles(sourceDirectory) {
     if (totalBytes > MAX_TOTAL_BYTES) {
       throw new Error("\uD30C\uC77C \uC774\uC804 \uC804\uCCB4 \uD06C\uAE30\uB294 512MB \uC774\uD558\uC5EC\uC57C \uD55C\uB2E4");
     }
-    const content = await readFile4(absolute);
+    const content = await readFile5(absolute);
     objects.push({
       key: key.split(path6.sep).join("/"),
       contentType: contentType(key),
@@ -34771,8 +34855,8 @@ async function openVerificationUrl(url2) {
 }
 
 // mcp/deployment-attempts.ts
-import { randomUUID as randomUUID2 } from "node:crypto";
-import { mkdir as mkdir5, readFile as readFile5, rename as rename2, writeFile as writeFile3 } from "node:fs/promises";
+import { randomUUID as randomUUID3 } from "node:crypto";
+import { mkdir as mkdir5, readFile as readFile6, rename as rename3, writeFile as writeFile4 } from "node:fs/promises";
 import { homedir as homedir2 } from "node:os";
 import path7 from "node:path";
 var DEFAULT_TTL_MS = 30 * 60 * 1e3;
@@ -34808,7 +34892,7 @@ function parseState2(raw) {
 }
 async function readState2(file2) {
   try {
-    return parseState2(await readFile5(file2, "utf8"));
+    return parseState2(await readFile6(file2, "utf8"));
   } catch (error51) {
     if (error51.code === "ENOENT") return emptyState2();
     if (error51 instanceof SyntaxError || error51 instanceof Error && error51.message === "\uBC30\uD3EC \uC694\uCCAD \uBCF5\uAD6C \uD30C\uC77C \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4") {
@@ -34821,12 +34905,12 @@ async function readState2(file2) {
 }
 async function writeState2(file2, state) {
   await mkdir5(path7.dirname(file2), { recursive: true, mode: 448 });
-  const temporary = `${file2}.${process.pid}.${randomUUID2()}.tmp`;
-  await writeFile3(temporary, `${JSON.stringify(state, null, 2)}
+  const temporary = `${file2}.${process.pid}.${randomUUID3()}.tmp`;
+  await writeFile4(temporary, `${JSON.stringify(state, null, 2)}
 `, {
     mode: 384
   });
-  await rename2(temporary, file2);
+  await rename3(temporary, file2);
 }
 async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
   const file2 = options.file ?? defaultAttemptFile();
@@ -34843,7 +34927,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
       return { key: existing.key, recovered: true };
     }
     const attempt = {
-      key: randomUUID2(),
+      key: randomUUID3(),
       expiresAt: now + ttlMs
     };
     state.attempts[fingerprint] = attempt;
@@ -34853,7 +34937,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.25.5";
+var PLUGIN_VERSION = "0.25.6";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -34882,7 +34966,7 @@ function sortedEntries(values) {
 }
 var GIT_ATTEMPT_TTL_MS = 90 * 1e3;
 function deploymentFingerprint(input) {
-  return createHash3("sha256").update(
+  return createHash4("sha256").update(
     JSON.stringify({
       apiBase: apiBase(),
       source: input.source,
@@ -34936,7 +35020,7 @@ async function callApi(urlPath, init = {}, workspace) {
   try {
     const url2 = `${apiBase()}${urlPath}`;
     const method = init.method ?? "GET";
-    const serviceCredential = appsEnv("TOKEN");
+    const serviceCredential = appsEnv("MANAGED_PROFILE") ? void 0 : appsEnv("TOKEN");
     const authentication = serviceCredential ? { authorization: `Bearer ${serviceCredential}` } : await deviceRequestHeaders(apiBase(), url2, method);
     if (authentication === null) {
       return { ok: false, status: 0, body: TOKEN_MISSING };
@@ -35330,7 +35414,7 @@ server.registerTool(
     try {
       attempt = await deploymentAttempt(
         deploymentFingerprint({
-          source: createHash3("sha256").update(tarball).digest("hex"),
+          source: createHash4("sha256").update(tarball).digest("hex"),
           name: deploymentName,
           organization,
           sourceBaseCommit: base,
@@ -35819,7 +35903,8 @@ server.registerTool(
   async () => textResult({
     plugin: "aiblecampus-apps",
     version: PLUGIN_VERSION,
-    apiUrl: apiBase()
+    apiUrl: apiBase(),
+    authenticationMode: appsEnv("MANAGED_PROFILE") ? "managed-device" : "interactive"
   })
 );
 server.registerTool(
@@ -35838,6 +35923,8 @@ server.registerTool(
   async ({ workspace }) => {
     const result = await callApi("/v1/me", {}, workspace);
     if (!result.ok) return failure("\uC5F0\uACB0\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
+    const user = result.body.user;
+    await recordManagedCheck(user?.handle);
     return textResult({
       \uC8FC\uC18C: apiBase(),
       ...result.body,

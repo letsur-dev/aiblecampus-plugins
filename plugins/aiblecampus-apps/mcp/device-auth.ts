@@ -1,4 +1,5 @@
 import { appsEnv } from "./config.ts";
+import { managedRequestHeaders } from "./managed-auth.ts";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
 import path from "node:path";
@@ -221,6 +222,8 @@ export async function deviceRequestHeaders(
   url: string,
   method: string,
 ): Promise<Record<string, string> | null> {
+  const managed = await managedRequestHeaders(apiBase, url, method);
+  if (managed !== null) return managed;
   const credential = await activeCredential(apiBase);
   if (credential === null) return null;
   return {

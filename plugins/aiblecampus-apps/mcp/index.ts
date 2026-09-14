@@ -1,5 +1,6 @@
 import { checkoutSnapshot, readSourceBase, saveSourceBase } from "./source-checkout.ts";
 import { appsEnv } from "./config.ts";
+import { recordManagedCheck } from "./managed-auth.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createHash } from "node:crypto";
@@ -24,7 +25,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.25.5";
+const PLUGIN_VERSION = "0.25.6";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -203,7 +204,7 @@ async function callApi(
   try {
     const url = `${apiBase()}${urlPath}`;
     const method = init.method ?? "GET";
-    const serviceCredential = appsEnv("TOKEN");
+    const serviceCredential = appsEnv("MANAGED_PROFILE") ? undefined : appsEnv("TOKEN");
     const authentication = serviceCredential
       ? { authorization: `Bearer ${serviceCredential}` }
       : await deviceRequestHeaders(apiBase(), url, method);
@@ -1213,6 +1214,7 @@ server.registerTool(
     plugin: "aiblecampus-apps",
     version: PLUGIN_VERSION,
     apiUrl: apiBase(),
+    authenticationMode: appsEnv("MANAGED_PROFILE") ? "managed-device" : "interactive",
   }),
 );
 
@@ -1233,6 +1235,8 @@ server.registerTool(
   async ({ workspace }) => {
     const result = await callApi("/v1/me", {}, workspace);
     if (!result.ok) return failure("연결을 확인하지 못했다", result);
+    const user = (result.body as {user?:{handle?:unknown}}).user;
+    await recordManagedCheck(user?.handle);
     return textResult({
       주소: apiBase(),
       ...(result.body as JsonRecord),
