@@ -1,3 +1,4 @@
+import { AiSetupError, configureAiGateway, verifyAiGateway } from "./ai-gateway.ts";
 import { checkoutSnapshot, readSourceBase, saveSourceBase } from "./source-checkout.ts";
 import { appsEnv } from "./config.ts";
 import { recordManagedCheck } from "./managed-auth.ts";
@@ -25,7 +26,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.25.9";
+const PLUGIN_VERSION = "0.26.0";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -314,6 +315,41 @@ function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResu
 const server = new McpServer({
   name: "aiblecampus-apps",
   version: PLUGIN_VERSION,
+});
+
+server.registerTool("get_ai_gateway", {
+  title: "산출물 AI 환경과 모델 확인",
+  description: "AI로 요청하고 응답하는 기능, 챗봇, 요약 등 산출물 AI 기능 구현에 사용합니다. Portal의 지정 환경과 현재 모델 목록을 확인하며 API 키는 반환하지 않습니다.",
+  inputSchema: { workspace: WorkspaceInputSchema },
+  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+}, async ({ workspace }) => {
+  const result = await callApi("/v1/ai-gateway", { signal: AbortSignal.timeout(240_000), redirect: "error" }, workspace);
+  if (!result.ok) return errorResult(`산출물 AI 환경 조회에 실패했습니다 (상태 ${result.status}). 0 또는 401이면 Apps 로그인을 확인하고 403이면 workspace 권한, 503이면 운영 환경 연결을 확인하십시오.`);
+  const parsed = z.object({ environment: z.object({ id: z.string().uuid(), name: z.string() }), baseUrl: z.literal("https://gw.letsur.ai/v1"), models: z.array(z.string()), documentationUrl: z.string() }).safeParse(result.body);
+  return parsed.success ? textResult(parsed.data) : errorResult("AI 환경 응답 형식을 확인하지 못했습니다.");
+});
+
+server.registerTool("configure_ai_gateway", {
+  title: "프로젝트에 산출물 AI 설정 연결",
+  description: "AI 기능 구현을 위해 Portal 산출물 환경의 최신 키를 MCP 내부에서 받아 프로젝트 .env.apps-ai에 저장합니다. 모델은 get_ai_gateway 결과에서 선택합니다. 키를 응답에 출력하지 않으며 배포하지 않습니다.",
+  inputSchema: { path: z.string().min(1), model: z.string().min(1).max(200), workspace: WorkspaceInputSchema },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+}, async ({ path: projectPath, model, workspace }) => {
+  try {
+    const result = await callApi("/v1/ai-gateway/configuration", { method: "POST", signal: AbortSignal.timeout(240_000), redirect: "error" }, workspace);
+    if (!result.ok) return errorResult(`산출물 AI 설정을 가져오지 못했습니다 (상태 ${result.status}). 0 또는 401이면 Apps 로그인을 확인하고 403이면 workspace 권한, 503이면 운영 환경 연결을 확인하십시오.`);
+    return textResult(await configureAiGateway(projectPath, model, result.body));
+  } catch (error) { if (error instanceof AiSetupError) return errorResult(error.message); return errorResult("AI 설정을 저장하지 못했습니다. 프로젝트 경로, 기존 .env.apps-ai와 .gitignore의 파일 소유 및 잠금 상태를 확인하십시오. 기존 파일 내용을 대화에 출력하지 마십시오."); }
+});
+
+server.registerTool("verify_ai_gateway", {
+  title: "산출물 AI 요청과 응답 검증",
+  description: "프로젝트 .env.apps-ai를 내부에서 읽어 짧은 실제 AI 요청을 한 번 보냅니다. 소량의 사용량이 발생합니다. 키와 응답 원문은 출력하지 않습니다. 산출물 서버 통합 검증이나 배포를 대신하지 않습니다.",
+  inputSchema: { path: z.string().min(1) },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+}, async ({ path: projectPath }) => {
+  try { return textResult(await verifyAiGateway(projectPath)); }
+  catch { return errorResult("AI 연결 검증을 완료하지 못했습니다. .env.apps-ai 설정과 네트워크를 확인하십시오. 자동 재시도는 수행하지 않았습니다."); }
 });
 
 server.registerTool(

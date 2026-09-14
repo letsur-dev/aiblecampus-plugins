@@ -9,6 +9,8 @@ description: 사용자가 명시적으로 요청한 에이블캠퍼스 Apps 배�
 
 플러그인 설치나 복구가 필요하면 [manage-apps-plugin](../manage-apps-plugin/SKILL.md)을 따른다.
 
+AI 요청과 응답 기능 구현에는 [build-ai-feature](../build-ai-feature/SKILL.md)를 사용한다. 해당 스킬이 만든 `.env.apps-ai`가 있으면 반환된 `localEnv` 선택으로 검증과 배포에 전달하며 키 원문을 읽어 출력하지 않는다.
+
 ## 배포 실행 조건
 
 - 현재 작업에 사용자의 명시적인 배포, 공개 또는 운영 반영 요청이 있을 때만 배포한다. 짧은 자연어 요청이면 충분하며 스킬 명령어 입력은 필요하지 않다.

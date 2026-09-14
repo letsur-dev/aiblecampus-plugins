@@ -8,7 +8,7 @@
     {
       "name": "aiblecampus-apps",
       "source": "./plugins/aiblecampus-apps",
-      "description": "에이블캠퍼스 Apps 배포 도구. 프로젝트를 빌드하고 격리 실행해 접속 URL을 발급한다."
+      "description": "에이블캠퍼스 Apps 산출물의 AI 기능을 구현하고 검증한다. 배포는 명시적으로 요청받았을 때만 수행한다."
     }
   ]
 }
