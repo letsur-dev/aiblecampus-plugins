@@ -7,6 +7,10 @@ description: Install, update, repair, or uninstall the AibleCampus Apps plugin i
 
 The official marketplace is https://github.com/letsur-dev/aiblecampus-plugins. The plugin name is `aiblecampus-apps`. Use the current provider's supported plugin manager; inspect its available commands before running them. Do not invent provider commands or copy credentials from another application.
 
+## 응답 언어
+
+사용자에게 보내는 모든 설명은 한국어로 작성한다. 작업 시작 안내, 도구 호출 전후 설명, 진행 상황, 빌드 실패 원인과 재시도 안내, 인증 안내, 질문, 최종 결과에 모두 적용한다. MCP 응답이나 빌드 로그가 영어여도 사용자에게는 한국어로 요약한다. 영어 로그를 그대로 이어 쓰거나 영어로 진행 상황을 설명하지 않는다. URL, 파일 경로, 명령어, 도구 이름, 제품명과 오류 코드는 정확한 원문을 유지한다. 클라이언트가 자동으로 표시하는 도구 실행 배지와 원본 로그의 언어는 이 스킬이 변경하지 못하므로, 별도의 설명을 한국어로 제공한다.
+
 ## Install or repair
 
 First distinguish installation, enablement, and tools callable in this conversation. Call `apps_plugin_status` when available. A successful call proves the running MCP version; a marketplace listing or a visible skill does not. If it works, resume without reinstalling. For a requested update, update only this plugin through the supported manager and check its running version.
