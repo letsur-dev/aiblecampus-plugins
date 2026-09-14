@@ -1,7 +1,7 @@
 {
   "name": "aiblecampus-apps",
-  "version": "0.25.8+codex.20260914143000",
-  "description": "Build, validate, deploy, and manage web applications on AibleCampus Apps.",
+  "version": "0.25.9+codex.20260915010000",
+  "description": "Validate and manage web applications on AibleCampus Apps. Deploy only when the user explicitly requests deployment.",
   "author": {
     "name": "에이블캠퍼스"
   },
@@ -37,8 +37,8 @@
   },
   "interface": {
     "displayName": "에이블캠퍼스 Apps",
-    "shortDescription": "웹앱을 완성하고 검증해 바로 배포합니다",
-    "longDescription": "요청한 웹사이트나 웹앱을 완성하고 배포 가능 여부를 검증한 뒤 에이블캠퍼스 Apps에 배포합니다. 배포 상태, 로그, 환경변수, 비밀값, PostgreSQL과 파일 Storage도 함께 관리할 수 있습니다.",
+    "shortDescription": "명시적으로 요청한 웹앱 배포를 수행합니다",
+    "longDescription": "명시적인 배포 요청이 있을 때 웹사이트나 웹앱을 검증하고 에이블캠퍼스 Apps에 배포합니다. 개발이나 수정만 요청하면 자동으로 배포하지 않습니다. 배포 상태, 로그, 환경변수, 비밀값, PostgreSQL과 파일 Storage도 함께 관리할 수 있습니다.",
     "developerName": "에이블캠퍼스",
     "category": "Developer Tools",
     "capabilities": [

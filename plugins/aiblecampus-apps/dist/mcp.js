@@ -34942,7 +34942,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.25.8";
+var PLUGIN_VERSION = "0.25.9";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
