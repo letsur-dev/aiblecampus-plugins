@@ -35105,7 +35105,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.28.2";
+var PLUGIN_VERSION = "0.28.3";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }

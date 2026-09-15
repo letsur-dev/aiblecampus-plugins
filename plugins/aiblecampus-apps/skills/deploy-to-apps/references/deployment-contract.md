@@ -61,6 +61,7 @@ Git 주소를 검증한 뒤 원격 branch가 바뀌면 검증한 소스와 배�
 
 ## 패키징과 접속 검증
 
+- 기본 Node 빌드는 package manifest와 lockfile만 복사한 뒤 의존성을 설치하고, 이후 나머지 소스를 복사한다. postinstall 또는 prepare가 로컬 스크립트나 schema 파일을 필요로 하면 해당 파일을 설치 전에 복사하는 자체 Dockerfile을 사용한다. lifecycle 스크립트를 무조건 비활성화하지 않는다.
 - 자체 Dockerfile이 없다면 플랫폼 기본 빌드를 먼저 사용한다. 속도만을 이유로 앱의 실행 방식이나 파일 구성을 바꾸지 않는다.
 - 자체 Dockerfile에서 별도의 `RUN chown -R`가 의존성 전체를 다시 기록하면, 설치 또는 빌드로 파일을 생성하는 RUN 안에서 소유권을 지정하고 소스는 `COPY --chown`으로 복사하는 방식을 검토한다. root 설치와 비특권 실행, 앱의 쓰기 권한을 유지한다.
 - Next.js standalone 또는 다단계 빌드는 실제 프로젝트가 지원할 때 선택한다. public, static, 동적으로 읽는 파일, native 모듈과 실행 시 의존성을 확인한다. 일반 Node 앱에 standalone 구성을 강제하거나 파일을 추측해서 삭제하지 않는다.
