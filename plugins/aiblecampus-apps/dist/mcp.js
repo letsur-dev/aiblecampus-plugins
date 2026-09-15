@@ -35087,7 +35087,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.27.0";
+var PLUGIN_VERSION = "0.28.0";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -35441,7 +35441,7 @@ server.registerTool(
         "\uBC30\uD3EC\uD560 \uD504\uB85C\uC81D\uD2B8\uC758 \uC704\uCE58. \uB85C\uCEEC \uB514\uB809\uD1A0\uB9AC\uC758 \uC808\uB300 \uACBD\uB85C(\uBCF4\uD1B5 \uD604\uC7AC \uC791\uC5C5 \uB514\uB809\uD1A0\uB9AC)\uC774\uAC70\uB098 public git \uC800\uC7A5\uC18C\uC758 https \uC8FC\uC18C\uB2E4"
       ),
       name: external_exports.string().optional().describe(
-        "\uBC30\uD3EC \uC774\uB984. \uC811\uC18D URL \uC758 \uD558\uC704 \uB3C4\uBA54\uC778\uC774 \uB41C\uB2E4. \uC0DD\uB7B5\uD558\uBA74 \uB514\uB809\uD1A0\uB9AC \uC774\uB984\uC5D0\uC11C \uB9CC\uB4E0\uB2E4"
+        "\uAD00\uB9AC\uC6A9 \uC571 \uC774\uB984. \uAC1C\uC778 \uC571\uC740 \uC0DD\uB7B5\uD558\uBA74 \uB514\uB809\uD1A0\uB9AC \uC774\uB984\uC5D0\uC11C \uB9CC\uB4E0\uB2E4. \uD300\uC740 \uAE30\uC874 \uC571 \uD558\uB098\uB97C \uC790\uB3D9 \uAC31\uC2E0\uD558\uBA70 \uC774\uB984\uC774\uB098 \uC8FC\uC18C\uB97C \uB2E4\uC2DC \uC815\uD558\uC9C0 \uC54A\uB294\uB2E4"
       ),
       ref: external_exports.string().optional().describe("git \uC8FC\uC18C\uC77C \uB54C\uB9CC \uC4F4\uB2E4. branch \uB098 tag \uC774\uB984. \uC0DD\uB7B5\uD558\uBA74 \uAE30\uBCF8 branch"),
       subdir: external_exports.string().optional().describe(
@@ -35545,7 +35545,7 @@ server.registerTool(
       return textResult({
         \uBC30\uD3EC\uB428: true,
         \uAE30\uC874_\uC694\uCCAD_\uBCF5\uAD6C: attempt2.recovered,
-        \uC774\uB984: deploymentName2,
+        \uC774\uB984: typeof result2.body === "object" && result2.body !== null && "name" in result2.body ? result2.body.name : deploymentName2,
         \uC18C\uC2A4: "git",
         ...typeof result2.body === "string" ? { \uC751\uB2F5: result2.body } : result2.body
       });
@@ -35635,7 +35635,7 @@ server.registerTool(
     return textResult({
       \uBC30\uD3EC\uB428: true,
       \uAE30\uC874_\uC694\uCCAD_\uBCF5\uAD6C: attempt.recovered,
-      \uC774\uB984: deploymentName,
+      \uC774\uB984: typeof result.body === "object" && result.body !== null && "name" in result.body ? result.body.name : deploymentName,
       ...typeof result.body === "string" ? { \uC751\uB2F5: result.body } : result.body
     });
   }

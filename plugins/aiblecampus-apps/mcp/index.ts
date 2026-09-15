@@ -26,7 +26,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.27.0";
+const PLUGIN_VERSION = "0.28.0";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -530,7 +530,7 @@ server.registerTool(
         .string()
         .optional()
         .describe(
-          "배포 이름. 접속 URL 의 하위 도메인이 된다. 생략하면 디렉토리 이름에서 만든다",
+          "관리용 앱 이름. 개인 앱은 생략하면 디렉토리 이름에서 만든다. 팀은 기존 앱 하나를 자동 갱신하며 이름이나 주소를 다시 정하지 않는다",
         ),
       ref: z
         .string()
@@ -653,7 +653,7 @@ server.registerTool(
       return textResult({
         배포됨: true,
         기존_요청_복구: attempt.recovered,
-        이름: deploymentName,
+        이름: typeof result.body === "object" && result.body !== null && "name" in result.body ? result.body.name : deploymentName,
         소스: "git",
         ...(typeof result.body === "string" ? { 응답: result.body } : result.body),
       });
@@ -747,7 +747,7 @@ server.registerTool(
     return textResult({
       배포됨: true,
       기존_요청_복구: attempt.recovered,
-      이름: deploymentName,
+      이름: typeof result.body === "object" && result.body !== null && "name" in result.body ? result.body.name : deploymentName,
       ...(typeof result.body === "string" ? { 응답: result.body } : result.body),
     });
   },
