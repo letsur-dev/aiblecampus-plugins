@@ -1,7 +1,7 @@
 {
   "name": "aiblecampus-apps",
-  "version": "0.26.1+codex.20260915083000",
-  "description": "에이블캠퍼스 Apps에서 AI 기능을 구현하고 검증합니다. 배포는 명시적으로 요청받았을 때만 수행합니다.",
+  "version": "0.27.0+codex.20260915120000",
+  "description": "에이블캠퍼스 Apps의 화면 디자인, 쉬운 시각적 설명과 AI 기능 개발을 지원합니다. 배포는 명시적으로 요청받았을 때만 수행합니다.",
   "author": {
     "name": "에이블캠퍼스"
   },
@@ -37,8 +37,8 @@
   },
   "interface": {
     "displayName": "에이블캠퍼스 Apps",
-    "shortDescription": "AI 기능 구현과 명시적으로 요청한 웹앱 배포",
-    "longDescription": "Portal 산출물 AI 환경과 Letsur Gateway로 AI 기능을 구현하고 검증합니다. 명시적인 배포 요청이 있을 때만 Apps에 배포하며 상태, 로그와 설정도 관리합니다.",
+    "shortDescription": "화면 디자인, 시각적 설명, AI 기능 구현과 요청한 배포",
+    "longDescription": "에이블캠퍼스 Apps의 화면 디자인, 쉬운 시각적 설명과 AI 기능 개발을 지원합니다. 배포는 명시적으로 요청받았을 때만 수행합니다.",
     "developerName": "에이블캠퍼스",
     "category": "Developer Tools",
     "capabilities": [
@@ -47,6 +47,8 @@
     ],
     "websiteURL": "https://github.com/letsur-dev/aiblecampus-plugins",
     "defaultPrompt": [
+      "이 앱의 화면을 만들고 디자인을 다듬어줘",
+      "이 앱의 데이터 흐름을 그림으로 쉽게 설명해줘",
       "이 앱에 AI로 요청하고 응답하는 기능 구현해줘",
       "이 웹앱을 완성해서 배포해줘",
       "현재 프로젝트가 배포 가능한지 확인해줘",

@@ -61,4 +61,21 @@ Apps 요청마다 access token과 요청 URL 및 method를 새 proof로 묶는�
 
 Identity의 Device 승인, 기기 목록과 개별 회수는 지원한다. private Git 저장소 인증은 아직 제공하지 않는다. PostgreSQL과 파일 Storage는 앱 사용 코드를 감지해 배포별로 자동 연결하며 운영 Credential은 사용자에게 노출하지 않는다. 기존 SQLite와 로컬 파일은 승인 전까지 변경하지 않고 계획과 읽기 전용 미리보기만 제공하며, 승인 후 로컬 백업을 남기고 빈 Apps 자원으로 실제 이전할 수 있다. Compose PostgreSQL과 외부 관리형 자원은 서비스별 수동 export 절차가 필요하다.
 
-새 설치 이름은 `aiblecampus-apps`, MCP 이름은 `apps`, 스킬 이름은 `deploy-to-apps`다. 명칭 전환 뒤 새 플러그인을 설치하고 기기 로그인을 다시 진행한다.
+새 설치 이름은 `aiblecampus-apps`, MCP 이름은 `apps`, 배포 스킬 이름은 `deploy-to-apps`다. 명칭 전환 뒤 새 플러그인을 설치하고 기기 로그인을 다시 진행한다.
+
+## 자연어로 사용하는 스킬
+
+설치 후 현재 대화에서 스킬이 로드되면 요청에 맞는 스킬을 선택한다. 모델의 선택이 누락되면 스킬 이름을 명시할 수 있다.
+
+| 요청 예시 | 스킬 |
+| --- | --- |
+| 화면을 만들고 디자인을 다듬어줘 | `frontend-design` |
+| 데이터 흐름을 그림으로 쉽게 설명해줘 | `eli5` |
+| AI로 요청하고 응답하는 기능 구현해줘 | `build-ai-feature` |
+| 에이블캠퍼스 Apps에 배포해줘 | `deploy-to-apps` |
+| 플러그인 업데이트해줘 | `manage-apps-plugin` |
+
+- `frontend-design`은 Anthropic 공식 skills 저장소, `eli5`는 Anthropic claude-plugins-community 저장소에서 가져왔다. 각 스킬에 원본, 고정된 출처 커밋과 Apache-2.0 라이선스를 포함한다.
+- `eli5`는 큰 그림과 짧은 글의 HTML 설명 자료를 만든다. 일반 진행 보고마다 호출하지 않는다.
+- 기존 디자인 시스템과 한국어 응답을 유지한다. 개발과 설명 요청만으로 배포하지 않는다.
+- 새 스킬은 0.27.0 이상에 포함된다. 기존 설치는 업데이트 후 현재 대화의 스킬 목록을 확인한다. Code에서 로드되지 않으면 같은 프로젝트의 새 대화를 사용한다.
