@@ -1,3 +1,4 @@
+import { checkPublicAccess } from "./public-access.ts";
 import { AiSetupError, configureAiGateway, verifyAiGateway } from "./ai-gateway.ts";
 import { checkoutSnapshot, readSourceBase, saveSourceBase } from "./source-checkout.ts";
 import { appsEnv } from "./config.ts";
@@ -26,7 +27,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.28.1";
+const PLUGIN_VERSION = "0.28.2";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -655,6 +656,7 @@ server.registerTool(
         기존_요청_복구: attempt.recovered,
         이름: typeof result.body === "object" && result.body !== null && "name" in result.body ? result.body.name : deploymentName,
         소스: "git",
+        ...await checkPublicAccess(result.body),
         ...(typeof result.body === "string" ? { 응답: result.body } : result.body),
       });
     }
@@ -747,6 +749,7 @@ server.registerTool(
     return textResult({
       배포됨: true,
       기존_요청_복구: attempt.recovered,
+      ...await checkPublicAccess(result.body),
       이름: typeof result.body === "object" && result.body !== null && "name" in result.body ? result.body.name : deploymentName,
       ...(typeof result.body === "string" ? { 응답: result.body } : result.body),
     });

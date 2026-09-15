@@ -83,7 +83,7 @@ AI 요청과 응답 기능 구현에는 [build-ai-feature](../build-ai-feature/S
 - 배포를 요청받았다면 요청한 기능을 완성하고 `validate_project`를 통과한 정확한 소스만 배포한다.
 - 사용자가 기존 앱의 재배포를 요청한 경우 같은 배포 이름을 사용해 접속 주소를 유지한다.
 - 배포가 성공하면 URL과 사용 가능한 기능을 먼저 알려준다.
-- 브라우저 조작, screenshot과 시각 검사는 사용자가 요청했거나 기능 확인에 꼭 필요한 경우에만 한다. 플랫폼 healthcheck 통과만으로 배포 완료를 판정할 수 있다.
+- 브라우저 조작, screenshot과 시각 검사는 사용자가 요청했거나 기능 확인에 꼭 필요한 경우에만 한다. 플랫폼 healthcheck와 별도로 반환된 최종 HTTPS URL에 요청해 접속을 확인한다. 접속 실패는 배포 상태와 구분하고, 같은 앱을 바로 다시 배포하지 않는다.
 
 ## 사용자와 소통하는 방법
 
@@ -233,6 +233,8 @@ Credential의 교체나 이력 정리는 별도 승인을 받는다.
 SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 구체적인 전환 기준은 [DB와 파일 Storage](references/resource-bindings.md)를 따른다.
 
 ### 3. 완성된 소스를 검증한다
+
+패키징과 빌드가 필요한 앱은 [배포 계약과 복구](references/deployment-contract.md)의 패키징 기준을 확인한다. `validate_project`는 정적 분석이며 실제 컨테이너 실행 검증을 대신하지 않는다.
 
 소스 변경을 마친 뒤 `validate_project`를 호출한다.
 

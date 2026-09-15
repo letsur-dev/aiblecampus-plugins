@@ -6910,6 +6910,24 @@ var require_dist = __commonJS({
   }
 });
 
+// mcp/public-access.ts
+async function checkPublicAccess(body) {
+  if (!body || typeof body !== "object" || !("url" in body) || typeof body.url !== "string" || !("status" in body) || body.status !== "running") return {};
+  try {
+    const url2 = new URL(body.url);
+    if (!["https:", "http:"].includes(url2.protocol) || url2.username || url2.password) throw new Error("invalid URL");
+    const response = await fetch(url2, { redirect: "manual", signal: AbortSignal.timeout(15e3) });
+    await response.body?.cancel();
+    const verified = response.status >= 200 && response.status < 400;
+    return {
+      publicAccess: { verified, httpStatus: response.status },
+      ...verified ? {} : { \uC548\uB0B4: "\uBC30\uD3EC\uB294 \uC2E4\uD589 \uC911\uC774\uB098 \uACF5\uAC1C URL\uC758 \uC815\uC0C1 \uC751\uB2F5\uC740 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uC571 \uC0C1\uD0DC\uC640 HTTP \uC624\uB958\uB97C \uD655\uC778\uD558\uBA70 \uACE7\uBC14\uB85C \uC7AC\uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4" }
+    };
+  } catch {
+    return { publicAccess: { verified: false }, \uC548\uB0B4: "\uBC30\uD3EC\uB294 \uC2E4\uD589 \uC911\uC774\uB098 \uD604\uC7AC \uD074\uB77C\uC774\uC5B8\uD2B8\uC5D0\uC11C \uACF5\uAC1C URL \uC811\uC18D\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. DNS\uC640 TLS \uBC0F \uC5F0\uACB0 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uBA70 \uACE7\uBC14\uB85C \uC7AC\uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4" };
+  }
+}
+
 // mcp/ai-gateway.ts
 import { constants } from "node:fs";
 import { lstat, open, readFile as readFile2, realpath as realpath2, rename, unlink } from "node:fs/promises";
@@ -35087,7 +35105,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.28.1";
+var PLUGIN_VERSION = "0.28.2";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -35547,6 +35565,7 @@ server.registerTool(
         \uAE30\uC874_\uC694\uCCAD_\uBCF5\uAD6C: attempt2.recovered,
         \uC774\uB984: typeof result2.body === "object" && result2.body !== null && "name" in result2.body ? result2.body.name : deploymentName2,
         \uC18C\uC2A4: "git",
+        ...await checkPublicAccess(result2.body),
         ...typeof result2.body === "string" ? { \uC751\uB2F5: result2.body } : result2.body
       });
     }
@@ -35635,6 +35654,7 @@ server.registerTool(
     return textResult({
       \uBC30\uD3EC\uB428: true,
       \uAE30\uC874_\uC694\uCCAD_\uBCF5\uAD6C: attempt.recovered,
+      ...await checkPublicAccess(result.body),
       \uC774\uB984: typeof result.body === "object" && result.body !== null && "name" in result.body ? result.body.name : deploymentName,
       ...typeof result.body === "string" ? { \uC751\uB2F5: result.body } : result.body
     });
