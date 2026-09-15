@@ -1,6 +1,6 @@
 {
   "name": "aiblecampus-apps",
-  "version": "0.26.0+codex.20260915030000",
+  "version": "0.26.1+codex.20260915083000",
   "description": "에이블캠퍼스 Apps에서 AI 기능을 구현하고 검증합니다. 배포는 명시적으로 요청받았을 때만 수행합니다.",
   "author": {
     "name": "에이블캠퍼스"
