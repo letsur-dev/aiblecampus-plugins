@@ -27,7 +27,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.28.3";
+const PLUGIN_VERSION = "0.28.4";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -570,8 +570,8 @@ server.registerTool(
           "같은 소스와 설정의 직전 요청이 명확히 실패했고 새 빌드가 필요할 때만 true. 응답 단절 복구에는 사용하지 않는다",
         ),
       sourceBaseCommit: z.string().regex(/^[a-f0-9]{40}$/).optional().describe("통합할 소스가 기준으로 삼은 GitLab 기본 브랜치 커밋. 최신 코드를 반영하지 않고 이 값만 변경하지 않는다"),
-      education: z.string().optional().describe("팀 작업 공간의 교육 ID. 팀에서 자동 결정하며 개인 배포에는 필요하지 않다"),
-      organization: z.string().optional().describe("이전 클라이언트 호환용 교육 소속 ID. 새 호출은 education을 사용한다"),
+      education: z.string().optional().describe("이전 클라이언트 호환 필드. 생략하고 workspace로 그룹을 지정한다. 사용자에게 교육을 선택하도록 요구하지 않는다"),
+      organization: z.string().optional().describe("이전 클라이언트 호환 필드. 새 호출에서는 생략하고 workspace만 지정한다"),
       workspace: z.string().min(1).describe("확인한 대상 workspace UUID 또는 slug. 요청과 프로젝트의 .aiblecampus-deploy.json을 확인한다. 누락된 팀 대상을 개인 공간으로 대체하지 않는다"),
     },
     annotations: {
@@ -1190,7 +1190,7 @@ server.registerTool(
   "list_educations",
   {
     title: "내 교육",
-    description: "참여 중인 교육을 조회한다. 팀은 Portal 운영자가 배정하며 개인 배포에는 교육이 필요하지 않다.",
+    description: "이전 클라이언트 호환 조회. 배포 대상은 apps_whoami의 workspaces에서 Portal 그룹명으로 선택한다. 교육 선택에는 사용하지 않는다.",
     inputSchema: {},
     annotations: {readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true},
   },
@@ -1204,7 +1204,7 @@ server.registerTool(
   "list_deployment_organizations",
   {
     title: "배포 가능한 교육 소속 (호환)",
-    description: "이전 클라이언트 호환용 교육 소속 조회. 새 호출은 list_educations를 사용한다.",
+    description: "이전 클라이언트 호환 조회. 새 호출은 apps_whoami의 workspaces로 그룹을 선택한다.",
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },
