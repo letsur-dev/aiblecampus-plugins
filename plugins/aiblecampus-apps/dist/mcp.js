@@ -35105,7 +35105,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.28.4";
+var PLUGIN_VERSION = "0.28.5";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -35269,6 +35269,33 @@ function failure(prefix, result) {
     `${prefix} (HTTP ${result.status})
 ${typeof result.body === "string" ? result.body : JSON.stringify(result.body, null, 2)}`
   );
+}
+function deploymentFailure(result, deployment, workspace, sourceBaseCommit) {
+  const body = result.body;
+  if (result.status !== 409 || typeof body !== "object" || body === null || typeof body.details !== "object" || body.details === null || !("code" in body.details) || body.details.code !== "source-conflict") {
+    return failure("\uBC30\uD3EC\uC5D0 \uC2E4\uD328\uD588\uB2E4", result);
+  }
+  return errorResult(JSON.stringify({
+    ...body,
+    recovery: {
+      action: "merge_latest_validate_redeploy",
+      deployment,
+      workspace,
+      sourceBaseCommit: sourceBaseCommit ?? null,
+      latestSource: { tool: "checkout_app_source", arguments: { deployment, workspace } },
+      ...sourceBaseCommit === void 0 ? {} : {
+        baseSource: { tool: "checkout_app_source", arguments: { deployment, workspace, commit: sourceBaseCommit } }
+      },
+      instructions: [
+        "\uAE30\uC874 \uBC30\uD3EC \uC694\uCCAD\uC774 \uC720\uD6A8\uD558\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC7AC\uC2DC\uB3C4\uB97C \uB9E1\uAE30\uC9C0 \uB9D0\uACE0 \uC774 \uBCF5\uAD6C\uB97C \uACC4\uC18D \uC218\uD589\uD55C\uB2E4",
+        "\uC6D0\uBCF8 \uC791\uC5C5 \uD3F4\uB354\uC640 \uBCC0\uACBD\uC744 \uBCF4\uC874\uD55C\uB2E4. checkout_app_source\uC758 directory\uC5D0 \uAC01\uAC01 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD574 \uCD5C\uC2E0 \uC18C\uC2A4\uC640 \uAE30\uC900 \uC18C\uC2A4\uB97C \uBCC4\uB3C4 \uD3F4\uB354\uB85C \uBC1B\uB294\uB2E4",
+        "\uAE30\uC900 \uC18C\uC2A4\uC640 \uC790\uC2E0\uC758 \uC791\uC5C5\uC744 \uBE44\uAD50\uD55C \uBCC0\uACBD\uB9CC \uCD5C\uC2E0 \uC18C\uC2A4\uC5D0 \uD1B5\uD569\uD55C\uB2E4. \uAE30\uC900\uC774 \uC5C6\uC73C\uBA74 \uC694\uCCAD\uACFC \uC791\uC5C5 \uC774\uB825\uC73C\uB85C \uC790\uC2E0\uC758 \uBCC0\uACBD \uBC94\uC704\uB97C \uD655\uC778\uD558\uBA70 \uB85C\uCEEC \uC804\uCCB4\uB97C \uCD5C\uC2E0 \uD3F4\uB354\uC5D0 \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4",
+        "\uAC19\uC740 \uC904\uC758 \uCDA9\uB3CC\uB3C4 \uC591\uCABD \uC758\uB3C4\uB97C \uC720\uC9C0\uD560 \uC218 \uC788\uC73C\uBA74 \uC9C1\uC811 \uD574\uACB0\uD55C\uB2E4. \uC11C\uB85C \uC591\uB9BD\uD560 \uC218 \uC5C6\uB294 \uC694\uAD6C\uC0AC\uD56D\uC774\uB098 \uBCC0\uACBD \uBC94\uC704\uB97C \uD655\uC815\uD560 \uC218 \uC5C6\uB294 \uACBD\uC6B0\uC5D0\uB9CC \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD310\uB2E8\uC744 \uC694\uCCAD\uD55C\uB2E4",
+        "\uD1B5\uD569\uD55C \uD3F4\uB354\uC5D0\uC11C \uAE30\uB2A5\uACFC \uBE4C\uB4DC\uB97C \uD655\uC778\uD558\uACE0 validate_project\uB97C \uD1B5\uACFC\uD55C \uB4A4 \uAC19\uC740 deployment \uC774\uB984\uACFC workspace\uB85C deploy_project\uB97C \uD638\uCD9C\uD55C\uB2E4. \uAE30\uC874 env, secrets, resources \uC124\uC815 \uC758\uB3C4\uB3C4 \uC720\uC9C0\uD55C\uB2E4",
+        "\uAE30\uC900 \uCEE4\uBC0B\uB9CC \uBC14\uAFB8\uAC70\uB098 forceNewRevision\uC73C\uB85C \uCDA9\uB3CC\uC744 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uB2E4\uC2DC \uCDA9\uB3CC\uD558\uBA74 \uCD5C\uC2E0 \uC18C\uC2A4\uB85C \uAC19\uC740 \uC808\uCC28\uB97C \uBC18\uBCF5\uD558\uB418 \uC5F0\uC18D 3\uD68C\uBA74 \uC9C4\uD589 \uC0C1\uD669\uACFC \uB3D9\uC2DC \uC218\uC815 \uC0C1\uD669\uC744 \uBCF4\uACE0\uD55C\uB2E4"
+      ]
+    }
+  }, null, 2));
 }
 var server = new McpServer({
   name: "aiblecampus-apps",
@@ -35559,7 +35586,7 @@ server.registerTool(
           idempotencyKey: attempt2.key
         })
       }, workspace);
-      if (!result2.ok) return failure("\uBC30\uD3EC\uC5D0 \uC2E4\uD328\uD588\uB2E4", result2);
+      if (!result2.ok) return deploymentFailure(result2, deploymentName2, workspace, sourceBaseCommit);
       return textResult({
         \uBC30\uD3EC\uB428: true,
         \uAE30\uC874_\uC694\uCCAD_\uBCF5\uAD6C: attempt2.recovered,
@@ -35642,7 +35669,7 @@ server.registerTool(
       method: "POST",
       body: form
     }, workspace);
-    if (!result.ok) return failure("\uBC30\uD3EC\uC5D0 \uC2E4\uD328\uD588\uB2E4", result);
+    if (!result.ok) return deploymentFailure(result, deploymentName, workspace, base);
     const committed = typeof result.body === "object" && result.body !== null ? result.body.sourceCommit : null;
     if (typeof committed === "string") {
       try {
@@ -36032,7 +36059,7 @@ server.registerTool(
   "checkout_app_source",
   {
     title: "\uCD5C\uC2E0 \uC571 \uC18C\uC2A4 \uAC00\uC838\uC624\uAE30",
-    description: "GitLab \uAE30\uBCF8 \uBE0C\uB79C\uCE58\uC758 \uC18C\uC2A4\uB97C \uC0C8 \uD3F4\uB354\uB85C \uAC00\uC838\uC628\uB2E4. \uAE30\uC874 \uC791\uC5C5 \uD3F4\uB354\uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uCDA9\uB3CC \uC2DC \uCD5C\uC2E0 \uD3F4\uB354\uC640 \uC790\uC2E0\uC758 \uBCC0\uACBD\uC744 \uBE44\uAD50\uD558\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD310\uB2E8\uC744 \uC694\uCCAD\uD55C\uB2E4.",
+    description: "GitLab \uAE30\uBCF8 \uBE0C\uB79C\uCE58\uC758 \uC18C\uC2A4\uB97C \uC0C8 \uD3F4\uB354\uB85C \uAC00\uC838\uC628\uB2E4. \uAE30\uC874 \uC791\uC5C5 \uD3F4\uB354\uB97C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uCDA9\uB3CC \uC2DC \uAE30\uC900 \uC18C\uC2A4\uC640 \uC790\uC2E0\uC758 \uBCC0\uACBD\uC744 \uBE44\uAD50\uD574 \uCD5C\uC2E0 \uD3F4\uB354\uC5D0 \uD1B5\uD569\uD558\uACE0 \uAC80\uC99D\uD55C \uB4A4 \uC7AC\uBC30\uD3EC\uD55C\uB2E4. \uC694\uAD6C\uC0AC\uD56D\uC774 \uC591\uB9BD\uD558\uC9C0 \uC54A\uC744 \uB54C\uB9CC \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD310\uB2E8\uC744 \uC694\uCCAD\uD55C\uB2E4.",
     inputSchema: { deployment: external_exports.string(), directory: external_exports.string().describe("\uC0C8\uB85C \uB9CC\uB4E4 \uB85C\uCEEC \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C"), commit: external_exports.string().regex(/^[a-f0-9]{40}$/).optional().describe("\uC0DD\uB7B5\uD558\uBA74 \uCD5C\uC2E0 \uC18C\uC2A4. \uCDA9\uB3CC \uBE44\uAD50\uB97C \uC704\uD574 \uC791\uC5C5 \uC2DC\uC791 \uB2F9\uC2DC \uAE30\uC900 \uCEE4\uBC0B\uC744 \uC9C0\uC815\uD560 \uC218 \uC788\uB2E4"), workspace: WorkspaceInputSchema },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
   },

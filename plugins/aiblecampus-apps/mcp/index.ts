@@ -27,7 +27,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.28.4";
+const PLUGIN_VERSION = "0.28.5";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -311,6 +311,37 @@ function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResu
         : JSON.stringify(result.body, null, 2)
     }`,
   );
+}
+
+/** 소스 충돌은 같은 배포 요청 안에서 agent가 통합 후 복구한다. */
+function deploymentFailure(result: ApiResult, deployment: string, workspace: string | undefined, sourceBaseCommit: string | undefined) {
+  const body = result.body;
+  if (result.status !== 409 || typeof body !== "object" || body === null ||
+      typeof body.details !== "object" || body.details === null ||
+      !("code" in body.details) || body.details.code !== "source-conflict") {
+    return failure("배포에 실패했다", result);
+  }
+  return errorResult(JSON.stringify({
+    ...body,
+    recovery: {
+      action: "merge_latest_validate_redeploy",
+      deployment,
+      workspace,
+      sourceBaseCommit: sourceBaseCommit ?? null,
+      latestSource: { tool: "checkout_app_source", arguments: { deployment, workspace } },
+      ...(sourceBaseCommit === undefined ? {} : {
+        baseSource: { tool: "checkout_app_source", arguments: { deployment, workspace, commit: sourceBaseCommit } },
+      }),
+      instructions: [
+        "기존 배포 요청이 유효하면 사용자에게 재시도를 맡기지 말고 이 복구를 계속 수행한다",
+        "원본 작업 폴더와 변경을 보존한다. checkout_app_source의 directory에 각각 존재하지 않는 절대 경로를 지정해 최신 소스와 기준 소스를 별도 폴더로 받는다",
+        "기준 소스와 자신의 작업을 비교한 변경만 최신 소스에 통합한다. 기준이 없으면 요청과 작업 이력으로 자신의 변경 범위를 확인하며 로컬 전체를 최신 폴더에 덮어쓰지 않는다",
+        "같은 줄의 충돌도 양쪽 의도를 유지할 수 있으면 직접 해결한다. 서로 양립할 수 없는 요구사항이나 변경 범위를 확정할 수 없는 경우에만 사용자에게 판단을 요청한다",
+        "통합한 폴더에서 기능과 빌드를 확인하고 validate_project를 통과한 뒤 같은 deployment 이름과 workspace로 deploy_project를 호출한다. 기존 env, secrets, resources 설정 의도도 유지한다",
+        "기준 커밋만 바꾸거나 forceNewRevision으로 충돌을 우회하지 않는다. 다시 충돌하면 최신 소스로 같은 절차를 반복하되 연속 3회면 진행 상황과 동시 수정 상황을 보고한다",
+      ],
+    },
+  }, null, 2));
 }
 
 const server = new McpServer({
@@ -650,7 +681,7 @@ server.registerTool(
           idempotencyKey: attempt.key,
         }),
       }, workspace);
-      if (!result.ok) return failure("배포에 실패했다", result);
+      if (!result.ok) return deploymentFailure(result, deploymentName, workspace, sourceBaseCommit);
       return textResult({
         배포됨: true,
         기존_요청_복구: attempt.recovered,
@@ -738,7 +769,7 @@ server.registerTool(
     }, workspace);
 
     // 실패 단계와 원인을 그대로 전달해야 agent 가 다음 행동을 판단할 수 있다.
-    if (!result.ok) return failure("배포에 실패했다", result);
+    if (!result.ok) return deploymentFailure(result, deploymentName, workspace, base);
 
     const committed = typeof result.body === "object" && result.body !== null ? (result.body as { sourceCommit?: unknown }).sourceCommit : null;
     if (typeof committed === "string") {
@@ -1170,7 +1201,7 @@ server.registerTool(
   "checkout_app_source",
   {
     title: "최신 앱 소스 가져오기",
-    description: "GitLab 기본 브랜치의 소스를 새 폴더로 가져온다. 기존 작업 폴더를 덮어쓰지 않는다. 충돌 시 최신 폴더와 자신의 변경을 비교하고 사용자에게 판단을 요청한다.",
+    description: "GitLab 기본 브랜치의 소스를 새 폴더로 가져온다. 기존 작업 폴더를 덮어쓰지 않는다. 충돌 시 기준 소스와 자신의 변경을 비교해 최신 폴더에 통합하고 검증한 뒤 재배포한다. 요구사항이 양립하지 않을 때만 사용자에게 판단을 요청한다.",
     inputSchema: { deployment: z.string(), directory: z.string().describe("새로 만들 로컬 폴더의 절대 경로"), commit: z.string().regex(/^[a-f0-9]{40}$/).optional().describe("생략하면 최신 소스. 충돌 비교를 위해 작업 시작 당시 기준 커밋을 지정할 수 있다"), workspace: WorkspaceInputSchema },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   },
