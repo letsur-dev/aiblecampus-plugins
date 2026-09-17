@@ -27,7 +27,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.28.5";
+const PLUGIN_VERSION = "0.29.0";
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -314,16 +314,21 @@ function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResu
 }
 
 /** 소스 충돌은 같은 배포 요청 안에서 agent가 통합 후 복구한다. */
-function deploymentFailure(result: ApiResult, deployment: string, workspace: string | undefined, sourceBaseCommit: string | undefined) {
+async function deploymentFailure(result: ApiResult, deployment: string, workspace: string | undefined, sourceBaseCommit: string | undefined) {
   const body = result.body;
   if (result.status !== 409 || typeof body !== "object" || body === null ||
       typeof body.details !== "object" || body.details === null ||
       !("code" in body.details) || body.details.code !== "source-conflict") {
     return failure("배포에 실패했다", result);
   }
+  const workflowResult = await callApi("/v1/plugin-skills/deploy-to-apps", { signal: AbortSignal.timeout(8_000), redirect: "error", cache: "no-store" });
+  const workflow = workflowResult.ok ? z.object({ schemaVersion: z.literal(1), skill: z.object({
+    id: z.literal("deploy-to-apps"), content: z.string().min(1).max(100_000), version: z.number().int().positive(),
+  }) }).safeParse(workflowResult.body) : null;
   return errorResult(JSON.stringify({
     ...body,
     recovery: {
+      ...(workflow?.success ? { workflow: { id: workflow.data.skill.id, version: workflow.data.skill.version } } : {}),
       action: "merge_latest_validate_redeploy",
       deployment,
       workspace,
@@ -332,7 +337,7 @@ function deploymentFailure(result: ApiResult, deployment: string, workspace: str
       ...(sourceBaseCommit === undefined ? {} : {
         baseSource: { tool: "checkout_app_source", arguments: { deployment, workspace, commit: sourceBaseCommit } },
       }),
-      instructions: [
+      instructions: workflow?.success ? [workflow.data.skill.content] : [
         "기존 배포 요청이 유효하면 사용자에게 재시도를 맡기지 말고 이 복구를 계속 수행한다",
         "원본 작업 폴더와 변경을 보존한다. checkout_app_source의 directory에 각각 존재하지 않는 절대 경로를 지정해 최신 소스와 기준 소스를 별도 폴더로 받는다",
         "기준 소스와 자신의 작업을 비교한 변경만 최신 소스에 통합한다. 기준이 없으면 요청과 작업 이력으로 자신의 변경 범위를 확인하며 로컬 전체를 최신 폴더에 덮어쓰지 않는다",
@@ -347,6 +352,21 @@ function deploymentFailure(result: ApiResult, deployment: string, workspace: str
 const server = new McpServer({
   name: "aiblecampus-apps",
   version: PLUGIN_VERSION,
+});
+
+server.registerTool("get_plugin_skill", {
+  title: "최신 Apps 스킬 지침 조회",
+  description: "Apps 스킬 작업을 시작할 때 현재 게시된 세부 지침을 가져온다. Cowork, Code, Codex에서 동일하게 사용한다. 반환된 버전은 이번 작업에 사용하고 새 작업에서는 다시 조회한다. 설치 변경이나 배포는 수행하지 않는다.",
+  inputSchema: { skill: z.enum(["deploy-to-apps", "build-ai-feature", "frontend-design", "eli5", "manage-apps-plugin"]) },
+  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+}, async ({ skill }) => {
+  const result = await callApi(`/v1/plugin-skills/${skill}`, { signal: AbortSignal.timeout(8_000), redirect: "error", cache: "no-store" });
+  if (!result.ok) return errorResult(`최신 스킬을 조회하지 못했다 (상태 ${result.status}). 동봉된 references/bundled-workflow.md를 사용한다. 지침 조회만을 위해 로그인이나 설치 변경을 강제하지 않는다.`);
+  const parsed = z.object({ schemaVersion: z.literal(1), skill: z.object({
+    id: z.literal(skill), title: z.string(), content: z.string().min(1).max(100_000),
+    version: z.number().int().positive(), updatedAt: z.string(),
+  }) }).safeParse(result.body);
+  return parsed.success ? textResult(parsed.data.skill) : errorResult("스킬 응답 형식이 호환되지 않는다. 동봉된 references/bundled-workflow.md를 사용한다.");
 });
 
 server.registerTool("get_ai_gateway", {

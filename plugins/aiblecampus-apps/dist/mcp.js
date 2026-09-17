@@ -35105,7 +35105,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.28.5";
+var PLUGIN_VERSION = "0.29.0";
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -35270,14 +35270,21 @@ function failure(prefix, result) {
 ${typeof result.body === "string" ? result.body : JSON.stringify(result.body, null, 2)}`
   );
 }
-function deploymentFailure(result, deployment, workspace, sourceBaseCommit) {
+async function deploymentFailure(result, deployment, workspace, sourceBaseCommit) {
   const body = result.body;
   if (result.status !== 409 || typeof body !== "object" || body === null || typeof body.details !== "object" || body.details === null || !("code" in body.details) || body.details.code !== "source-conflict") {
     return failure("\uBC30\uD3EC\uC5D0 \uC2E4\uD328\uD588\uB2E4", result);
   }
+  const workflowResult = await callApi("/v1/plugin-skills/deploy-to-apps", { signal: AbortSignal.timeout(8e3), redirect: "error", cache: "no-store" });
+  const workflow = workflowResult.ok ? external_exports.object({ schemaVersion: external_exports.literal(1), skill: external_exports.object({
+    id: external_exports.literal("deploy-to-apps"),
+    content: external_exports.string().min(1).max(1e5),
+    version: external_exports.number().int().positive()
+  }) }).safeParse(workflowResult.body) : null;
   return errorResult(JSON.stringify({
     ...body,
     recovery: {
+      ...workflow?.success ? { workflow: { id: workflow.data.skill.id, version: workflow.data.skill.version } } : {},
       action: "merge_latest_validate_redeploy",
       deployment,
       workspace,
@@ -35286,7 +35293,7 @@ function deploymentFailure(result, deployment, workspace, sourceBaseCommit) {
       ...sourceBaseCommit === void 0 ? {} : {
         baseSource: { tool: "checkout_app_source", arguments: { deployment, workspace, commit: sourceBaseCommit } }
       },
-      instructions: [
+      instructions: workflow?.success ? [workflow.data.skill.content] : [
         "\uAE30\uC874 \uBC30\uD3EC \uC694\uCCAD\uC774 \uC720\uD6A8\uD558\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC7AC\uC2DC\uB3C4\uB97C \uB9E1\uAE30\uC9C0 \uB9D0\uACE0 \uC774 \uBCF5\uAD6C\uB97C \uACC4\uC18D \uC218\uD589\uD55C\uB2E4",
         "\uC6D0\uBCF8 \uC791\uC5C5 \uD3F4\uB354\uC640 \uBCC0\uACBD\uC744 \uBCF4\uC874\uD55C\uB2E4. checkout_app_source\uC758 directory\uC5D0 \uAC01\uAC01 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD574 \uCD5C\uC2E0 \uC18C\uC2A4\uC640 \uAE30\uC900 \uC18C\uC2A4\uB97C \uBCC4\uB3C4 \uD3F4\uB354\uB85C \uBC1B\uB294\uB2E4",
         "\uAE30\uC900 \uC18C\uC2A4\uC640 \uC790\uC2E0\uC758 \uC791\uC5C5\uC744 \uBE44\uAD50\uD55C \uBCC0\uACBD\uB9CC \uCD5C\uC2E0 \uC18C\uC2A4\uC5D0 \uD1B5\uD569\uD55C\uB2E4. \uAE30\uC900\uC774 \uC5C6\uC73C\uBA74 \uC694\uCCAD\uACFC \uC791\uC5C5 \uC774\uB825\uC73C\uB85C \uC790\uC2E0\uC758 \uBCC0\uACBD \uBC94\uC704\uB97C \uD655\uC778\uD558\uBA70 \uB85C\uCEEC \uC804\uCCB4\uB97C \uCD5C\uC2E0 \uD3F4\uB354\uC5D0 \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4",
@@ -35300,6 +35307,23 @@ function deploymentFailure(result, deployment, workspace, sourceBaseCommit) {
 var server = new McpServer({
   name: "aiblecampus-apps",
   version: PLUGIN_VERSION
+});
+server.registerTool("get_plugin_skill", {
+  title: "\uCD5C\uC2E0 Apps \uC2A4\uD0AC \uC9C0\uCE68 \uC870\uD68C",
+  description: "Apps \uC2A4\uD0AC \uC791\uC5C5\uC744 \uC2DC\uC791\uD560 \uB54C \uD604\uC7AC \uAC8C\uC2DC\uB41C \uC138\uBD80 \uC9C0\uCE68\uC744 \uAC00\uC838\uC628\uB2E4. Cowork, Code, Codex\uC5D0\uC11C \uB3D9\uC77C\uD558\uAC8C \uC0AC\uC6A9\uD55C\uB2E4. \uBC18\uD658\uB41C \uBC84\uC804\uC740 \uC774\uBC88 \uC791\uC5C5\uC5D0 \uC0AC\uC6A9\uD558\uACE0 \uC0C8 \uC791\uC5C5\uC5D0\uC11C\uB294 \uB2E4\uC2DC \uC870\uD68C\uD55C\uB2E4. \uC124\uCE58 \uBCC0\uACBD\uC774\uB098 \uBC30\uD3EC\uB294 \uC218\uD589\uD558\uC9C0 \uC54A\uB294\uB2E4.",
+  inputSchema: { skill: external_exports.enum(["deploy-to-apps", "build-ai-feature", "frontend-design", "eli5", "manage-apps-plugin"]) },
+  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+}, async ({ skill }) => {
+  const result = await callApi(`/v1/plugin-skills/${skill}`, { signal: AbortSignal.timeout(8e3), redirect: "error", cache: "no-store" });
+  if (!result.ok) return errorResult(`\uCD5C\uC2E0 \uC2A4\uD0AC\uC744 \uC870\uD68C\uD558\uC9C0 \uBABB\uD588\uB2E4 (\uC0C1\uD0DC ${result.status}). \uB3D9\uBD09\uB41C references/bundled-workflow.md\uB97C \uC0AC\uC6A9\uD55C\uB2E4. \uC9C0\uCE68 \uC870\uD68C\uB9CC\uC744 \uC704\uD574 \uB85C\uADF8\uC778\uC774\uB098 \uC124\uCE58 \uBCC0\uACBD\uC744 \uAC15\uC81C\uD558\uC9C0 \uC54A\uB294\uB2E4.`);
+  const parsed = external_exports.object({ schemaVersion: external_exports.literal(1), skill: external_exports.object({
+    id: external_exports.literal(skill),
+    title: external_exports.string(),
+    content: external_exports.string().min(1).max(1e5),
+    version: external_exports.number().int().positive(),
+    updatedAt: external_exports.string()
+  }) }).safeParse(result.body);
+  return parsed.success ? textResult(parsed.data.skill) : errorResult("\uC2A4\uD0AC \uC751\uB2F5 \uD615\uC2DD\uC774 \uD638\uD658\uB418\uC9C0 \uC54A\uB294\uB2E4. \uB3D9\uBD09\uB41C references/bundled-workflow.md\uB97C \uC0AC\uC6A9\uD55C\uB2E4.");
 });
 server.registerTool("get_ai_gateway", {
   title: "\uC0B0\uCD9C\uBB3C AI \uD658\uACBD\uACFC \uBAA8\uB378 \uD655\uC778",
