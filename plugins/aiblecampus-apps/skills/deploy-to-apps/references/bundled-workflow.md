@@ -330,7 +330,8 @@ SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 구체�
 - `list_deployments`: 사용자가 관리할 수 있는 앱 목록과 상태
 - `deployment_status`: 현재 상태와 접속 URL
 - `stop_deployment`: 실행 중지. 배포 기록과 영속 자원은 유지
-- `delete_deployment`: 배포 삭제. 영속 자원 보존 또는 삭제 정책을 반드시 선택
+- `delete_deployment`: 먼저 `apps_plugin_status`로 현재 로드된 버전을 확인한다. 0.30.0 이상에서는 첫 호출이 삭제 미리보기다. 앱 이름, URL, 공간과 DB 및 파일 영구 삭제 범위를 보여주고 사용자의 별도 후속 확인을 받은 뒤 확인값으로 실행한다. 최초 삭제 요청을 재확인으로 간주하지 않는다. 0.30.0 미만이거나 버전을 확인할 수 없으면 삭제 도구를 미리보기로 호출하지 않는다. `deployment_status`로 대상을 조회해 삭제 범위를 설명하고 별도 사용자 확인을 받은 뒤에만 삭제 도구를 호출한다.
+- `move_deployment`: 0.30.0 이상에 제공되는 도구다. 현재 세션에 도구가 없으면 플러그인 업데이트와 새 세션을 안내하고 다른 API나 재배포로 우회하지 않는다. 본인 개인 공간과 소속 팀 사이에서 앱을 옮긴다. URL과 소스 및 데이터를 유지하며 재배포하지 않는다. 팀에 앱이 이미 있으면 안내하고 이동을 중단한다. 삭제로 자리를 만들거나 기존 팀 앱을 덮어쓰지 않는다. 이동 후 로컬 기록은 해당 앱의 workspace만 갱신하고 소스 기준 commit을 유지한다.
 - `deployment_logs`: build 또는 runtime 문제 확인
 - `deployment_config`: 일반 설정과 비밀값 키 이름 확인
 - `set_deployment_config`: 설정 추가, 변경과 삭제

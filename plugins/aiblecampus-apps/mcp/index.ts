@@ -1,3 +1,4 @@
+import { DeletionConfirmations } from "./delete-confirmation.ts";
 import { checkPublicAccess } from "./public-access.ts";
 import { AiSetupError, configureAiGateway, verifyAiGateway } from "./ai-gateway.ts";
 import { checkoutSnapshot, readSourceBase, saveSourceBase } from "./source-checkout.ts";
@@ -27,7 +28,8 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.29.0";
+const PLUGIN_VERSION = "0.30.0";
+const deletionConfirmations = new DeletionConfirmations();
 
 /**
  * Apps 접속 주소. 운영 주소를 기본값으로 쓰고 환경변수로
@@ -1051,34 +1053,54 @@ server.registerTool(
 );
 
 server.registerTool(
+  "move_deployment",
+  {
+    title: "앱 공간 이동",
+    description: "사용자가 요청한 앱을 본인 개인 공간과 소속 팀 사이에서 옮긴다. 앱 URL, 소스와 데이터를 유지하며 재배포하지 않는다. 대상 팀에 앱이 이미 있으면 이동하지 않고 안내한다. apps_whoami로 실제 공간 UUID를 확인한다.",
+    inputSchema: {
+      deployment: z.string().min(1).describe("이동할 앱 이름 또는 ID"),
+      workspace: z.string().min(1).describe("현재 앱이 있는 공간의 UUID 또는 slug"),
+      targetWorkspace: z.string().min(1).describe("이동할 본인 개인 공간 또는 소속 팀의 정확한 UUID"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  async ({ deployment, workspace, targetWorkspace }) => {
+    const result = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}/workspace`, {
+      method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId: targetWorkspace }),
+    }, workspace);
+    if (!result.ok) return failure("앱을 이동하지 못했다. 대상 팀에 앱이 이미 있으면 기존 앱을 삭제하거나 덮어쓰지 말고 안내한다", result);
+    return textResult({ moved: true, deployment: result.body,
+      instructions: "앱 이름, 이동한 공간과 유지된 URL을 안내한다. 해당 앱의 로컬 배포 기록이 있으면 정확히 일치하는 앱의 workspace만 새 UUID로 갱신하고 소스 기준 commit은 유지한다. 이동을 재배포로 대체하지 않는다." });
+  },
+);
+
+server.registerTool(
   "delete_deployment",
   {
-    title: "배포 삭제",
-    description:
-      "앱과 전용 데이터베이스 및 파일을 영구 삭제한다.",
+    title: "배포 삭제 확인 및 실행",
+    description: "첫 호출은 삭제하지 않고 정확한 앱과 공간, 데이터 삭제 범위와 일회용 확인값을 반환한다. 이를 사용자에게 보여준 뒤 반드시 다음 응답에서 별도 확인을 받아야 한다. 최초 삭제 요청만으로 confirmedByUser를 설정하지 않는다.",
     inputSchema: {
-      deployment: z.string().describe("삭제할 배포 이름 또는 배포 id"),
+      deployment: z.string().min(1).describe("삭제할 배포 이름 또는 ID"),
       workspace: WorkspaceInputSchema,
+      confirmationToken: z.string().optional().describe("직전 미리보기에서 발급한 일회용 확인값. 처음 호출할 때는 생략한다"),
+      confirmedByUser: z.boolean().optional().describe("삭제 대상을 보여준 뒤 사용자의 별도 후속 확인이 있을 때만 true"),
     },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: true,
-      idempotentHint: false,
-      openWorldHint: true,
-    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },
-  async ({ deployment, workspace }) => {
-    const result = await callApi(
-      `/v1/deployments/${encodeURIComponent(deployment)}?resourcePolicy=delete`,
-      { method: "DELETE" },
-      workspace,
-    );
-    if (!result.ok) return failure("배포를 삭제하지 못했다", result);
-    return textResult({
-      삭제됨: true,
-      자원정책: "delete",
-      ...(typeof result.body === "string" ? { 응답: result.body } : result.body),
-    });
+  async ({ deployment, workspace, confirmationToken, confirmedByUser }) => {
+    const identity = await callApi("/v1/me", {}, workspace);
+    if (!identity.ok) return failure("삭제할 계정을 확인하지 못했다", identity);
+    const actor = z.object({ user: z.object({ id: z.string() }) }).safeParse(identity.body);
+    if (!actor.success) return errorResult("삭제할 계정을 확인하지 못했습니다. 삭제하지 않았습니다.");
+    const current = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}`, {}, workspace);
+    if (!current.ok) return failure("삭제할 앱을 확인하지 못했다", current);
+    try {
+      if (!confirmationToken || confirmedByUser !== true) return textResult(deletionConfirmations.request(current.body, actor.data.user.id, apiBase()));
+      const app = deletionConfirmations.consume(confirmationToken, current.body, actor.data.user.id, apiBase());
+      const result = await callApi(`/v1/deployments/${encodeURIComponent(app.id)}?resourcePolicy=delete`, { method: "DELETE" }, app.workspaceId);
+      if (!result.ok) return failure("삭제 결과를 확인하지 못했다. 자동으로 다시 삭제하지 말고 앱 상태를 먼저 확인한다", result);
+      return textResult({ 삭제됨: true, 자원정책: "delete", ...(typeof result.body === "string" ? { 응답: result.body } : result.body) });
+    } catch (error) { return errorResult(error instanceof Error ? error.message : "삭제 확인에 실패했습니다. 삭제하지 않았습니다."); }
   },
 );
 

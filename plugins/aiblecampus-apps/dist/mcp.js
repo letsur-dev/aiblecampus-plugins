@@ -6910,31 +6910,8 @@ var require_dist = __commonJS({
   }
 });
 
-// mcp/public-access.ts
-async function checkPublicAccess(body) {
-  if (!body || typeof body !== "object" || !("url" in body) || typeof body.url !== "string" || !("status" in body) || body.status !== "running") return {};
-  try {
-    const url2 = new URL(body.url);
-    if (!["https:", "http:"].includes(url2.protocol) || url2.username || url2.password) throw new Error("invalid URL");
-    const response = await fetch(url2, { redirect: "manual", signal: AbortSignal.timeout(15e3) });
-    await response.body?.cancel();
-    const verified = response.status >= 200 && response.status < 400;
-    return {
-      publicAccess: { verified, httpStatus: response.status },
-      ...verified ? {} : { \uC548\uB0B4: "\uBC30\uD3EC\uB294 \uC2E4\uD589 \uC911\uC774\uB098 \uACF5\uAC1C URL\uC758 \uC815\uC0C1 \uC751\uB2F5\uC740 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uC571 \uC0C1\uD0DC\uC640 HTTP \uC624\uB958\uB97C \uD655\uC778\uD558\uBA70 \uACE7\uBC14\uB85C \uC7AC\uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4" }
-    };
-  } catch {
-    return { publicAccess: { verified: false }, \uC548\uB0B4: "\uBC30\uD3EC\uB294 \uC2E4\uD589 \uC911\uC774\uB098 \uD604\uC7AC \uD074\uB77C\uC774\uC5B8\uD2B8\uC5D0\uC11C \uACF5\uAC1C URL \uC811\uC18D\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. DNS\uC640 TLS \uBC0F \uC5F0\uACB0 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uBA70 \uACE7\uBC14\uB85C \uC7AC\uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4" };
-  }
-}
-
-// mcp/ai-gateway.ts
-import { constants } from "node:fs";
-import { lstat, open, readFile as readFile2, realpath as realpath2, rename, unlink } from "node:fs/promises";
-import path3 from "node:path";
-import { randomUUID } from "node:crypto";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+// mcp/delete-confirmation.ts
+import { randomUUID, createHash } from "node:crypto";
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -21450,6 +21427,81 @@ function date4(params) {
 // node_modules/zod/v4/classic/external.js
 config(en_default());
 
+// mcp/delete-confirmation.ts
+var Deployment = external_exports.object({
+  id: external_exports.string().min(1),
+  name: external_exports.string().min(1),
+  url: external_exports.string(),
+  workspaceId: external_exports.string().min(1),
+  workspace: external_exports.object({ id: external_exports.string(), name: external_exports.string(), type: external_exports.enum(["personal", "team"]), canDeleteApps: external_exports.boolean() }),
+  updatedAt: external_exports.string(),
+  currentRevision: external_exports.object({ id: external_exports.string() }).nullable(),
+  latestRevision: external_exports.object({ id: external_exports.string() }).nullable()
+});
+var DeletionConfirmations = class {
+  pending = /* @__PURE__ */ new Map();
+  now;
+  constructor(now = Date.now) {
+    this.now = now;
+  }
+  prepare(raw, actor, api) {
+    const app = Deployment.parse(raw);
+    if (!app.workspace.canDeleteApps || app.workspace.id !== app.workspaceId) throw new Error("\uC774 \uC571\uC744 \uC0AD\uC81C\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.");
+    const fingerprint = createHash("sha256").update(JSON.stringify({ api, actor, app })).digest("hex");
+    return { app, fingerprint };
+  }
+  request(raw, actor, api) {
+    const { app, fingerprint } = this.prepare(raw, actor, api);
+    for (const [token, value] of this.pending) if (value.expiresAt <= this.now()) this.pending.delete(token);
+    if (this.pending.size >= 100) this.pending.delete(this.pending.keys().next().value);
+    const confirmationToken = randomUUID();
+    const expiresAt = this.now() + 5 * 6e4;
+    this.pending.set(confirmationToken, { fingerprint, expiresAt });
+    return {
+      confirmationRequired: true,
+      confirmationToken,
+      expiresAt: new Date(expiresAt).toISOString(),
+      deployment: { id: app.id, name: app.name, url: app.url, workspace: app.workspace },
+      consequences: "\uC571\uACFC \uC804\uC6A9 \uB370\uC774\uD130\uBCA0\uC774\uC2A4, \uC800\uC7A5 \uD30C\uC77C\uC774 \uC601\uAD6C \uC0AD\uC81C\uB418\uBA70 \uC18C\uC2A4 \uC800\uC7A5\uC18C\uB3C4 \uC0AD\uC81C \uB300\uC0C1\uC73C\uB85C \uD45C\uC2DC\uB429\uB2C8\uB2E4.",
+      instructions: "\uC544\uC9C1 \uC0AD\uC81C\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC571 \uC774\uB984, URL, \uAC1C\uC778 \uB610\uB294 \uD300 \uACF5\uAC04\uACFC \uC0AD\uC81C \uBC94\uC704\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC\uC8FC\uACE0 \uC815\uB9D0 \uC0AD\uC81C\uD560\uC9C0 \uB2E4\uC2DC \uBB3C\uC73C\uC138\uC694. \uCD5C\uCD08 \uC0AD\uC81C \uC694\uCCAD\uC744 \uC7AC\uD655\uC778\uC73C\uB85C \uAC04\uC8FC\uD558\uC9C0 \uB9C8\uC138\uC694. \uC774\uBC88 \uC751\uB2F5\uC5D0\uC11C \uC2E4\uD589\uC744 \uBA48\uCD94\uACE0 \uC0AC\uC6A9\uC790\uC758 \uB2E4\uC74C \uBA85\uC2DC\uC801 \uD655\uC778\uC744 \uAE30\uB2E4\uB9AC\uC138\uC694. \uD655\uC778 \uD6C4 \uAC19\uC740 \uC571\uACFC \uACF5\uAC04, confirmationToken, confirmedByUser:true\uB85C \uB2E4\uC2DC \uD638\uCD9C\uD558\uC138\uC694. \uAC70\uC808\uD558\uAC70\uB098 \uC751\uB2F5\uC774 \uC5C6\uC73C\uBA74 \uD638\uCD9C\uD558\uC9C0 \uB9C8\uC138\uC694."
+    };
+  }
+  consume(token, raw, actor, api) {
+    const pending2 = this.pending.get(token);
+    this.pending.delete(token);
+    if (!pending2 || pending2.expiresAt <= this.now()) throw new Error("\uC0AD\uC81C \uD655\uC778\uC774 \uB9CC\uB8CC\uB418\uC5C8\uAC70\uB098 \uC774\uBBF8 \uC0AC\uC6A9\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB300\uC0C1\uC744 \uB2E4\uC2DC \uC870\uD68C\uD558\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uB2E4\uC2DC \uD655\uC778\uD558\uC138\uC694.");
+    const { app, fingerprint } = this.prepare(raw, actor, api);
+    if (pending2.fingerprint !== fingerprint) throw new Error("\uD655\uC778\uD55C \uC571, \uC18C\uC18D, \uBC30\uD3EC \uC0C1\uD0DC \uB610\uB294 \uACC4\uC815\uC774 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uB2E4\uC2DC \uD655\uC778\uD558\uC138\uC694.");
+    return app;
+  }
+};
+
+// mcp/public-access.ts
+async function checkPublicAccess(body) {
+  if (!body || typeof body !== "object" || !("url" in body) || typeof body.url !== "string" || !("status" in body) || body.status !== "running") return {};
+  try {
+    const url2 = new URL(body.url);
+    if (!["https:", "http:"].includes(url2.protocol) || url2.username || url2.password) throw new Error("invalid URL");
+    const response = await fetch(url2, { redirect: "manual", signal: AbortSignal.timeout(15e3) });
+    await response.body?.cancel();
+    const verified = response.status >= 200 && response.status < 400;
+    return {
+      publicAccess: { verified, httpStatus: response.status },
+      ...verified ? {} : { \uC548\uB0B4: "\uBC30\uD3EC\uB294 \uC2E4\uD589 \uC911\uC774\uB098 \uACF5\uAC1C URL\uC758 \uC815\uC0C1 \uC751\uB2F5\uC740 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uC571 \uC0C1\uD0DC\uC640 HTTP \uC624\uB958\uB97C \uD655\uC778\uD558\uBA70 \uACE7\uBC14\uB85C \uC7AC\uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4" }
+    };
+  } catch {
+    return { publicAccess: { verified: false }, \uC548\uB0B4: "\uBC30\uD3EC\uB294 \uC2E4\uD589 \uC911\uC774\uB098 \uD604\uC7AC \uD074\uB77C\uC774\uC5B8\uD2B8\uC5D0\uC11C \uACF5\uAC1C URL \uC811\uC18D\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. DNS\uC640 TLS \uBC0F \uC5F0\uACB0 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uBA70 \uACE7\uBC14\uB85C \uC7AC\uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4" };
+  }
+}
+
+// mcp/ai-gateway.ts
+import { constants } from "node:fs";
+import { lstat, open, readFile as readFile2, realpath as realpath2, rename, unlink } from "node:fs/promises";
+import path3 from "node:path";
+import { randomUUID as randomUUID2 } from "node:crypto";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
 // mcp/local-env.ts
 import { readFile, realpath } from "node:fs/promises";
 import path2 from "node:path";
@@ -24609,7 +24661,7 @@ async function configureAiGateway(projectPath, model, input) {
     throw new AiSetupError("AI \uC124\uC815\uC774 \uC9C4\uD589 \uC911\uC774\uAC70\uB098 \uC7A0\uAE08 \uD30C\uC77C\uC774 \uC788\uC2B5\uB2C8\uB2E4.");
   });
   const target = path3.join(root, AI_ENV_FILE);
-  const temporary = path3.join(root, `.env.apps-ai-${randomUUID()}`);
+  const temporary = path3.join(root, `.env.apps-ai-${randomUUID2()}`);
   try {
     if (await plainFile(target)) {
       const existing = await readFile2(target, "utf8");
@@ -24741,16 +24793,16 @@ function appsEnv(name) {
 }
 
 // mcp/managed-auth.ts
-import { createHash as createHash2, createPrivateKey as createPrivateKey2, randomUUID as randomUUID3, sign as sign2 } from "node:crypto";
+import { createHash as createHash3, createPrivateKey as createPrivateKey2, randomUUID as randomUUID4, sign as sign2 } from "node:crypto";
 import { readFile as readFile4, writeFile as writeFile2, rename as rename2 } from "node:fs/promises";
 
 // mcp/dpop.ts
 import {
-  createHash,
+  createHash as createHash2,
   createPrivateKey,
   createPublicKey,
   generateKeyPairSync,
-  randomUUID as randomUUID2,
+  randomUUID as randomUUID3,
   sign
 } from "node:crypto";
 function encodeJson(value) {
@@ -24785,10 +24837,10 @@ function dpopJwkThumbprint(publicJwk) {
     x: publicJwk.x,
     y: publicJwk.y
   });
-  return createHash("sha256").update(canonical).digest("base64url");
+  return createHash2("sha256").update(canonical).digest("base64url");
 }
 function accessTokenHash(accessToken) {
-  return createHash("sha256").update(accessToken).digest("base64url");
+  return createHash2("sha256").update(accessToken).digest("base64url");
 }
 function createDpopProof(args) {
   const publicJwk = publicDpopJwk(args.privateJwk);
@@ -24801,7 +24853,7 @@ function createDpopProof(args) {
     htm: args.method.toUpperCase(),
     htu: normalizedHtu(args.url),
     iat: Math.floor((args.now ?? Date.now)() / 1e3),
-    jti: args.jti ?? randomUUID2(),
+    jti: args.jti ?? randomUUID3(),
     ...args.accessToken === void 0 ? {} : { ath: accessTokenHash(args.accessToken) }
   });
   const signature = sign(
@@ -24825,11 +24877,11 @@ function assertDpopPrivateJwk(value) {
 // mcp/managed-auth.ts
 var cached2 = /* @__PURE__ */ new Map();
 var pending = /* @__PURE__ */ new Map();
-var digest = (value) => createHash2("sha256").update(value).digest("base64url");
+var digest = (value) => createHash3("sha256").update(value).digest("base64url");
 var encode3 = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
 function enrollmentProof(key, peer, profile) {
   const header = encode3({ alg: "ES256", typ: "aible-enrollment+jwt", jwk: publicDpopJwk(key) });
-  const payload = encode3({ htu: `${profile.issuer}/device/enrollment/token`, htm: "POST", iat: Math.floor(Date.now() / 1e3), jti: randomUUID3(), enrollmentId: profile.id, runtime: profile.runtime, secretHash: digest(profile.secret), peer });
+  const payload = encode3({ htu: `${profile.issuer}/device/enrollment/token`, htm: "POST", iat: Math.floor(Date.now() / 1e3), jti: randomUUID4(), enrollmentId: profile.id, runtime: profile.runtime, secretHash: digest(profile.secret), peer });
   const signature = sign2("sha256", Buffer.from(`${header}.${payload}`), { key: createPrivateKey2({ key, format: "jwk" }), dsaEncoding: "ieee-p1363" }).toString("base64url");
   return `${header}.${payload}.${signature}`;
 }
@@ -34466,7 +34518,7 @@ var StdioServerTransport = class {
 };
 
 // mcp/index.ts
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 import { existsSync } from "node:fs";
 import path9 from "node:path";
 
@@ -34791,7 +34843,7 @@ async function completeDeviceLogin(apiBase2) {
 }
 
 // mcp/persistence-migration.ts
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash4 } from "node:crypto";
 import { mkdir as mkdir4, readFile as readFile6, readdir, stat as stat2 } from "node:fs/promises";
 import { backup, DatabaseSync } from "node:sqlite";
 import path7 from "node:path";
@@ -34801,7 +34853,7 @@ var MAX_ROWS = 1e5;
 var MAX_FILES = 1e3;
 var MAX_TOTAL_BYTES = 512 * 1024 * 1024;
 function sha256(content) {
-  return createHash3("sha256").update(content).digest("hex");
+  return createHash4("sha256").update(content).digest("hex");
 }
 function sqliteIdentifier(value) {
   if (!SAFE_IDENTIFIER.test(value)) {
@@ -35023,7 +35075,7 @@ async function openVerificationUrl(url2) {
 }
 
 // mcp/deployment-attempts.ts
-import { randomUUID as randomUUID4 } from "node:crypto";
+import { randomUUID as randomUUID5 } from "node:crypto";
 import { mkdir as mkdir5, readFile as readFile7, rename as rename4, writeFile as writeFile4 } from "node:fs/promises";
 import { homedir as homedir2 } from "node:os";
 import path8 from "node:path";
@@ -35073,7 +35125,7 @@ async function readState2(file2) {
 }
 async function writeState2(file2, state) {
   await mkdir5(path8.dirname(file2), { recursive: true, mode: 448 });
-  const temporary = `${file2}.${process.pid}.${randomUUID4()}.tmp`;
+  const temporary = `${file2}.${process.pid}.${randomUUID5()}.tmp`;
   await writeFile4(temporary, `${JSON.stringify(state, null, 2)}
 `, {
     mode: 384
@@ -35095,7 +35147,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
       return { key: existing.key, recovered: true };
     }
     const attempt = {
-      key: randomUUID4(),
+      key: randomUUID5(),
       expiresAt: now + ttlMs
     };
     state.attempts[fingerprint] = attempt;
@@ -35105,7 +35157,8 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.29.0";
+var PLUGIN_VERSION = "0.30.0";
+var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
 }
@@ -35134,7 +35187,7 @@ function sortedEntries(values) {
 }
 var GIT_ATTEMPT_TTL_MS = 90 * 1e3;
 function deploymentFingerprint(input) {
-  return createHash4("sha256").update(
+  return createHash5("sha256").update(
     JSON.stringify({
       apiBase: apiBase(),
       source: input.source,
@@ -35672,7 +35725,7 @@ server.registerTool(
     try {
       attempt = await deploymentAttempt(
         deploymentFingerprint({
-          source: createHash4("sha256").update(tarball).digest("hex"),
+          source: createHash5("sha256").update(tarball).digest("hex"),
           name: deploymentName,
           organization,
           sourceBaseCommit: base,
@@ -35935,33 +35988,60 @@ server.registerTool(
   }
 );
 server.registerTool(
+  "move_deployment",
+  {
+    title: "\uC571 \uACF5\uAC04 \uC774\uB3D9",
+    description: "\uC0AC\uC6A9\uC790\uAC00 \uC694\uCCAD\uD55C \uC571\uC744 \uBCF8\uC778 \uAC1C\uC778 \uACF5\uAC04\uACFC \uC18C\uC18D \uD300 \uC0AC\uC774\uC5D0\uC11C \uC62E\uAE34\uB2E4. \uC571 URL, \uC18C\uC2A4\uC640 \uB370\uC774\uD130\uB97C \uC720\uC9C0\uD558\uBA70 \uC7AC\uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4. \uB300\uC0C1 \uD300\uC5D0 \uC571\uC774 \uC774\uBBF8 \uC788\uC73C\uBA74 \uC774\uB3D9\uD558\uC9C0 \uC54A\uACE0 \uC548\uB0B4\uD55C\uB2E4. apps_whoami\uB85C \uC2E4\uC81C \uACF5\uAC04 UUID\uB97C \uD655\uC778\uD55C\uB2E4.",
+    inputSchema: {
+      deployment: external_exports.string().min(1).describe("\uC774\uB3D9\uD560 \uC571 \uC774\uB984 \uB610\uB294 ID"),
+      workspace: external_exports.string().min(1).describe("\uD604\uC7AC \uC571\uC774 \uC788\uB294 \uACF5\uAC04\uC758 UUID \uB610\uB294 slug"),
+      targetWorkspace: external_exports.string().min(1).describe("\uC774\uB3D9\uD560 \uBCF8\uC778 \uAC1C\uC778 \uACF5\uAC04 \uB610\uB294 \uC18C\uC18D \uD300\uC758 \uC815\uD655\uD55C UUID")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
+  },
+  async ({ deployment, workspace, targetWorkspace }) => {
+    const result = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}/workspace`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: targetWorkspace })
+    }, workspace);
+    if (!result.ok) return failure("\uC571\uC744 \uC774\uB3D9\uD558\uC9C0 \uBABB\uD588\uB2E4. \uB300\uC0C1 \uD300\uC5D0 \uC571\uC774 \uC774\uBBF8 \uC788\uC73C\uBA74 \uAE30\uC874 \uC571\uC744 \uC0AD\uC81C\uD558\uAC70\uB098 \uB36E\uC5B4\uC4F0\uC9C0 \uB9D0\uACE0 \uC548\uB0B4\uD55C\uB2E4", result);
+    return textResult({
+      moved: true,
+      deployment: result.body,
+      instructions: "\uC571 \uC774\uB984, \uC774\uB3D9\uD55C \uACF5\uAC04\uACFC \uC720\uC9C0\uB41C URL\uC744 \uC548\uB0B4\uD55C\uB2E4. \uD574\uB2F9 \uC571\uC758 \uB85C\uCEEC \uBC30\uD3EC \uAE30\uB85D\uC774 \uC788\uC73C\uBA74 \uC815\uD655\uD788 \uC77C\uCE58\uD558\uB294 \uC571\uC758 workspace\uB9CC \uC0C8 UUID\uB85C \uAC31\uC2E0\uD558\uACE0 \uC18C\uC2A4 \uAE30\uC900 commit\uC740 \uC720\uC9C0\uD55C\uB2E4. \uC774\uB3D9\uC744 \uC7AC\uBC30\uD3EC\uB85C \uB300\uCCB4\uD558\uC9C0 \uC54A\uB294\uB2E4."
+    });
+  }
+);
+server.registerTool(
   "delete_deployment",
   {
-    title: "\uBC30\uD3EC \uC0AD\uC81C",
-    description: "\uC571\uACFC \uC804\uC6A9 \uB370\uC774\uD130\uBCA0\uC774\uC2A4 \uBC0F \uD30C\uC77C\uC744 \uC601\uAD6C \uC0AD\uC81C\uD55C\uB2E4.",
+    title: "\uBC30\uD3EC \uC0AD\uC81C \uD655\uC778 \uBC0F \uC2E4\uD589",
+    description: "\uCCAB \uD638\uCD9C\uC740 \uC0AD\uC81C\uD558\uC9C0 \uC54A\uACE0 \uC815\uD655\uD55C \uC571\uACFC \uACF5\uAC04, \uB370\uC774\uD130 \uC0AD\uC81C \uBC94\uC704\uC640 \uC77C\uD68C\uC6A9 \uD655\uC778\uAC12\uC744 \uBC18\uD658\uD55C\uB2E4. \uC774\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC\uC900 \uB4A4 \uBC18\uB4DC\uC2DC \uB2E4\uC74C \uC751\uB2F5\uC5D0\uC11C \uBCC4\uB3C4 \uD655\uC778\uC744 \uBC1B\uC544\uC57C \uD55C\uB2E4. \uCD5C\uCD08 \uC0AD\uC81C \uC694\uCCAD\uB9CC\uC73C\uB85C confirmedByUser\uB97C \uC124\uC815\uD558\uC9C0 \uC54A\uB294\uB2E4.",
     inputSchema: {
-      deployment: external_exports.string().describe("\uC0AD\uC81C\uD560 \uBC30\uD3EC \uC774\uB984 \uB610\uB294 \uBC30\uD3EC id"),
-      workspace: WorkspaceInputSchema
+      deployment: external_exports.string().min(1).describe("\uC0AD\uC81C\uD560 \uBC30\uD3EC \uC774\uB984 \uB610\uB294 ID"),
+      workspace: WorkspaceInputSchema,
+      confirmationToken: external_exports.string().optional().describe("\uC9C1\uC804 \uBBF8\uB9AC\uBCF4\uAE30\uC5D0\uC11C \uBC1C\uAE09\uD55C \uC77C\uD68C\uC6A9 \uD655\uC778\uAC12. \uCC98\uC74C \uD638\uCD9C\uD560 \uB54C\uB294 \uC0DD\uB7B5\uD55C\uB2E4"),
+      confirmedByUser: external_exports.boolean().optional().describe("\uC0AD\uC81C \uB300\uC0C1\uC744 \uBCF4\uC5EC\uC900 \uB4A4 \uC0AC\uC6A9\uC790\uC758 \uBCC4\uB3C4 \uD6C4\uC18D \uD655\uC778\uC774 \uC788\uC744 \uB54C\uB9CC true")
     },
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: true,
-      idempotentHint: false,
-      openWorldHint: true
-    }
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true }
   },
-  async ({ deployment, workspace }) => {
-    const result = await callApi(
-      `/v1/deployments/${encodeURIComponent(deployment)}?resourcePolicy=delete`,
-      { method: "DELETE" },
-      workspace
-    );
-    if (!result.ok) return failure("\uBC30\uD3EC\uB97C \uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
-    return textResult({
-      \uC0AD\uC81C\uB428: true,
-      \uC790\uC6D0\uC815\uCC45: "delete",
-      ...typeof result.body === "string" ? { \uC751\uB2F5: result.body } : result.body
-    });
+  async ({ deployment, workspace, confirmationToken, confirmedByUser }) => {
+    const identity = await callApi("/v1/me", {}, workspace);
+    if (!identity.ok) return failure("\uC0AD\uC81C\uD560 \uACC4\uC815\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4", identity);
+    const actor = external_exports.object({ user: external_exports.object({ id: external_exports.string() }) }).safeParse(identity.body);
+    if (!actor.success) return errorResult("\uC0AD\uC81C\uD560 \uACC4\uC815\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC0AD\uC81C\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.");
+    const current = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}`, {}, workspace);
+    if (!current.ok) return failure("\uC0AD\uC81C\uD560 \uC571\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4", current);
+    try {
+      if (!confirmationToken || confirmedByUser !== true) return textResult(deletionConfirmations.request(current.body, actor.data.user.id, apiBase()));
+      const app = deletionConfirmations.consume(confirmationToken, current.body, actor.data.user.id, apiBase());
+      const result = await callApi(`/v1/deployments/${encodeURIComponent(app.id)}?resourcePolicy=delete`, { method: "DELETE" }, app.workspaceId);
+      if (!result.ok) return failure("\uC0AD\uC81C \uACB0\uACFC\uB97C \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC0AD\uC81C\uD558\uC9C0 \uB9D0\uACE0 \uC571 \uC0C1\uD0DC\uB97C \uBA3C\uC800 \uD655\uC778\uD55C\uB2E4", result);
+      return textResult({ \uC0AD\uC81C\uB428: true, \uC790\uC6D0\uC815\uCC45: "delete", ...typeof result.body === "string" ? { \uC751\uB2F5: result.body } : result.body });
+    } catch (error51) {
+      return errorResult(error51 instanceof Error ? error51.message : "\uC0AD\uC81C \uD655\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uC0AD\uC81C\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.");
+    }
   }
 );
 server.registerTool(
