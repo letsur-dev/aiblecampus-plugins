@@ -28,7 +28,7 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.30.1";
+const PLUGIN_VERSION = "0.30.2";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
