@@ -1,6 +1,6 @@
 {
   "name": "aiblecampus-apps",
-  "version": "0.30.0+codex.20260917010000",
+  "version": "0.30.1+codex.20260917020000",
   "description": "에이블캠퍼스 Apps의 화면 디자인, 쉬운 시각적 설명과 AI 기능 개발을 지원합니다. 배포는 명시적으로 요청받았을 때만 수행합니다.",
   "author": {
     "name": "에이블캠퍼스"

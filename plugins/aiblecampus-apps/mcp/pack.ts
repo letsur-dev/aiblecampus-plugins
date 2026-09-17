@@ -1,4 +1,3 @@
-import path from "node:path";
 import * as tar from "tar";
 
 /**
@@ -46,9 +45,9 @@ export async function packDirectory(
       portable: true,
       noMtime: true,
       filter: (entryPath) => {
-        const segments = entryPath.split(path.sep);
+        const segments = entryPath.split(/[\\/]/);
         return !segments.some(
-          (segment) => skip.has(segment) || isSensitiveEnvName(segment),
+          (segment) => skip.has(segment),
         );
       },
     },

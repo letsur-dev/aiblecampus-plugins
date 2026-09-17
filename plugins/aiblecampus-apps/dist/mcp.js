@@ -3224,8 +3224,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path10) {
-      let input = path10;
+    function removeDotSegments(path9) {
+      let input = path9;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3477,8 +3477,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path10, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path10 && path10 !== "/" ? path10 : void 0;
+        const [path9, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path9 && path9 !== "/" ? path9 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7679,10 +7679,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path10) {
-  if (!path10)
+function getElementAtPath(obj, path9) {
+  if (!path9)
     return obj;
-  return path10.reduce((acc, key) => acc?.[key], obj);
+  return path9.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8091,11 +8091,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path10, issues) {
+function prefixIssues(path9, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path10);
+    iss.path.unshift(path9);
     return iss;
   });
 }
@@ -8242,16 +8242,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path10 = []) => {
+  const processError = (error52, path9 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path10, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path9, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else {
-        const fullpath = [...path10, ...issue2.path];
+        const fullpath = [...path9, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8278,17 +8278,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path10 = []) => {
+  const processError = (error52, path9 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path10, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path9, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else {
-        const fullpath = [...path10, ...issue2.path];
+        const fullpath = [...path9, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -8320,8 +8320,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path10 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path10) {
+  const path9 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path9) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -21013,13 +21013,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path10 = ref.slice(1).split("/").filter(Boolean);
-  if (path10.length === 0) {
+  const path9 = ref.slice(1).split("/").filter(Boolean);
+  if (path9.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path10[0] === defsKey) {
-    const key = path10[1];
+  if (path9[0] === defsKey) {
+    const key = path9[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -21497,16 +21497,13 @@ async function checkPublicAccess(body) {
 // mcp/ai-gateway.ts
 import { constants } from "node:fs";
 import { lstat, open, readFile as readFile2, realpath as realpath2, rename, unlink } from "node:fs/promises";
-import path3 from "node:path";
+import path2 from "node:path";
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 // mcp/local-env.ts
 import { readFile, realpath } from "node:fs/promises";
-import path2 from "node:path";
-
-// mcp/pack.ts
 import path from "node:path";
 
 // node_modules/tar/dist/esm/index.min.js
@@ -24508,9 +24505,9 @@ async function packDirectory(root, excludes = []) {
       portable: true,
       noMtime: true,
       filter: (entryPath) => {
-        const segments = entryPath.split(path.sep);
+        const segments = entryPath.split(/[\\/]/);
         return !segments.some(
-          (segment) => skip.has(segment) || isSensitiveEnvName(segment)
+          (segment) => skip.has(segment)
         );
       }
     },
@@ -24572,13 +24569,13 @@ function uniqueKeys(keys, kind) {
   return unique;
 }
 async function loadSelectedLocalEnv(projectRoot, selection) {
-  if (path2.basename(selection.file) !== selection.file || !isSensitiveEnvName(selection.file)) {
+  if (path.basename(selection.file) !== selection.file || !isSensitiveEnvName(selection.file)) {
     throw new Error("localEnv.file\uC740 \uD504\uB85C\uC81D\uD2B8 \uB8E8\uD2B8\uC758 \uC2E4\uC81C .env \uACC4\uC5F4 \uD30C\uC77C\uC774\uC5B4\uC57C \uD55C\uB2E4");
   }
   const root = await realpath(projectRoot);
-  const selectedPath = path2.join(root, selection.file);
+  const selectedPath = path.join(root, selection.file);
   const resolved = await realpath(selectedPath).catch(() => null);
-  if (resolved === null || !resolved.startsWith(`${root}${path2.sep}`)) {
+  if (resolved === null || !resolved.startsWith(`${root}${path.sep}`)) {
     throw new Error(`\uB85C\uCEEC env \uD30C\uC77C\uC744 \uCC3E\uC9C0 \uBABB\uD588\uB2E4: ${selection.file}`);
   }
   const envKeys = uniqueKeys(selection.envKeys, "\uC77C\uBC18 \uC124\uC815");
@@ -24625,7 +24622,7 @@ var marker = "# Managed by AibleCampus Apps AI. Do not commit this file.";
 async function assertNotTracked(root) {
   let current = root;
   for (; ; ) {
-    if (await lstat(path3.join(current, ".git")).catch(() => null)) {
+    if (await lstat(path2.join(current, ".git")).catch(() => null)) {
       try {
         await promisify(execFile)("git", ["-C", root, "ls-files", "--error-unmatch", "--", AI_ENV_FILE], { timeout: 5e3 });
       } catch (error51) {
@@ -24634,7 +24631,7 @@ async function assertNotTracked(root) {
       }
       throw new AiSetupError(".env.apps-ai\uAC00 Git\uC5D0 \uCD94\uC801\uB418\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 \uCD94\uC801\uC5D0\uC11C \uC81C\uC678\uD558\uC2ED\uC2DC\uC624.");
     }
-    const parent = path3.dirname(current);
+    const parent = path2.dirname(current);
     if (parent === current) return;
     current = parent;
   }
@@ -24656,12 +24653,12 @@ async function configureAiGateway(projectPath, model, input) {
   const root = await realpath2(projectPath);
   if (!(await lstat(root)).isDirectory()) throw new AiSetupError("\uD504\uB85C\uC81D\uD2B8 \uD3F4\uB354\uB97C \uC9C0\uC815\uD558\uC2ED\uC2DC\uC624.");
   await assertNotTracked(root);
-  const lockPath = path3.join(root, ".apps-ai-setup.lock");
+  const lockPath = path2.join(root, ".apps-ai-setup.lock");
   const lock = await open(lockPath, "wx", 384).catch(() => {
     throw new AiSetupError("AI \uC124\uC815\uC774 \uC9C4\uD589 \uC911\uC774\uAC70\uB098 \uC7A0\uAE08 \uD30C\uC77C\uC774 \uC788\uC2B5\uB2C8\uB2E4.");
   });
-  const target = path3.join(root, AI_ENV_FILE);
-  const temporary = path3.join(root, `.env.apps-ai-${randomUUID2()}`);
+  const target = path2.join(root, AI_ENV_FILE);
+  const temporary = path2.join(root, `.env.apps-ai-${randomUUID2()}`);
   try {
     if (await plainFile(target)) {
       const existing = await readFile2(target, "utf8");
@@ -24670,7 +24667,7 @@ async function configureAiGateway(projectPath, model, input) {
       if (assignments.length !== 3 || assignments.some((line) => !/^(LETSUR_BASE_URL|LETSUR_MODEL|LETSUR_API_KEY)=/.test(line)))
         throw new AiSetupError(".env.apps-ai\uC5D0 \uB2E4\uB978 \uC124\uC815\uC774 \uC788\uC5B4 \uC790\uB3D9\uC73C\uB85C \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
     }
-    const ignore = path3.join(root, ".gitignore");
+    const ignore = path2.join(root, ".gitignore");
     const existingIgnore = await plainFile(ignore) ? await readFile2(ignore, "utf8") : "";
     const ignoreSuffix = "\n# AibleCampus private AI configuration\n.env.apps-ai\n.env.apps-ai-*\n.apps-ai-setup.lock\n";
     if (!existingIgnore.endsWith(ignoreSuffix)) {
@@ -24748,13 +24745,13 @@ async function verifyAiGateway(projectPath, fetcher = fetch) {
 
 // mcp/source-checkout.ts
 import { mkdir, readFile as readFile3, writeFile } from "node:fs/promises";
-import path4 from "node:path";
+import path3 from "node:path";
 var State = external_exports.object({ api: external_exports.string(), deployment: external_exports.string(), workspace: external_exports.string().nullable(), commit: external_exports.string().regex(/^[a-f0-9]{40}$/) });
 var Snapshot = external_exports.object({ commit: external_exports.string().regex(/^[a-f0-9]{40}$/), files: external_exports.array(external_exports.object({ path: external_exports.string(), content: external_exports.string(), executable: external_exports.boolean() })).max(5e3) });
 async function readSourceBase(root, api, deployment, workspace) {
   let text;
   try {
-    text = await readFile3(path4.join(root, ".apps-source.json"), "utf8");
+    text = await readFile3(path3.join(root, ".apps-source.json"), "utf8");
   } catch (error51) {
     if (error51.code === "ENOENT") return void 0;
     throw error51;
@@ -24765,22 +24762,22 @@ async function readSourceBase(root, api, deployment, workspace) {
 }
 async function saveSourceBase(root, api, deployment, workspace, commit) {
   const state = State.parse({ api, deployment, workspace: workspace ?? null, commit });
-  await writeFile(path4.join(root, ".apps-source.json"), JSON.stringify(state, null, 2) + "\n", { mode: 384 });
+  await writeFile(path3.join(root, ".apps-source.json"), JSON.stringify(state, null, 2) + "\n", { mode: 384 });
 }
 async function checkoutSnapshot(root, raw, api, deployment, workspace) {
   const snapshot = Snapshot.parse(raw);
   let bytes = 0;
   const seen = /* @__PURE__ */ new Set();
   for (const file2 of snapshot.files) {
-    if (!file2.path || file2.path.includes("\\") || file2.path.includes(":") || path4.posix.isAbsolute(file2.path) || file2.path.includes("\0") || file2.path.split("/").some((part) => !part || part === "." || part === ".." || part === ".git" || part === ".apps-source.json") || seen.has(file2.path)) throw new Error("\uC18C\uC2A4 \uD30C\uC77C \uACBD\uB85C\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+    if (!file2.path || file2.path.includes("\\") || file2.path.includes(":") || path3.posix.isAbsolute(file2.path) || file2.path.includes("\0") || file2.path.split("/").some((part) => !part || part === "." || part === ".." || part === ".git" || part === ".apps-source.json") || seen.has(file2.path)) throw new Error("\uC18C\uC2A4 \uD30C\uC77C \uACBD\uB85C\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
     seen.add(file2.path);
     bytes += Buffer.byteLength(file2.content, "base64");
     if (bytes > 64 * 1024 * 1024) throw new Error("\uC18C\uC2A4 \uD06C\uAE30 \uC0C1\uD55C\uC744 \uCD08\uACFC\uD588\uB2E4");
   }
   await mkdir(root, { recursive: false, mode: 448 });
   for (const file2 of snapshot.files) {
-    const target = path4.join(root, file2.path);
-    await mkdir(path4.dirname(target), { recursive: true });
+    const target = path3.join(root, file2.path);
+    await mkdir(path3.dirname(target), { recursive: true });
     await writeFile(target, Buffer.from(file2.content, "base64"), { flag: "wx", mode: file2.executable ? 448 : 384 });
   }
   await saveSourceBase(root, api, deployment, workspace, snapshot.commit);
@@ -25304,8 +25301,8 @@ function getErrorMap2() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path10, errorMaps, issueData } = params;
-  const fullPath = [...path10, ...issueData.path || []];
+  const { data, path: path9, errorMaps, issueData } = params;
+  const fullPath = [...path9, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -25420,11 +25417,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path10, key) {
+  constructor(parent, value, path9, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path10;
+    this._path = path9;
     this._key = key;
   }
   get path() {
@@ -28952,11 +28949,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path10) {
-  if (path10.length === 0) {
+function getDotPath(path9) {
+  if (path9.length === 0) {
     return "object root";
   }
-  return path10.reduce((acc, seg, index) => {
+  return path9.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -34520,16 +34517,16 @@ var StdioServerTransport = class {
 // mcp/index.ts
 import { createHash as createHash5 } from "node:crypto";
 import { existsSync } from "node:fs";
-import path9 from "node:path";
+import path8 from "node:path";
 
 // mcp/device-auth.ts
 import { mkdir as mkdir3, readFile as readFile5, rename as rename3, writeFile as writeFile3 } from "node:fs/promises";
 import { homedir, hostname as hostname3 } from "node:os";
-import path6 from "node:path";
+import path5 from "node:path";
 
 // mcp/file-lock.ts
 import { mkdir as mkdir2, rmdir, stat } from "node:fs/promises";
-import path5 from "node:path";
+import path4 from "node:path";
 var LOCK_STALE_MS = 1e4;
 var LOCK_RETRY_MS = 25;
 var LOCK_RETRIES = 500;
@@ -34557,7 +34554,7 @@ async function acquireLock(lockDirectory) {
   throw new Error("\uD30C\uC77C \uC7A0\uAE08\uC744 \uC5BB\uC9C0 \uBABB\uD588\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD55C\uB2E4");
 }
 async function withFileLock(file2, work) {
-  await mkdir2(path5.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir2(path4.dirname(file2), { recursive: true, mode: 448 });
   const lockDirectory = `${file2}.lock`;
   await acquireLock(lockDirectory);
   try {
@@ -34577,9 +34574,9 @@ var DEFAULT_RESOURCE = "urn:aiblecampus:apps";
 var refreshes = /* @__PURE__ */ new Map();
 function stateFile() {
   const configured = appsEnv("CREDENTIAL_FILE");
-  if (configured) return path6.resolve(configured);
-  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path6.join(homedir(), ".config");
-  return path6.join(configRoot, "aiblecampus-apps", "device.json");
+  if (configured) return path5.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path5.join(homedir(), ".config");
+  return path5.join(configRoot, "aiblecampus-apps", "device.json");
 }
 function emptyState(apiBase2) {
   return { version: 1, apiBase: apiBase2, credential: null, pending: null };
@@ -34613,7 +34610,7 @@ async function readState(apiBase2) {
 }
 async function writeState(state) {
   const file2 = stateFile();
-  await mkdir3(path6.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir3(path5.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.tmp`;
   await writeFile3(temporary, `${JSON.stringify(state, null, 2)}
 `, { mode: 384 });
@@ -34846,7 +34843,7 @@ async function completeDeviceLogin(apiBase2) {
 import { createHash as createHash4 } from "node:crypto";
 import { mkdir as mkdir4, readFile as readFile6, readdir, stat as stat2 } from "node:fs/promises";
 import { backup, DatabaseSync } from "node:sqlite";
-import path7 from "node:path";
+import path6 from "node:path";
 var SAFE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 var MAX_TABLES = 100;
 var MAX_ROWS = 1e5;
@@ -34876,7 +34873,7 @@ function snapshotValue(value) {
   throw new Error(`\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 SQLite \uAC12 \uD615\uC2DD\uC774\uB2E4: ${typeof value}`);
 }
 async function snapshotSqlite(databasePath) {
-  const absolute = path7.resolve(databasePath);
+  const absolute = path6.resolve(databasePath);
   const source = await readFile6(absolute);
   const database = new DatabaseSync(absolute, { readOnly: true });
   try {
@@ -34936,9 +34933,9 @@ async function snapshotSqlite(databasePath) {
   }
 }
 function withinProject(projectRoot, candidate) {
-  const root = path7.resolve(projectRoot);
-  const absolute = path7.resolve(candidate);
-  if (absolute !== root && !absolute.startsWith(`${root}${path7.sep}`)) {
+  const root = path6.resolve(projectRoot);
+  const absolute = path6.resolve(candidate);
+  if (absolute !== root && !absolute.startsWith(`${root}${path6.sep}`)) {
     throw new Error("\uC774\uC804 \uB300\uC0C1\uC740 \uD504\uB85C\uC81D\uD2B8 \uD3F4\uB354 \uC548\uC5D0 \uC788\uC5B4\uC57C \uD55C\uB2E4");
   }
   return absolute;
@@ -34949,11 +34946,11 @@ function backupName(label, extension) {
 }
 async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   const source = withinProject(projectRoot, databasePath);
-  const backupRoot = path7.join(path7.resolve(projectRoot), ".apps-backups");
+  const backupRoot = path6.join(path6.resolve(projectRoot), ".apps-backups");
   await mkdir4(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path7.join(
+  const backupPath = path6.join(
     backupRoot,
-    backupName(path7.basename(source), ".sqlite")
+    backupName(path6.basename(source), ".sqlite")
   );
   const database = new DatabaseSync(source, { readOnly: true });
   try {
@@ -34964,7 +34961,7 @@ async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   return { backupPath, snapshot: await snapshotSqlite(backupPath) };
 }
 function contentType(file2) {
-  const extension = path7.extname(file2).toLowerCase();
+  const extension = path6.extname(file2).toLowerCase();
   if (extension === ".json") return "application/json";
   if (extension === ".html") return "text/html; charset=utf-8";
   if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
@@ -34981,23 +34978,23 @@ async function collectFiles(root, current, files) {
     if (files.length >= MAX_FILES) {
       throw new Error(`\uD30C\uC77C\uC740 ${MAX_FILES}\uAC1C\uAE4C\uC9C0 \uC790\uB3D9 \uC774\uC804\uD560 \uC218 \uC788\uB2E4`);
     }
-    const absolute = path7.join(current, entry.name);
+    const absolute = path6.join(current, entry.name);
     if (entry.isSymbolicLink()) {
       throw new Error(`\uC2EC\uBCFC\uB9AD \uB9C1\uD06C\uB294 \uC790\uB3D9 \uC774\uC804\uD558\uC9C0 \uC54A\uB294\uB2E4: ${absolute}`);
     }
     if (entry.isDirectory()) await collectFiles(root, absolute, files);
-    else if (entry.isFile()) files.push(path7.relative(root, absolute));
+    else if (entry.isFile()) files.push(path6.relative(root, absolute));
   }
 }
 async function snapshotFiles(sourceDirectory) {
-  const root = path7.resolve(sourceDirectory);
+  const root = path6.resolve(sourceDirectory);
   const files = [];
   await collectFiles(root, root, files);
   files.sort();
   const objects = [];
   let totalBytes = 0;
   for (const key of files) {
-    const absolute = path7.join(root, key);
+    const absolute = path6.join(root, key);
     const info = await stat2(absolute);
     totalBytes += info.size;
     if (totalBytes > MAX_TOTAL_BYTES) {
@@ -35005,7 +35002,7 @@ async function snapshotFiles(sourceDirectory) {
     }
     const content = await readFile6(absolute);
     objects.push({
-      key: key.split(path7.sep).join("/"),
+      key: key.split(path6.sep).join("/"),
       contentType: contentType(key),
       size: content.byteLength,
       sha256: sha256(content),
@@ -35027,11 +35024,11 @@ async function snapshotFiles(sourceDirectory) {
 }
 async function backupAndSnapshotFiles(projectRoot, sourceDirectory) {
   const source = withinProject(projectRoot, sourceDirectory);
-  const backupRoot = path7.join(path7.resolve(projectRoot), ".apps-backups");
+  const backupRoot = path6.join(path6.resolve(projectRoot), ".apps-backups");
   await mkdir4(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path7.join(
+  const backupPath = path6.join(
     backupRoot,
-    backupName(path7.basename(source), ".tar.gz")
+    backupName(path6.basename(source), ".tar.gz")
   );
   await Qn(
     { cwd: source, file: backupPath, gzip: true, portable: true },
@@ -35078,13 +35075,13 @@ async function openVerificationUrl(url2) {
 import { randomUUID as randomUUID5 } from "node:crypto";
 import { mkdir as mkdir5, readFile as readFile7, rename as rename4, writeFile as writeFile4 } from "node:fs/promises";
 import { homedir as homedir2 } from "node:os";
-import path8 from "node:path";
+import path7 from "node:path";
 var DEFAULT_TTL_MS = 30 * 60 * 1e3;
 function defaultAttemptFile() {
   const configured = appsEnv("DEPLOYMENT_ATTEMPT_FILE");
-  if (configured) return path8.resolve(configured);
-  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path8.join(homedir2(), ".config");
-  return path8.join(
+  if (configured) return path7.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path7.join(homedir2(), ".config");
+  return path7.join(
     configRoot,
     "aiblecampus-apps",
     "deployment-attempts.json"
@@ -35124,7 +35121,7 @@ async function readState2(file2) {
   }
 }
 async function writeState2(file2, state) {
-  await mkdir5(path8.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir5(path7.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.${randomUUID5()}.tmp`;
   await writeFile4(temporary, `${JSON.stringify(state, null, 2)}
 `, {
@@ -35157,7 +35154,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.30.0";
+var PLUGIN_VERSION = "0.30.1";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
@@ -35688,7 +35685,7 @@ server.registerTool(
         `\uB85C\uCEEC \uD658\uACBD \uC124\uC815\uC744 \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
       );
     }
-    const deploymentName = toDeploymentName(name ?? path9.basename(projectPath));
+    const deploymentName = toDeploymentName(name ?? path8.basename(projectPath));
     let base = sourceBaseCommit;
     try {
       base ??= await readSourceBase(projectPath, apiBase(), deploymentName, workspace);
@@ -36168,7 +36165,7 @@ server.registerTool(
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
   },
   async ({ deployment, directory, commit: reference, workspace }) => {
-    if (!path9.isAbsolute(directory)) return errorResult("\uC0C8 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD55C\uB2E4");
+    if (!path8.isAbsolute(directory)) return errorResult("\uC0C8 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD55C\uB2E4");
     const result = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}/source${reference ? `?commit=${reference}` : ""}`, {}, workspace);
     if (!result.ok) return failure("\uCD5C\uC2E0 \uC18C\uC2A4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uB2E4", result);
     try {
