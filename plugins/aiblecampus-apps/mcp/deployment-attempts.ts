@@ -76,6 +76,7 @@ async function readState(file: string): Promise<DeploymentAttemptState> {
     ) {
       throw new Error(
         `배포 요청 복구 파일 형식이 올바르지 않다: ${file}. 파일을 별도 위치로 옮긴 뒤 deployment_status로 기존 배포를 먼저 확인한다`,
+        { cause: error },
       );
     }
     throw error;

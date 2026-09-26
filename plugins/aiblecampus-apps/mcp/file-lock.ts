@@ -46,6 +46,8 @@ export async function withFileLock<T>(
     try {
       await rmdir(lockDirectory);
     } catch (error) {
+      // 잠금 폴더를 지우지 못하면 다음 작업이 영원히 기다리므로 작업 결과보다 이 오류를 먼저 알린다(0.30.2 동작)
+      // eslint-disable-next-line no-unsafe-finally
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
   }

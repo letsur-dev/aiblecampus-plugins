@@ -1,6 +1,6 @@
 {
   "name": "aiblecampus-apps-plugin",
-  "version": "0.30.2",
+  "version": "0.31.0",
   "private": true,
   "type": "module",
   "description": "에이블캠퍼스 Apps 배포 클라이언트. Claude Code와 Codex 플러그인으로 설치한다.",
@@ -11,11 +11,11 @@
     "node": ">=22.18"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "tar": "^7.5.1",
-    "zod": "^4.1.13"
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "tar": "7.5.22",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "esbuild": "^0.25.12"
+    "esbuild": "0.25.12"
   }
 }

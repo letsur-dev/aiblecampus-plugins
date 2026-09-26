@@ -33,6 +33,8 @@ type StoredCredential = {
 type LocalState = {
   version: 1;
   apiBase: string;
+  /** Credential을 발급한 로그인 주소. 다르면(0.30.2의 auth.) 저장한 Credential을 버린다 */
+  issuer?: string;
   credential: StoredCredential | null;
   pending: PendingAuthorization | null;
 };
@@ -49,12 +51,14 @@ function stateFile(): string {
 }
 
 function emptyState(apiBase: string): LocalState {
-  return { version: 1, apiBase, credential: null, pending: null };
+  return { version: 1, apiBase, issuer: identityBase(apiBase), credential: null, pending: null };
 }
 
 function parseState(raw: string, apiBase: string): LocalState {
   const parsed = JSON.parse(raw) as LocalState;
   if (parsed.version !== 1 || parsed.apiBase !== apiBase) return emptyState(apiBase);
+  // 이전 플러그인이 auth.에서 받은 Credential은 새 api.가 받지 않는다. 다시 로그인하게 비운다
+  if (parsed.issuer !== identityBase(apiBase)) return emptyState(apiBase);
   try {
     if (parsed.credential !== null) {
       assertDpopPrivateJwk(parsed.credential.privateJwk);
@@ -80,7 +84,7 @@ async function readState(apiBase: string): Promise<LocalState> {
     return parseState(await readFile(stateFile(), "utf8"), apiBase);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw new Error("기기 Credential 저장 파일이 올바르지 않다");
+      throw new Error("기기 Credential 저장 파일이 올바르지 않다", { cause: error });
     }
     return emptyState(apiBase);
   }
@@ -94,14 +98,18 @@ async function writeState(state: LocalState): Promise<void> {
   await rename(temporary, file);
 }
 
-function identityBase(apiBase: string): string {
+/** 기본 로그인 주소. 0.31.0부터 `auth.` 대신 `login.`을 쓴다 */
+export const DEFAULT_IDENTITY_URL = "https://login.aible-campus.com";
+
+export function identityBase(apiBase: string): string {
   const value = appsEnv("IDENTITY_URL");
   if (value) return value.replace(/\/+$/, "");
   const api = new URL(apiBase);
+  if (api.origin === "https://api.aible-campus.com") return DEFAULT_IDENTITY_URL;
   if (!api.hostname.startsWith("api.")) {
-    throw new Error("APPS_IDENTITY_URL 이 설정되지 않았고 API 주소에서 Identity 주소를 계산할 수 없다");
+    throw new Error("APPS_IDENTITY_URL 이 설정되지 않았고 API 주소에서 로그인 주소를 계산할 수 없다");
   }
-  api.hostname = `auth.${api.hostname.slice(4)}`;
+  api.hostname = `login.${api.hostname.slice(4)}`;
   api.pathname = "";
   api.search = "";
   api.hash = "";

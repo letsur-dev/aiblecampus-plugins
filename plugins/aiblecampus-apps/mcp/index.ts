@@ -8,7 +8,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { packDirectory } from "./pack.ts";
@@ -28,7 +27,8 @@ import {
 import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
-const PLUGIN_VERSION = "0.30.2";
+/** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
+export const PLUGIN_VERSION = "0.31.0";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -216,6 +216,7 @@ async function callApi(
       return { ok: false, status: 0, body: TOKEN_MISSING };
     }
     const headers = new Headers(init.headers);
+    headers.set("x-apps-plugin-version", PLUGIN_VERSION);
     if (workspace !== undefined) headers.set("x-apps-workspace", workspace);
     for (const [key, value] of Object.entries(authentication)) {
       headers.set(key, value);
@@ -298,9 +299,21 @@ function errorResult(message: string): {
   return { content: [{ type: "text", text: message }], isError: true };
 }
 
+/** 서버가 이전 로그인 주소(auth.)에서 발급한 토큰을 거부했다는 응답 */
+export const PLUGIN_UPDATE_REQUIRED_MESSAGE =
+  "Apps 로그인 주소가 login.aible-campus.com으로 바뀌어 이전 기기 로그인은 더 쓸 수 없다.\n" +
+  "start_apps_login으로 기기 로그인을 다시 진행한다. 계속 같은 오류가 나면 manage-apps-plugin 지침으로 플러그인을 최신 버전으로 갱신한다.";
+
+export function isPluginUpdateRequired(result: Pick<ApiResult, "status" | "body">): boolean {
+  return result.status === 401 && typeof result.body === "object" && result.body !== null && result.body["error"] === "plugin_update_required";
+}
+
 /** 실패 응답을 사람과 agent 가 함께 읽을 수 있는 형태로 만든다. */
 function failure(prefix: string, result: ApiResult): ReturnType<typeof errorResult> {
   if (result.status === 0) return errorResult(String(result.body));
+  if (isPluginUpdateRequired(result)) {
+    return errorResult(`${prefix}: ${PLUGIN_UPDATE_REQUIRED_MESSAGE}`);
+  }
   if (result.status === 401) {
     return errorResult(
       `${prefix}: 인증에 실패했다 (401).\n기기 로그인을 다시 진행한다. APPS_TOKEN을 쓰는 운영 환경은 해당 service Credential이 폐기됐는지 확인한다.`,

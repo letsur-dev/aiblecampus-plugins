@@ -43,7 +43,7 @@ Code는 CLI로 marketplace 추가, 설치 및 활성화를 진행한다. `/reloa
 플랫폼 연결에는 다음 환경변수를 사용한다.
 
 - `APPS_API_URL`: 플랫폼 제어 API 주소. 생략하면 `https://api.aible-campus.com`을 사용한다.
-- `APPS_IDENTITY_URL`: Identity 주소. 생략하면 API 주소의 `api.`를 `auth.`로 바꿔 계산한다.
+- `APPS_IDENTITY_URL`: 로그인 주소. 생략하면 운영 API(`https://api.aible-campus.com`)에서는 `https://login.aible-campus.com`을 쓰고, 그 밖에는 API 주소의 `api.`를 `login.`으로 바꿔 계산한다(0.31.0). 0.30.2 이하는 `auth.`를 썼다.
 - `APPS_DEVICE_CLIENT_ID`: Device Flow client ID. 기본값은 기존 Identity 기기 클라이언트다.
 - `APPS_OPEN_BROWSER`: Device Flow 승인 주소 자동 열기 여부. 기본값은 `1`이며 `0`, `false` 또는 `off`로 끌 수 있다.
 - `APPS_TOKEN`: 이전 운영 및 CI용 service Credential. 개인 기기 로그인보다 우선 적용된다.
