@@ -6,7 +6,7 @@
 
 - [인증](https://docs.platform.letsur.ai/ai-gateway/api-reference/authentication): OpenAI 호환 SDK의 baseURL은 `LETSUR_BASE_URL`이며 현재 `https://gw.letsur.ai/v1`이다. Bearer 인증은 서버의 `LETSUR_API_KEY`를 사용한다.
 - [Messages](https://docs.platform.letsur.ai/ai-gateway/api-reference/endpoints/messages): Anthropic SDK는 `/v1` 없는 origin을 사용한다. 직접 HTTP 요청은 `/v1/messages`에 `x-api-key`와 `anthropic-version: 2023-06-01`을 넣는다.
-- 브라우저와 서버의 경계는 동일 출처 앱 API다. Gateway 키와 Portal 서비스 인증은 public 환경변수나 클라이언트 코드에 넣지 않는다.
+- 브라우저와 서버의 경계는 동일 출처 앱 API다. Gateway 키와 플랫폼 서비스 인증은 public 환경변수나 클라이언트 코드에 넣지 않는다.
 
 ## 기능별 계약
 

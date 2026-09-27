@@ -1,3 +1,4 @@
+import { appMeta } from "./app-meta.ts";
 import { DeletionConfirmations } from "./delete-confirmation.ts";
 import { checkPublicAccess } from "./public-access.ts";
 import { AiSetupError, configureAiGateway, verifyAiGateway } from "./ai-gateway.ts";
@@ -28,7 +29,7 @@ import { openVerificationUrl } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.31.0";
+export const PLUGIN_VERSION = "0.32.0";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -386,7 +387,7 @@ server.registerTool("get_plugin_skill", {
 
 server.registerTool("get_ai_gateway", {
   title: "산출물 AI 환경과 모델 확인",
-  description: "AI로 요청하고 응답하는 기능, 챗봇, 요약 등 산출물 AI 기능 구현에 사용합니다. Portal의 지정 환경과 현재 모델 목록을 확인하며 API 키는 반환하지 않습니다.",
+  description: "AI로 요청하고 응답하는 기능, 챗봇, 요약 등 산출물 AI 기능 구현에 사용합니다. 운영진이 허브(hub.aible-campus.com)에서 정한 앱용 AI 환경과 현재 모델 목록을 확인하며 API 키는 반환하지 않습니다.",
   inputSchema: { workspace: WorkspaceInputSchema },
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
 }, async ({ workspace }) => {
@@ -398,7 +399,7 @@ server.registerTool("get_ai_gateway", {
 
 server.registerTool("configure_ai_gateway", {
   title: "프로젝트에 산출물 AI 설정 연결",
-  description: "AI 기능 구현을 위해 Portal 산출물 환경의 최신 키를 MCP 내부에서 받아 프로젝트 .env.apps-ai에 저장합니다. 모델은 get_ai_gateway 결과에서 선택합니다. 키를 응답에 출력하지 않으며 배포하지 않습니다.",
+  description: "AI 기능 구현을 위해 앱용 AI 환경의 최신 키를 MCP 내부에서 받아 프로젝트 .env.apps-ai에 저장합니다. 모델은 get_ai_gateway 결과에서 선택합니다. 키를 응답에 출력하지 않으며 배포하지 않습니다.",
   inputSchema: { path: z.string().min(1), model: z.string().min(1).max(200), workspace: WorkspaceInputSchema },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
 }, async ({ path: projectPath, model, workspace }) => {
@@ -586,7 +587,7 @@ server.registerTool(
   {
     title: "프로젝트 배포",
     description:
-      "프로젝트를 에이블캠퍼스 Apps 에 배포한다. 로컬 디렉토리 경로를 주면 tar.gz 로 묶어 올리고, git 주소를 주면 서버가 직접 clone 한다. 빌드와 실행, 접속 URL 발급까지 수행한다.",
+      "프로젝트를 에이블캠퍼스 Apps 에 배포한다. 로컬 디렉토리 경로를 주면 tar.gz 로 묶어 올리고, git 주소를 주면 서버가 직접 clone 한다. 빌드와 실행, 접속 URL 발급까지 수행한다. 새 앱에는 displayName을, 모든 배포에는 changeSummary를 에이전트가 프로젝트 내용과 대화 맥락으로 한국어로 지어 함께 보낸다(사용자에게 묻지 않는다).",
     inputSchema: {
       path: z
         .string()
@@ -597,7 +598,29 @@ server.registerTool(
         .string()
         .optional()
         .describe(
-          "관리용 앱 이름. 개인 앱은 생략하면 디렉토리 이름에서 만든다. 팀은 기존 앱 하나를 자동 갱신하며 이름이나 주소를 다시 정하지 않는다",
+          "관리용 프로젝트 이름(영문 소문자, 숫자, 하이픈). 화면에 보이는 앱 이름은 displayName이다. 개인 앱은 생략하면 디렉토리 이름에서 만든다. 팀은 기존 앱 하나를 자동 갱신하며 이름이나 주소를 다시 정하지 않는다",
+        ),
+      displayName: z
+        .string()
+        .trim()
+        .min(1)
+        .max(60)
+        .optional()
+        .describe(
+          "화면에 보이는 앱 이름. 한국어로 짧게(2-20자 권장, 60자 이하) 앱이 하는 일을 드러내게 짓는다. 폴더 이름이나 slug 같은 형식 이름을 그대로 쓰지 않는다. 사용자가 이름을 말했으면 그 이름을 쓴다. 새 앱과 아직 표시 이름이 없는 앱에만 적용되고 기존 이름은 renameApp이 true일 때만 바뀐다",
+        ),
+      renameApp: z
+        .boolean()
+        .optional()
+        .describe("사용자가 기존 앱의 이름을 바꿔 달라고 했을 때만 true. 그때 displayName으로 이름을 바꾼다. 평소 재배포에는 생략한다"),
+      changeSummary: z
+        .string()
+        .trim()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe(
+          "이번 배포에서 바뀐 점을 한국어 한 줄(120자 이하 권장)로 적은 버전 설명. 배포 기록에 보인다. 첫 배포는 앱이 하는 일을, 재배포는 이번에 달라진 기능이나 화면을 적는다. \"수정\", \"업데이트\"처럼 내용 없는 말이나 파일 목록, 커밋 해시를 쓰지 않는다",
         ),
       ref: z
         .string()
@@ -636,8 +659,8 @@ server.registerTool(
           "같은 소스와 설정의 직전 요청이 명확히 실패했고 새 빌드가 필요할 때만 true. 응답 단절 복구에는 사용하지 않는다",
         ),
       sourceBaseCommit: z.string().regex(/^[a-f0-9]{40}$/).optional().describe("통합할 소스가 기준으로 삼은 GitLab 기본 브랜치 커밋. 최신 코드를 반영하지 않고 이 값만 변경하지 않는다"),
-      education: z.string().optional().describe("이전 클라이언트 호환 필드. 생략하고 workspace로 그룹을 지정한다. 사용자에게 교육을 선택하도록 요구하지 않는다"),
-      organization: z.string().optional().describe("이전 클라이언트 호환 필드. 새 호출에서는 생략하고 workspace만 지정한다"),
+      education: z.string().optional().describe("새 개인 앱을 배포할 교육 ID(list_educations의 id). 배포할 수 있는 교육이 둘 이상이면 list_educations 목록을 사용자에게 보여 주고 고른 교육을 넣는다. 하나뿐이면 참가자는 생략하고, 운영진은 그 교육을 넣는다. 서버가 education-required로 거절하면 응답의 교육 목록에서 고르게 한다. 기존 앱 재배포와 팀 앱은 앱과 팀의 교육을 따르므로 생략한다"),
+      organization: z.string().optional().describe("이전 클라이언트 호환 필드. 새 호출에서는 생략하고 교육은 education으로 지정한다"),
       workspace: z.string().min(1).describe("확인한 대상 workspace UUID 또는 slug. 요청과 프로젝트의 .aiblecampus-deploy.json을 확인한다. 누락된 팀 대상을 개인 공간으로 대체하지 않는다"),
     },
     annotations: {
@@ -661,6 +684,9 @@ server.registerTool(
     education,
     organization: legacyOrganization,
     sourceBaseCommit,
+    displayName,
+    renameApp,
+    changeSummary,
   }) => {
     if (education && legacyOrganization && education !== legacyOrganization) return errorResult("교육은 한 번만 지정한다");
     const organization = education ?? legacyOrganization;
@@ -714,6 +740,7 @@ server.registerTool(
           ...(secrets === undefined ? {} : { secrets }),
           ...(resources === undefined ? {} : { resources }),
           idempotencyKey: attempt.key,
+          ...appMeta({ displayName, renameApp, changeSummary }),
         }),
       }, workspace);
       if (!result.ok) return deploymentFailure(result, deploymentName, workspace, sourceBaseCommit);
@@ -777,6 +804,7 @@ server.registerTool(
     if (resources !== undefined) {
       form.set("resources", JSON.stringify(resources));
     }
+    for (const [key, value] of Object.entries(appMeta({ displayName, renameApp, changeSummary }))) form.set(key, String(value));
     let attempt: { key: string; recovered: boolean };
     try {
       attempt = await deploymentAttempt(
@@ -1276,7 +1304,7 @@ server.registerTool(
   "list_educations",
   {
     title: "내 교육",
-    description: "이전 클라이언트 호환 조회. 배포 대상은 apps_whoami의 workspaces에서 Portal 그룹명으로 선택한다. 교육 선택에는 사용하지 않는다.",
+    description: "배포할 수 있는 교육 목록(id, name)과 교육 선택 안내(guide)를 조회한다. 새 개인 앱을 만들 때 교육이 둘 이상이면 이 목록을 사용자에게 보여 주고 고른 교육의 id를 deploy_project의 education에 넣는다. 하나뿐이면 참가자는 고르지 않고 운영진은 이 목록에서 고른다. 기존 앱 재배포와 팀 앱에는 쓰지 않는다. 배포 공간(개인, 팀)은 apps_whoami의 workspaces로 정한다.",
     inputSchema: {},
     annotations: {readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:true},
   },
@@ -1290,7 +1318,7 @@ server.registerTool(
   "list_deployment_organizations",
   {
     title: "배포 가능한 교육 소속 (호환)",
-    description: "이전 클라이언트 호환 조회. 새 호출은 apps_whoami의 workspaces로 그룹을 선택한다.",
+    description: "이전 클라이언트 호환 조회. 새 호출은 공간을 apps_whoami의 workspaces로, 교육을 list_educations로 정한다.",
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },

@@ -7194,6 +7194,18 @@ var require_dist = __commonJS({
   }
 });
 
+// mcp/app-meta.ts
+function appMeta(input) {
+  const oneLine = (value) => value?.replace(new RegExp("\\p{Cc}+", "gu"), " ").replace(/\s+/g, " ").trim() || void 0;
+  const displayName = oneLine(input.displayName);
+  const changeSummary = oneLine(input.changeSummary);
+  return {
+    ...displayName === void 0 ? {} : { displayName },
+    ...displayName !== void 0 && input.renameApp === true ? { renameApp: true } : {},
+    ...changeSummary === void 0 ? {} : { changeSummary }
+  };
+}
+
 // mcp/delete-confirmation.ts
 import { randomUUID, createHash } from "node:crypto";
 
@@ -35442,7 +35454,7 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.31.0";
+var PLUGIN_VERSION = "0.32.0";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || "https://api.aible-campus.com";
@@ -35673,7 +35685,7 @@ server.registerTool("get_plugin_skill", {
 });
 server.registerTool("get_ai_gateway", {
   title: "\uC0B0\uCD9C\uBB3C AI \uD658\uACBD\uACFC \uBAA8\uB378 \uD655\uC778",
-  description: "AI\uB85C \uC694\uCCAD\uD558\uACE0 \uC751\uB2F5\uD558\uB294 \uAE30\uB2A5, \uCC57\uBD07, \uC694\uC57D \uB4F1 \uC0B0\uCD9C\uBB3C AI \uAE30\uB2A5 \uAD6C\uD604\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. Portal\uC758 \uC9C0\uC815 \uD658\uACBD\uACFC \uD604\uC7AC \uBAA8\uB378 \uBAA9\uB85D\uC744 \uD655\uC778\uD558\uBA70 API \uD0A4\uB294 \uBC18\uD658\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  description: "AI\uB85C \uC694\uCCAD\uD558\uACE0 \uC751\uB2F5\uD558\uB294 \uAE30\uB2A5, \uCC57\uBD07, \uC694\uC57D \uB4F1 \uC0B0\uCD9C\uBB3C AI \uAE30\uB2A5 \uAD6C\uD604\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uC6B4\uC601\uC9C4\uC774 \uD5C8\uBE0C(hub.aible-campus.com)\uC5D0\uC11C \uC815\uD55C \uC571\uC6A9 AI \uD658\uACBD\uACFC \uD604\uC7AC \uBAA8\uB378 \uBAA9\uB85D\uC744 \uD655\uC778\uD558\uBA70 API \uD0A4\uB294 \uBC18\uD658\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
   inputSchema: { workspace: WorkspaceInputSchema },
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
 }, async ({ workspace }) => {
@@ -35684,7 +35696,7 @@ server.registerTool("get_ai_gateway", {
 });
 server.registerTool("configure_ai_gateway", {
   title: "\uD504\uB85C\uC81D\uD2B8\uC5D0 \uC0B0\uCD9C\uBB3C AI \uC124\uC815 \uC5F0\uACB0",
-  description: "AI \uAE30\uB2A5 \uAD6C\uD604\uC744 \uC704\uD574 Portal \uC0B0\uCD9C\uBB3C \uD658\uACBD\uC758 \uCD5C\uC2E0 \uD0A4\uB97C MCP \uB0B4\uBD80\uC5D0\uC11C \uBC1B\uC544 \uD504\uB85C\uC81D\uD2B8 .env.apps-ai\uC5D0 \uC800\uC7A5\uD569\uB2C8\uB2E4. \uBAA8\uB378\uC740 get_ai_gateway \uACB0\uACFC\uC5D0\uC11C \uC120\uD0DD\uD569\uB2C8\uB2E4. \uD0A4\uB97C \uC751\uB2F5\uC5D0 \uCD9C\uB825\uD558\uC9C0 \uC54A\uC73C\uBA70 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  description: "AI \uAE30\uB2A5 \uAD6C\uD604\uC744 \uC704\uD574 \uC571\uC6A9 AI \uD658\uACBD\uC758 \uCD5C\uC2E0 \uD0A4\uB97C MCP \uB0B4\uBD80\uC5D0\uC11C \uBC1B\uC544 \uD504\uB85C\uC81D\uD2B8 .env.apps-ai\uC5D0 \uC800\uC7A5\uD569\uB2C8\uB2E4. \uBAA8\uB378\uC740 get_ai_gateway \uACB0\uACFC\uC5D0\uC11C \uC120\uD0DD\uD569\uB2C8\uB2E4. \uD0A4\uB97C \uC751\uB2F5\uC5D0 \uCD9C\uB825\uD558\uC9C0 \uC54A\uC73C\uBA70 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
   inputSchema: { path: external_exports.string().min(1), model: external_exports.string().min(1).max(200), workspace: WorkspaceInputSchema },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
 }, async ({ path: projectPath, model, workspace }) => {
@@ -35850,13 +35862,20 @@ server.registerTool(
   "deploy_project",
   {
     title: "\uD504\uB85C\uC81D\uD2B8 \uBC30\uD3EC",
-    description: "\uD504\uB85C\uC81D\uD2B8\uB97C \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 Apps \uC5D0 \uBC30\uD3EC\uD55C\uB2E4. \uB85C\uCEEC \uB514\uB809\uD1A0\uB9AC \uACBD\uB85C\uB97C \uC8FC\uBA74 tar.gz \uB85C \uBB36\uC5B4 \uC62C\uB9AC\uACE0, git \uC8FC\uC18C\uB97C \uC8FC\uBA74 \uC11C\uBC84\uAC00 \uC9C1\uC811 clone \uD55C\uB2E4. \uBE4C\uB4DC\uC640 \uC2E4\uD589, \uC811\uC18D URL \uBC1C\uAE09\uAE4C\uC9C0 \uC218\uD589\uD55C\uB2E4.",
+    description: "\uD504\uB85C\uC81D\uD2B8\uB97C \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 Apps \uC5D0 \uBC30\uD3EC\uD55C\uB2E4. \uB85C\uCEEC \uB514\uB809\uD1A0\uB9AC \uACBD\uB85C\uB97C \uC8FC\uBA74 tar.gz \uB85C \uBB36\uC5B4 \uC62C\uB9AC\uACE0, git \uC8FC\uC18C\uB97C \uC8FC\uBA74 \uC11C\uBC84\uAC00 \uC9C1\uC811 clone \uD55C\uB2E4. \uBE4C\uB4DC\uC640 \uC2E4\uD589, \uC811\uC18D URL \uBC1C\uAE09\uAE4C\uC9C0 \uC218\uD589\uD55C\uB2E4. \uC0C8 \uC571\uC5D0\uB294 displayName\uC744, \uBAA8\uB4E0 \uBC30\uD3EC\uC5D0\uB294 changeSummary\uB97C \uC5D0\uC774\uC804\uD2B8\uAC00 \uD504\uB85C\uC81D\uD2B8 \uB0B4\uC6A9\uACFC \uB300\uD654 \uB9E5\uB77D\uC73C\uB85C \uD55C\uAD6D\uC5B4\uB85C \uC9C0\uC5B4 \uD568\uAED8 \uBCF4\uB0B8\uB2E4(\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4).",
     inputSchema: {
       path: external_exports.string().describe(
         "\uBC30\uD3EC\uD560 \uD504\uB85C\uC81D\uD2B8\uC758 \uC704\uCE58. \uB85C\uCEEC \uB514\uB809\uD1A0\uB9AC\uC758 \uC808\uB300 \uACBD\uB85C(\uBCF4\uD1B5 \uD604\uC7AC \uC791\uC5C5 \uB514\uB809\uD1A0\uB9AC)\uC774\uAC70\uB098 public git \uC800\uC7A5\uC18C\uC758 https \uC8FC\uC18C\uB2E4"
       ),
       name: external_exports.string().optional().describe(
-        "\uAD00\uB9AC\uC6A9 \uC571 \uC774\uB984. \uAC1C\uC778 \uC571\uC740 \uC0DD\uB7B5\uD558\uBA74 \uB514\uB809\uD1A0\uB9AC \uC774\uB984\uC5D0\uC11C \uB9CC\uB4E0\uB2E4. \uD300\uC740 \uAE30\uC874 \uC571 \uD558\uB098\uB97C \uC790\uB3D9 \uAC31\uC2E0\uD558\uBA70 \uC774\uB984\uC774\uB098 \uC8FC\uC18C\uB97C \uB2E4\uC2DC \uC815\uD558\uC9C0 \uC54A\uB294\uB2E4"
+        "\uAD00\uB9AC\uC6A9 \uD504\uB85C\uC81D\uD2B8 \uC774\uB984(\uC601\uBB38 \uC18C\uBB38\uC790, \uC22B\uC790, \uD558\uC774\uD508). \uD654\uBA74\uC5D0 \uBCF4\uC774\uB294 \uC571 \uC774\uB984\uC740 displayName\uC774\uB2E4. \uAC1C\uC778 \uC571\uC740 \uC0DD\uB7B5\uD558\uBA74 \uB514\uB809\uD1A0\uB9AC \uC774\uB984\uC5D0\uC11C \uB9CC\uB4E0\uB2E4. \uD300\uC740 \uAE30\uC874 \uC571 \uD558\uB098\uB97C \uC790\uB3D9 \uAC31\uC2E0\uD558\uBA70 \uC774\uB984\uC774\uB098 \uC8FC\uC18C\uB97C \uB2E4\uC2DC \uC815\uD558\uC9C0 \uC54A\uB294\uB2E4"
+      ),
+      displayName: external_exports.string().trim().min(1).max(60).optional().describe(
+        "\uD654\uBA74\uC5D0 \uBCF4\uC774\uB294 \uC571 \uC774\uB984. \uD55C\uAD6D\uC5B4\uB85C \uC9E7\uAC8C(2-20\uC790 \uAD8C\uC7A5, 60\uC790 \uC774\uD558) \uC571\uC774 \uD558\uB294 \uC77C\uC744 \uB4DC\uB7EC\uB0B4\uAC8C \uC9D3\uB294\uB2E4. \uD3F4\uB354 \uC774\uB984\uC774\uB098 slug \uAC19\uC740 \uD615\uC2DD \uC774\uB984\uC744 \uADF8\uB300\uB85C \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC774\uB984\uC744 \uB9D0\uD588\uC73C\uBA74 \uADF8 \uC774\uB984\uC744 \uC4F4\uB2E4. \uC0C8 \uC571\uACFC \uC544\uC9C1 \uD45C\uC2DC \uC774\uB984\uC774 \uC5C6\uB294 \uC571\uC5D0\uB9CC \uC801\uC6A9\uB418\uACE0 \uAE30\uC874 \uC774\uB984\uC740 renameApp\uC774 true\uC77C \uB54C\uB9CC \uBC14\uB010\uB2E4"
+      ),
+      renameApp: external_exports.boolean().optional().describe("\uC0AC\uC6A9\uC790\uAC00 \uAE30\uC874 \uC571\uC758 \uC774\uB984\uC744 \uBC14\uAFD4 \uB2EC\uB77C\uACE0 \uD588\uC744 \uB54C\uB9CC true. \uADF8\uB54C displayName\uC73C\uB85C \uC774\uB984\uC744 \uBC14\uAFBC\uB2E4. \uD3C9\uC18C \uC7AC\uBC30\uD3EC\uC5D0\uB294 \uC0DD\uB7B5\uD55C\uB2E4"),
+      changeSummary: external_exports.string().trim().min(1).max(200).optional().describe(
+        '\uC774\uBC88 \uBC30\uD3EC\uC5D0\uC11C \uBC14\uB010 \uC810\uC744 \uD55C\uAD6D\uC5B4 \uD55C \uC904(120\uC790 \uC774\uD558 \uAD8C\uC7A5)\uB85C \uC801\uC740 \uBC84\uC804 \uC124\uBA85. \uBC30\uD3EC \uAE30\uB85D\uC5D0 \uBCF4\uC778\uB2E4. \uCCAB \uBC30\uD3EC\uB294 \uC571\uC774 \uD558\uB294 \uC77C\uC744, \uC7AC\uBC30\uD3EC\uB294 \uC774\uBC88\uC5D0 \uB2EC\uB77C\uC9C4 \uAE30\uB2A5\uC774\uB098 \uD654\uBA74\uC744 \uC801\uB294\uB2E4. "\uC218\uC815", "\uC5C5\uB370\uC774\uD2B8"\uCC98\uB7FC \uB0B4\uC6A9 \uC5C6\uB294 \uB9D0\uC774\uB098 \uD30C\uC77C \uBAA9\uB85D, \uCEE4\uBC0B \uD574\uC2DC\uB97C \uC4F0\uC9C0 \uC54A\uB294\uB2E4'
       ),
       ref: external_exports.string().optional().describe("git \uC8FC\uC18C\uC77C \uB54C\uB9CC \uC4F4\uB2E4. branch \uB098 tag \uC774\uB984. \uC0DD\uB7B5\uD558\uBA74 \uAE30\uBCF8 branch"),
       subdir: external_exports.string().optional().describe(
@@ -35877,8 +35896,8 @@ server.registerTool(
         "\uAC19\uC740 \uC18C\uC2A4\uC640 \uC124\uC815\uC758 \uC9C1\uC804 \uC694\uCCAD\uC774 \uBA85\uD655\uD788 \uC2E4\uD328\uD588\uACE0 \uC0C8 \uBE4C\uB4DC\uAC00 \uD544\uC694\uD560 \uB54C\uB9CC true. \uC751\uB2F5 \uB2E8\uC808 \uBCF5\uAD6C\uC5D0\uB294 \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uB294\uB2E4"
       ),
       sourceBaseCommit: external_exports.string().regex(/^[a-f0-9]{40}$/).optional().describe("\uD1B5\uD569\uD560 \uC18C\uC2A4\uAC00 \uAE30\uC900\uC73C\uB85C \uC0BC\uC740 GitLab \uAE30\uBCF8 \uBE0C\uB79C\uCE58 \uCEE4\uBC0B. \uCD5C\uC2E0 \uCF54\uB4DC\uB97C \uBC18\uC601\uD558\uC9C0 \uC54A\uACE0 \uC774 \uAC12\uB9CC \uBCC0\uACBD\uD558\uC9C0 \uC54A\uB294\uB2E4"),
-      education: external_exports.string().optional().describe("\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658 \uD544\uB4DC. \uC0DD\uB7B5\uD558\uACE0 workspace\uB85C \uADF8\uB8F9\uC744 \uC9C0\uC815\uD55C\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uAD50\uC721\uC744 \uC120\uD0DD\uD558\uB3C4\uB85D \uC694\uAD6C\uD558\uC9C0 \uC54A\uB294\uB2E4"),
-      organization: external_exports.string().optional().describe("\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658 \uD544\uB4DC. \uC0C8 \uD638\uCD9C\uC5D0\uC11C\uB294 \uC0DD\uB7B5\uD558\uACE0 workspace\uB9CC \uC9C0\uC815\uD55C\uB2E4"),
+      education: external_exports.string().optional().describe("\uC0C8 \uAC1C\uC778 \uC571\uC744 \uBC30\uD3EC\uD560 \uAD50\uC721 ID(list_educations\uC758 id). \uBC30\uD3EC\uD560 \uC218 \uC788\uB294 \uAD50\uC721\uC774 \uB458 \uC774\uC0C1\uC774\uBA74 list_educations \uBAA9\uB85D\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 \uACE0\uB978 \uAD50\uC721\uC744 \uB123\uB294\uB2E4. \uD558\uB098\uBFD0\uC774\uBA74 \uCC38\uAC00\uC790\uB294 \uC0DD\uB7B5\uD558\uACE0, \uC6B4\uC601\uC9C4\uC740 \uADF8 \uAD50\uC721\uC744 \uB123\uB294\uB2E4. \uC11C\uBC84\uAC00 education-required\uB85C \uAC70\uC808\uD558\uBA74 \uC751\uB2F5\uC758 \uAD50\uC721 \uBAA9\uB85D\uC5D0\uC11C \uACE0\uB974\uAC8C \uD55C\uB2E4. \uAE30\uC874 \uC571 \uC7AC\uBC30\uD3EC\uC640 \uD300 \uC571\uC740 \uC571\uACFC \uD300\uC758 \uAD50\uC721\uC744 \uB530\uB974\uBBC0\uB85C \uC0DD\uB7B5\uD55C\uB2E4"),
+      organization: external_exports.string().optional().describe("\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658 \uD544\uB4DC. \uC0C8 \uD638\uCD9C\uC5D0\uC11C\uB294 \uC0DD\uB7B5\uD558\uACE0 \uAD50\uC721\uC740 education\uC73C\uB85C \uC9C0\uC815\uD55C\uB2E4"),
       workspace: external_exports.string().min(1).describe("\uD655\uC778\uD55C \uB300\uC0C1 workspace UUID \uB610\uB294 slug. \uC694\uCCAD\uACFC \uD504\uB85C\uC81D\uD2B8\uC758 .aiblecampus-deploy.json\uC744 \uD655\uC778\uD55C\uB2E4. \uB204\uB77D\uB41C \uD300 \uB300\uC0C1\uC744 \uAC1C\uC778 \uACF5\uAC04\uC73C\uB85C \uB300\uCCB4\uD558\uC9C0 \uC54A\uB294\uB2E4")
     },
     annotations: {
@@ -35901,7 +35920,10 @@ server.registerTool(
     workspace,
     education,
     organization: legacyOrganization,
-    sourceBaseCommit
+    sourceBaseCommit,
+    displayName,
+    renameApp,
+    changeSummary
   }) => {
     if (education && legacyOrganization && education !== legacyOrganization) return errorResult("\uAD50\uC721\uC740 \uD55C \uBC88\uB9CC \uC9C0\uC815\uD55C\uB2E4");
     const organization = education ?? legacyOrganization;
@@ -35953,7 +35975,8 @@ server.registerTool(
           env: env ?? {},
           ...secrets === void 0 ? {} : { secrets },
           ...resources === void 0 ? {} : { resources },
-          idempotencyKey: attempt2.key
+          idempotencyKey: attempt2.key,
+          ...appMeta({ displayName, renameApp, changeSummary })
         })
       }, workspace);
       if (!result2.ok) return deploymentFailure(result2, deploymentName2, workspace, sourceBaseCommit);
@@ -36014,6 +36037,7 @@ server.registerTool(
     if (resources !== void 0) {
       form.set("resources", JSON.stringify(resources));
     }
+    for (const [key, value] of Object.entries(appMeta({ displayName, renameApp, changeSummary }))) form.set(key, String(value));
     let attempt;
     try {
       attempt = await deploymentAttempt(
@@ -36477,7 +36501,7 @@ server.registerTool(
   "list_educations",
   {
     title: "\uB0B4 \uAD50\uC721",
-    description: "\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658 \uC870\uD68C. \uBC30\uD3EC \uB300\uC0C1\uC740 apps_whoami\uC758 workspaces\uC5D0\uC11C Portal \uADF8\uB8F9\uBA85\uC73C\uB85C \uC120\uD0DD\uD55C\uB2E4. \uAD50\uC721 \uC120\uD0DD\uC5D0\uB294 \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uB294\uB2E4.",
+    description: "\uBC30\uD3EC\uD560 \uC218 \uC788\uB294 \uAD50\uC721 \uBAA9\uB85D(id, name)\uACFC \uAD50\uC721 \uC120\uD0DD \uC548\uB0B4(guide)\uB97C \uC870\uD68C\uD55C\uB2E4. \uC0C8 \uAC1C\uC778 \uC571\uC744 \uB9CC\uB4E4 \uB54C \uAD50\uC721\uC774 \uB458 \uC774\uC0C1\uC774\uBA74 \uC774 \uBAA9\uB85D\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 \uACE0\uB978 \uAD50\uC721\uC758 id\uB97C deploy_project\uC758 education\uC5D0 \uB123\uB294\uB2E4. \uD558\uB098\uBFD0\uC774\uBA74 \uCC38\uAC00\uC790\uB294 \uACE0\uB974\uC9C0 \uC54A\uACE0 \uC6B4\uC601\uC9C4\uC740 \uC774 \uBAA9\uB85D\uC5D0\uC11C \uACE0\uB978\uB2E4. \uAE30\uC874 \uC571 \uC7AC\uBC30\uD3EC\uC640 \uD300 \uC571\uC5D0\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uBC30\uD3EC \uACF5\uAC04(\uAC1C\uC778, \uD300)\uC740 apps_whoami\uC758 workspaces\uB85C \uC815\uD55C\uB2E4.",
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   },
@@ -36490,7 +36514,7 @@ server.registerTool(
   "list_deployment_organizations",
   {
     title: "\uBC30\uD3EC \uAC00\uB2A5\uD55C \uAD50\uC721 \uC18C\uC18D (\uD638\uD658)",
-    description: "\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658 \uC870\uD68C. \uC0C8 \uD638\uCD9C\uC740 apps_whoami\uC758 workspaces\uB85C \uADF8\uB8F9\uC744 \uC120\uD0DD\uD55C\uB2E4.",
+    description: "\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658 \uC870\uD68C. \uC0C8 \uD638\uCD9C\uC740 \uACF5\uAC04\uC744 apps_whoami\uC758 workspaces\uB85C, \uAD50\uC721\uC744 list_educations\uB85C \uC815\uD55C\uB2E4.",
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
   },
