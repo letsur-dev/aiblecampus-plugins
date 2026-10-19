@@ -41,4 +41,4 @@ claude plugin uninstall aiblecampus-apps@aiblecampus-plugins
 
 ## 라이선스
 
-Letsur 소유이며 모든 권리를 보유한다([LICENSE](LICENSE)). 스킬 폴더 가운데 자체 라이선스 파일이 있는 것은 그 파일의 조건을 따른다.
+Letsur 소유이며 모든 권리를 보유한다([LICENSE](LICENSE)). 수정하지 않은 채 Claude Code에 설치해 사용하는 것은 허락한다. 스킬 폴더 가운데 자체 라이선스 파일이 있는 것은 그 파일의 조건을 따른다.
