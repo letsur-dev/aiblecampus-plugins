@@ -38,3 +38,7 @@ claude plugin uninstall aiblecampus-apps@aiblecampus-plugins
 ## Claude 데스크톱 교육 참가자
 
 에이블캠퍼스 교육에서 Claude 데스크톱에 에이블캠퍼스로 로그인했다면 플러그인이 허브에서 자동으로 설치된다. 이 저장소로 따로 설치하지 않는다. 자세한 내용은 [플러그인 설명](plugins/aiblecampus-apps/README.md)에 있다.
+
+## 라이선스
+
+Letsur 소유이며 모든 권리를 보유한다([LICENSE](LICENSE)). 스킬 폴더 가운데 자체 라이선스 파일이 있는 것은 그 파일의 조건을 따른다.
