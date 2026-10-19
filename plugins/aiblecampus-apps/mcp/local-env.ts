@@ -1,5 +1,6 @@
 import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
+import { parse } from "dotenv";
 import { isSensitiveEnvName } from "./pack.ts";
 
 const ENVIRONMENT_KEY = /^[A-Z_][A-Z0-9_]*$/;
@@ -15,50 +16,14 @@ export type SelectedLocalConfiguration = {
   secrets: Record<string, string>;
 };
 
-function parseDoubleQuoted(value: string, file: string, line: number): string {
-  try {
-    return JSON.parse(value) as string;
-  } catch {
-    throw new Error(`${file} ${line}번째 줄의 큰따옴표 값을 읽지 못했다`);
-  }
-}
-
-/** 값은 호출자에게 선택된 키만 돌려주며 오류에도 원문을 넣지 않는다. */
-export function parseLocalEnv(
-  source: string,
-  file = ".env.local",
-): Record<string, string> {
-  const values: Record<string, string> = {};
-  const lines = source.replace(/^\uFEFF/, "").split(/\r?\n/);
-  for (const [index, original] of lines.entries()) {
-    const trimmed = original.trim();
-    if (trimmed === "" || trimmed.startsWith("#")) continue;
-    const withoutExport = trimmed.startsWith("export ")
-      ? trimmed.slice("export ".length).trimStart()
-      : trimmed;
-    const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(withoutExport);
-    if (match === null || match[1] === undefined || match[2] === undefined) {
-      throw new Error(`${file} ${index + 1}번째 줄의 KEY=value 형식을 확인한다`);
-    }
-    const key = match[1];
-    const raw = match[2].trim();
-    let value: string;
-    if (raw.startsWith('"')) {
-      if (!raw.endsWith('"')) {
-        throw new Error(`${file} ${index + 1}번째 줄의 큰따옴표를 닫는다`);
-      }
-      value = parseDoubleQuoted(raw, file, index + 1);
-    } else if (raw.startsWith("'")) {
-      if (!raw.endsWith("'")) {
-        throw new Error(`${file} ${index + 1}번째 줄의 작은따옴표를 닫는다`);
-      }
-      value = raw.slice(1, -1);
-    } else {
-      value = raw.replace(/\s+#.*$/, "").trimEnd();
-    }
-    values[key] = value;
-  }
-  return values;
+/**
+ * 참가자 앱의 프레임워크(Next의 @next/env, Vite loadEnv)와 같은 dotenv 해석으로 읽는다: 따옴표 세 종류, 여러 줄 큰따옴표 값,
+ * 큰따옴표 안 `\n`, 줄 끝 주석, `export`, 형식이 아닌 줄은 건너뛴다. `$VAR` 펼치기(dotenv-expand)는 하지 않는다.
+ * 값은 호출자에게 선택된 키만 돌려주며 오류에도 원문을 넣지 않는다.
+ */
+export function parseLocalEnv(source: string): Record<string, string> {
+  // dotenv는 BOM을 지우지 않아 첫 키를 놓친다(편집기가 붙인 BOM)
+  return parse(source.replace(/^\uFEFF/, ""));
 }
 
 function uniqueKeys(keys: string[], kind: string): string[] {
@@ -102,7 +67,7 @@ export async function loadSelectedLocalEnv(
     throw new Error(`같은 키를 일반 설정과 비밀값으로 함께 사용할 수 없다: ${overlap}`);
   }
 
-  const parsed = parseLocalEnv(await readFile(resolved, "utf8"), selection.file);
+  const parsed = parseLocalEnv(await readFile(resolved, "utf8"));
   const env: Record<string, string> = {};
   const secrets: Record<string, string> = {};
   for (const key of envKeys) {

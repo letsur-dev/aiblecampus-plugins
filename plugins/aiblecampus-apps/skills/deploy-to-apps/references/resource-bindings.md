@@ -22,6 +22,8 @@ Workspace
 다음 순서로 동작한다.
 
 1. Analyzer 결과와 앱 코드를 보고 `data`와 `files` 필요성을 판정한다.
+   - 한 번 붙은 DB와 Storage는 다음 판정이 바뀌어도 지우지 않는다. 떼는 것은 앱 삭제(보존 또는 삭제 선택)뿐이다.
+   - `local-file-write` 경고가 나오고 남아야 하는 데이터면 먼저 PostgreSQL(`DATABASE_URL`)이나 Apps Storage로 옮길지 참가자에게 묻고, 동의한 뒤에만 코드를 바꾼다.
 2. 플랫폼이 필요한 논리 자원을 멱등하게 준비한다.
 3. DB schema와 migration을 생성하거나 기존 방식을 보존한다.
 4. 앱 서버 API와 프론트엔드 호출 코드를 연결한다.
@@ -37,6 +39,8 @@ Workspace
 - 기존 ORM과 migration 방식을 유지한다. 방식이 없으면 현재 프레임워크에 맞게 추가한다.
 - schema와 migration은 배포 전에 소스에 포함하고 실제 저장과 조회를 검증한다.
 - `DATABASE_URL` 값을 사용자에게 출력하거나 프로젝트 파일에 기록하지 않는다.
+- 앱 DB 계정은 동시 연결 20개까지다. 넘으면 `too many connections for role`로 거절되므로 연결 풀 최대 크기를 20보다 작게 둔다.
+- 문장 하나는 60초를 넘으면 `canceling statement due to statement timeout`으로 취소된다. 오래 걸리는 작업은 나눠서 실행한다.
 
 ## 파일 Storage 연결
 
@@ -46,6 +50,7 @@ Workspace
 - 앱의 자체 로그인과 파일 권한을 확인한 뒤에만 서명 URL을 브라우저에 돌려준다.
 - 브라우저는 발급받은 URL로 파일을 직접 올리거나 내려받는다.
 - Storage token을 브라우저, 로그, 소스와 응답에 넣지 않는다.
+- 파일 하나는 512MiB, 앱 하나의 파일 전체는 2GiB까지다. 넘으면 업로드가 413으로 거절되므로 앱이 사용자에게 크기 안내를 보인다.
 
 Node 앱의 서버 측 서명 형태는 다음과 같다.
 
@@ -74,8 +79,6 @@ const url =
 
 ## 기존 영속 스택 전환
 
-`validate_project`의 `transitions`는 실행 명령이 아니라 읽기 전용 전환 계획이다. 계획을 사용자에게 설명하고 명시적 승인을 받기 전에는 소스와 데이터를 변경하지 않는다.
-
 ### SQLite
 
 - Prisma, Drizzle, Sequelize, TypeORM과 Knex의 기존 schema 및 migration 체계를 우선 보존한다.
@@ -83,9 +86,6 @@ const url =
 - SQLite 파일을 운영 컨테이너에 복사하는 방식은 사용하지 않는다.
 - 원본 파일 checksum, table 목록과 row 수를 기록한 뒤 논리 export와 import를 수행한다.
 - PostgreSQL import 후 table별 row 수와 핵심 CRUD를 비교한다.
-- `preview_sqlite_transition`은 원본을 변경하지 않고 table, row 수와 checksum만 보여준다.
-- 앱의 ORM migration이 빈 PostgreSQL schema를 만든 뒤 `migrate_sqlite_data`를 호출한다.
-- 자동 import는 안전한 식별자, table 100개, table당 100,000행 이하의 SQLite를 지원한다. 대상 table에 데이터가 있으면 중복 import를 거부한다.
 
 ### Docker Compose PostgreSQL
 
@@ -101,9 +101,6 @@ const url =
 - 앱 서버가 Apps Storage 서명 URL을 발급하고 브라우저가 해당 URL로 전송하게 바꾼다.
 - 기존 파일은 상대 key, 바이트 수와 checksum manifest를 만든 뒤 별도 승인 후 업로드한다.
 - import 실패 시 원본 파일과 manifest를 그대로 유지한다.
-- `preview_local_files_transition`으로 key, 바이트 수와 checksum을 먼저 확인한다.
-- 앱을 배포해 Storage binding을 만든 뒤 `migrate_local_files`를 호출한다.
-- 자동 import는 파일 1,000개와 전체 512MB까지 지원하고 기존 key와 충돌하면 덮어쓰지 않는다.
 
 ### 외부 관리형 자원
 
@@ -111,13 +108,6 @@ const url =
 - 유지하면 기존 SDK, Credential, 비용과 네트워크 접근을 검증한다.
 - 이전하면 해당 서비스의 공식 export 절차를 사용한다.
 - 서비스별 schema, ACL, metadata와 extension을 일반적인 자동 변환으로 처리하지 않는다.
-
-### 백업과 미리보기
-
-- 백업은 프로젝트의 `.apps-backups/`에 두고 커밋하거나 배포하지 않는다.
-- 백업 경로, 생성 시각, source checksum과 예상 건수를 사용자에게 보여준다.
-- 실제 import 전에 대상, 명령, 변경 건수, 검증과 복구 방법을 다시 확인한다.
-- 실패 시 원본과 백업을 수정하지 않고 새 대상의 부분 결과만 정리한다.
 
 ## 지켜야 할 경계
 

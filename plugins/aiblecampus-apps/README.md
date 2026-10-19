@@ -1,93 +1,75 @@
 # 에이블캠퍼스 Apps 플러그인
 
-Claude Code, Cowork와 Codex에서 웹앱의 AI 기능을 구현하고 검증한다. 배포는 사용자가 명시적으로 요청했을 때만 수행한다.
+웹앱의 화면 디자인, 쉬운 시각적 설명, AI 기능 개발을 돕고 사용자가 요청하면 에이블캠퍼스 Apps에 배포한다. 배포는 명시적으로 요청받았을 때만 한다.
 
-## AI 기능 개발
+## 두 가지 설치 경로
 
-"AI로 요청하고 응답하는 기능 구현해줘"라고 요청하면 `build-ai-feature` 스킬로 구현한다. `get_ai_gateway`가 운영진이 허브에서 정한 앱용 AI 환경과 모델을 확인하고 `configure_ai_gateway`가 키를 프로젝트의 비공개 `.env.apps-ai`에 저장한다. `verify_ai_gateway`는 짧은 실제 요청으로 연결을 검증한다. 키 원문은 도구 응답에 포함하지 않는다.
+| 경로 | 대상 | Claude 로그인 | Apps 연결 |
+| --- | --- | --- | --- |
+| 공개 마켓플레이스(이 저장소) | Claude Code | Claude 구독(Pro, Max), API 키, 조직 게이트웨이 중 아무것 | 기기 로그인(`start_apps_login`) |
+| 허브 마켓플레이스 | 교육 참가자의 Claude 데스크톱 | 에이블캠퍼스 로그인 | 자동 연결 |
 
-클라이언트는 앱 서버를 호출하고 앱 서버가 Letsur Gateway에 요청한다. 개발만 요청하면 배포하지 않는다. 이후 배포 요청에는 같은 설정 파일의 선택된 변수만 암호화 비밀값으로 전달한다. 새 기능에는 0.26.0 이상의 플러그인과 현재 세션의 도구 로드가 필요하다. 관리자가 버전을 고정한 기기는 관리 정책도 함께 갱신해야 한다.
+`apps_plugin_status`의 `distribution`이 `public`이면 공개 마켓플레이스, `hub`이면 허브 마켓플레이스 설치다. 설치와 갱신 방법은 [저장소 안내](../../README.md)에 있다.
 
-0.32.0부터 `deploy_project`가 앱 이름(`displayName`)과 버전 설명(`changeSummary`)을 받는다. 에이전트가 프로젝트 내용과 대화 맥락으로 한국어로 지어 보내고, 허브의 내 앱과 운영 화면 배포 기록에 보인다. 앱 이름은 새 앱과 이름이 없는 앱에만 적용되고 기존 이름은 사용자가 바꿔 달라고 할 때(`renameApp`)만 바뀐다. 이전 플러그인의 배포는 이름과 설명 없이 그대로 동작한다.
+## 로그인 없이 쓰는 것
 
-새 개인 앱은 배포할 수 있는 교육이 둘 이상이면 `list_educations` 목록에서 사용자가 교육을 고른다. 하나뿐이면 참가자는 고르지 않고 운영진은 고른다. 기존 앱 재배포와 팀 앱은 앱과 팀의 교육을 따른다. 교육을 정하지 않으면 서버가 `education-required`와 교육 목록으로 거절한다.
+에이블캠퍼스 계정이 없어도 아래는 동작한다.
 
-0.30.1부터 env 파일을 소스에 포함할 수 있다. 서버는 이전 클라이언트가 보낸 `.env.apps-ai`도 허용하며 비밀값 감지는 배포를 차단하지 않는 경고로 제공한다.
-
-## 지원 기능
-
-- 요청한 웹앱 구현과 배포 가능 여부 검증
-- 로컬 프로젝트와 public Git 저장소 배포
-- 기존 앱의 같은 주소 유지 재배포
-- 배포 중지와 사용자 재확인을 거치는 앱 및 전용 자원 삭제
-- 본인 개인 공간과 소속 팀 사이의 앱 이동, 기존 팀 앱이 있으면 이동 차단
-- 배포 상태, 빌드 로그와 실행 로그 조회
-- 일반 환경변수와 암호화된 비밀값 관리
-- 하드코딩된 비밀값 설명과 승인 기반 로컬 env 정리
-- 개인 및 Team Workspace 선택, 새 개인 앱의 배포 교육 선택
-- 에이전트가 짓는 한국어 앱 이름과 버전 설명
-- PostgreSQL과 파일 Storage 자동 연결
-- SQLite, Compose PostgreSQL, 로컬 파일과 외부 관리형 자원의 읽기 전용 진단
-- 사용자 승인, 백업, 미리보기, PostgreSQL과 Storage 실제 import를 거치는 안전한 영속 스택 전환
-- Claude Code와 Codex 공통 작업 흐름
-
-## 설치
-
-공간 이동 도구와 삭제 전 재확인은 0.30.0부터 제공한다. 삭제 요청의 첫 호출은 앱 이름, URL, 공간과 삭제 범위만 반환한다. 사용자가 이를 확인한 뒤 별도로 동의해야 삭제한다. 확인값은 5분간 유효하며 앱, 공간, 배포 상태나 계정이 바뀌면 재확인한다. 플러그인을 다시 실행한 경우에도 재확인이 필요하다.
-
-이전 플러그인의 기존 배포, 재배포와 조회 API는 유지한다. 새 도구와 삭제 재확인은 업데이트 후 MCP를 다시 연결한 세션부터 적용하며, 이전 플러그인의 직접 삭제 도구에 소급 적용되지 않는다.
-
-이 저장소를 내려받은 폴더를 marketplace로 등록한 뒤 `aiblecampus-apps` 플러그인을 설치한다.
-
-Claude Code에서는 저장소의 `.claude-plugin/marketplace.json`을 사용한다. Codex에서는 저장소의 `.agents/plugins/marketplace.json`을 사용한다.
-
-Cowork는 Desktop 좌측 하단 이름, 설정, 플러그인, 우측 상단 찾아보기, 모달 우측 +, 저장소에서 추가 순으로 공식 저장소를 등록한다. 플러그인 추가를 확인한 뒤 트레이에서도 완전 종료하고 Claude를 재시작한다. 기존 대화에서 `apps_plugin_status`를 호출해 이어간다.
-
-Code는 CLI로 marketplace 추가, 설치 및 활성화를 진행한다. `/reload-plugins` 실행만으로 기존 대화에 MCP가 로드된다고 가정하지 않는다. 도구가 없으면 같은 프로젝트의 새 대화로 인계한다. `.aiblecampus-deploy.json`과 복사용 인계문에 프로젝트 경로, 교육과 팀, workspace UUID, 신규 또는 기존 앱 ID를 보존한다. 새 대화에서는 설치를 반복하지 않고 실제 MCP 버전을 확인한다.
-
-플랫폼 연결에는 다음 환경변수를 사용한다.
-
-- `APPS_API_URL`: 플랫폼 제어 API 주소. 생략하면 `https://api.aible-campus.com`을 사용한다.
-- `APPS_IDENTITY_URL`: 로그인 주소. 생략하면 운영 API(`https://api.aible-campus.com`)에서는 `https://login.aible-campus.com`을 쓰고, 그 밖에는 API 주소의 `api.`를 `login.`으로 바꿔 계산한다(0.31.0). 0.30.2 이하는 `auth.`를 썼다.
-- `APPS_DEVICE_CLIENT_ID`: Device Flow client ID. 기본값은 기존 Identity 기기 클라이언트다.
-- `APPS_OPEN_BROWSER`: Device Flow 승인 주소 자동 열기 여부. 기본값은 `1`이며 `0`, `false` 또는 `off`로 끌 수 있다.
-- `APPS_TOKEN`: 이전 운영 및 CI용 service Credential. 개인 기기 로그인보다 우선 적용된다.
-- `APPS_DEPLOYMENT_ATTEMPT_FILE`: 배포 요청 복구 파일을 별도 위치에 둘 때만 설정한다. 생략하면 사용자 설정 폴더 안에 저장한다.
-
-Credential 원문은 프로젝트 파일, 커밋이나 대화에 기록하지 않는다. Claude Code 환경 설정을 바꾼 뒤에는 실제 도구 로드를 확인하고, 없으면 같은 프로젝트의 새 대화에서 확인한다. Codex는 현재 클라이언트가 제공하는 플러그인 재로딩 절차를 사용한다.
-
-로그인이 필요하면 `start_apps_login`이 승인 주소를 기본 브라우저에서 연다. Agent는 사용자에게 완료 응답을 요구하지 않고 `complete_apps_login`을 바로 호출해 승인 상태를 polling한다. 브라우저를 열 수 없는 환경에서만 주소와 코드를 직접 안내한다.
-
-`deploy_project`는 동일한 소스와 설정의 요청 지문과 임의 멱등 키를 권한 0600인 로컬 파일에 30분 동안 보관한다. MCP가 재시작되거나 응답이 끊겨도 Agent는 먼저 `deployment_status`로 기존 작업을 확인하고, 필요하면 같은 요청을 보내 서버가 기존 Revision을 반환하게 한다. 소스, 설정값과 비밀값 원문은 복구 파일에 저장하지 않는다. 직전 Revision이 명확히 실패했고 새 빌드가 필요한 경우에만 `forceNewRevision`을 사용한다.
-
-앱이 사용하는 비밀번호와 API 키는 Device Credential과 별개다. 플러그인은 소스에 직접 저장된 비밀값을 발견하면 원문을 반복하지 않고 위험과 최소 수정 내용을 설명한다. 사용자가 동의하면 Agent가 코드는 환경변수를 사용하도록 바꾸고 실제 값은 Git에서 제외한 `.env.local`로 옮긴다. 새로 필요한 사용자 지정 비밀번호는 Agent 세션에서 입력할 수 있으며 Agent는 받은 값을 후속 답변에서 되읽지 않는다.
-
-`validate_project`와 `deploy_project`의 `localEnv`에는 파일 이름과 사용자가 승인한 키 이름만 전달한다. MCP는 선택한 키만 로컬 파일에서 읽어 Apps 일반 설정 또는 암호화 비밀값으로 전달한다. 실제 env 파일은 소스 압축에서 제외하고 `.env.example`, `.env.sample`과 `env.example` 같은 키 예시는 유지한다.
-
-플러그인은 Identity 계약 버전 1의 `/device/auth`와 `/token`을 사용하며
-기존 Identity의 Apps resource와 접근 scope를 요청한다. 기기별 ES256
-DPoP 키와 회전 refresh token은 권한이 0600인 로컬 Credential 파일에만 저장하고,
-Apps 요청마다 access token과 요청 URL 및 method를 새 proof로 묶는다.
-
-## 현재 범위
-
-Identity의 Device 승인, 기기 목록과 개별 회수는 지원한다. private Git 저장소 인증은 아직 제공하지 않는다. PostgreSQL과 파일 Storage는 앱 사용 코드를 감지해 배포별로 자동 연결하며 운영 Credential은 사용자에게 노출하지 않는다. 기존 SQLite와 로컬 파일은 승인 전까지 변경하지 않고 계획과 읽기 전용 미리보기만 제공하며, 승인 후 로컬 백업을 남기고 빈 Apps 자원으로 실제 이전할 수 있다. Compose PostgreSQL과 외부 관리형 자원은 서비스별 수동 export 절차가 필요하다.
-
-새 설치 이름은 `aiblecampus-apps`, MCP 이름은 `apps`, 배포 스킬 이름은 `deploy-to-apps`다. 명칭 전환 뒤 새 플러그인을 설치하고 기기 로그인을 다시 진행한다.
-
-## 자연어로 사용하는 스킬
-
-설치 후 현재 대화에서 스킬이 로드되면 요청에 맞는 스킬을 선택한다. 모델의 선택이 누락되면 스킬 이름을 명시할 수 있다.
-
-| 요청 예시 | 스킬 |
+| 구성 요소 | 내용 |
 | --- | --- |
-| 화면을 만들고 디자인을 다듬어줘 | `frontend-design` |
-| 데이터 흐름을 그림으로 쉽게 설명해줘 | `eli5` |
-| AI로 요청하고 응답하는 기능 구현해줘 | `build-ai-feature` |
-| 에이블캠퍼스 Apps에 배포해줘 | `deploy-to-apps` |
-| 플러그인 업데이트해줘 | `manage-apps-plugin` |
+| `frontend-design` 스킬 | 화면 제작과 디자인 개선 |
+| `eli5` 스킬 | 구조와 데이터 흐름을 그림으로 쉽게 설명 |
+| `ask-questions-if-underspecified` 스킬 | 요구가 모호할 때 먼저 되묻기 |
+| `build-ai-feature` 스킬 | AI 기능 구현. 에이블캠퍼스 계정이 없으면 사용자가 가진 AI 제공자 API 키를 `.env.local`에 두고 구현한다(`get_ai_gateway`가 이 길을 안내한다) |
+| `manage-apps-plugin` 스킬 | 설치, 갱신, 제거 안내 |
+| `apps_plugin_status` | 실행 중인 판, API 주소, 인증 방식, 설치 경로 |
+| `get_plugin_skill` | 게시된 최신 스킬 지침. 로그인이 없으면 동봉 지침을 쓰라고 답한다 |
+| `preview_sqlite_transition`, `preview_local_files_transition` | SQLite와 로컬 파일 이전의 읽기 전용 미리보기 |
 
-- `frontend-design`은 Anthropic 공식 skills 저장소, `eli5`는 Anthropic claude-plugins-community 저장소에서 가져왔다. 각 스킬에 원본, 고정된 출처 커밋과 Apache-2.0 라이선스를 포함한다.
-- `eli5`는 큰 그림과 짧은 글의 HTML 설명 자료를 만든다. 일반 진행 보고마다 호출하지 않는다.
-- 기존 디자인 시스템과 한국어 응답을 유지한다. 개발과 설명 요청만으로 배포하지 않는다.
-- 새 스킬은 0.27.0 이상에 포함된다. 기존 설치는 업데이트 후 현재 대화의 스킬 목록을 확인한다. Code에서 로드되지 않으면 같은 프로젝트의 새 대화를 사용한다.
+Claude 구독은 Claude Code 안에서만 쓰는 로그인이다. 만드는 앱의 서버가 부를 API 키로 쓸 수 없다.
+
+## 에이블캠퍼스 로그인이 필요한 것
+
+아래 도구는 `api.aible-campus.com`을 부르며 에이블캠퍼스 계정과 기기 로그인이 필요하다. 로그인이 없으면 `start_apps_login`으로 로그인하라는 오류를 돌려준다.
+
+| 묶음 | 도구 |
+| --- | --- |
+| 로그인 | `start_apps_login`, `complete_apps_login` |
+| 계정과 공간 | `apps_whoami`, `list_educations`, `list_deployment_organizations`, `list_deployments` |
+| 검증과 배포 | `validate_project`, `deploy_project`, `deployment_status`, `deployment_logs`, `checkout_app_source` |
+| 설정과 관리 | `deployment_config`, `set_deployment_config`, `stop_deployment`, `move_deployment`, `delete_deployment` |
+| 데이터 이전 | `migrate_sqlite_data`, `migrate_local_files` |
+| 앱용 AI 환경 | `get_ai_gateway`, `configure_ai_gateway` |
+
+`verify_ai_gateway`는 에이블캠퍼스에 로그인하지 않고 프로젝트의 `.env.apps-ai`로 AI 게이트웨이에 짧은 요청을 보낸다. 그 파일은 `configure_ai_gateway`가 만들므로 실제로는 로그인한 뒤에 쓴다.
+
+## 기기 로그인
+
+- `start_apps_login`이 승인 주소를 기본 브라우저에서 열고 `complete_apps_login`이 승인을 기다린다. 브라우저를 열 수 없으면 주소와 코드를 직접 안내한다.
+- 기기별 DPoP 키와 refresh token은 사용자 설정 폴더의 `aiblecampus-apps/device.json`(권한 0600)에만 저장한다. 원문을 프로젝트 파일, 커밋, 대화에 남기지 않는다.
+
+## 환경변수(선택)
+
+설정하지 않아도 된다. 개발용 서버에 붙일 때만 쓴다.
+
+| 이름 | 기본값 |
+| --- | --- |
+| `APPS_API_URL` | `https://api.aible-campus.com` |
+| `APPS_IDENTITY_URL` | 운영 API면 `https://login.aible-campus.com`, 그 밖에는 API 주소의 `api.`를 `login.`으로 바꾼 값 |
+| `APPS_DEVICE_CLIENT_ID` | 에이블캠퍼스 기기 로그인 클라이언트 |
+| `APPS_OPEN_BROWSER` | `1`. `0`, `false`, `off`면 승인 주소를 자동으로 열지 않는다 |
+| `APPS_DEVICE_LABEL` | 이 컴퓨터의 이름(기기 목록에 보이는 이름) |
+| `APPS_CREDENTIAL_FILE` | 사용자 설정 폴더의 `aiblecampus-apps/device.json` |
+| `APPS_DEPLOYMENT_ATTEMPT_FILE`, `APPS_DELETE_CONFIRMATION_FILE` | 사용자 설정 폴더 안 |
+
+Claude Code의 `ANTHROPIC_*` 설정은 플러그인과 관계없다. 구독 로그인이든 게이트웨이든 플러그인은 같게 동작한다.
+
+## Auto 권한 모드
+
+`hooks/`는 Claude Code mod다. Auto 권한 모드에서 배포 흐름 도구(`apps_plugin_status`, `apps_whoami`, `list_educations`, `list_deployment_organizations`, `list_deployments`, `validate_project`, `deploy_project`, `deployment_status`, `deployment_logs`, `checkout_app_source`)에 따로 정한 규칙이 없을 때만 허용으로 바꾼다. deny 규칙과 훅의 거절은 그대로다. 삭제, 중지, 이동, 데이터 이전, 설정, AI 키, 로그인 도구는 넣지 않았다.
+
+## 파일 구성
+
+- `dist/mcp.js`: MCP 서버 번들. `mcp/` 소스를 `npm ci && npm run build`로 다시 만들 수 있다.
+- `skills/`: 스킬. `frontend-design`, `eli5`, `ask-questions-if-underspecified`는 원본 저장소의 파일을 고치지 않고 넣었다. 출처, 고정 커밋, 라이선스는 각 폴더의 `NOTICE.md`와 라이선스 파일에 있다.
+- `hooks/`: Auto 권한 모드 mod.

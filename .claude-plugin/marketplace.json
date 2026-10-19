@@ -3,12 +3,13 @@
   "owner": {
     "name": "에이블캠퍼스"
   },
-  "description": "Claude Code와 Codex에서 사용하는 에이블캠퍼스 공용 플러그인 marketplace.",
+  "description": "Claude Code에서 쓰는 에이블캠퍼스 플러그인 마켓플레이스",
   "plugins": [
     {
       "name": "aiblecampus-apps",
       "source": "./plugins/aiblecampus-apps",
-      "description": "에이블캠퍼스 Apps 산출물의 AI 기능을 구현하고 검증한다. 배포는 명시적으로 요청받았을 때만 수행한다."
+      "description": "에이블캠퍼스 Apps의 화면 디자인, 쉬운 시각적 설명과 AI 기능 개발을 지원합니다. 배포는 명시적으로 요청받았을 때만 수행합니다.",
+      "version": "0.40.1"
     }
   ]
 }

@@ -1,13 +1,15 @@
 import { appsEnv } from "./config.ts";
-import { managedRequestHeaders } from "./managed-auth.ts";
+import { hubCredential } from "./hub-credential.ts";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
 import path from "node:path";
 import type { JsonWebKey } from "node:crypto";
+import * as oidc from "openid-client";
 import { withFileLock } from "./file-lock.ts";
 import {
   assertDpopPrivateJwk,
   createDpopProof,
+  dpopKeyPair,
   generateDpopPrivateJwk,
 } from "./dpop.ts";
 
@@ -17,6 +19,7 @@ type PendingAuthorization = {
   verificationUri: string;
   verificationUriComplete: string | null;
   intervalSeconds: number;
+  /** 0.38.1부터 쓰지 않는다(openid-client가 간격을 센다). 0.38.0으로 되돌린 프로세스가 같은 파일을 읽을 수 있게 남긴다 */
   nextPollAt: number;
   expiresAt: number;
   privateJwk: JsonWebKey;
@@ -101,9 +104,12 @@ async function writeState(state: LocalState): Promise<void> {
 /** 기본 로그인 주소. 0.31.0부터 `auth.` 대신 `login.`을 쓴다 */
 export const DEFAULT_IDENTITY_URL = "https://login.aible-campus.com";
 
+/** 로그인 주소. APPS_IDENTITY_URL, 같은 API 주소의 hub 자동 연결 파일의 issuer, API 주소의 `api.`를 `login.`으로 바꾼 값 순이다 */
 export function identityBase(apiBase: string): string {
   const value = appsEnv("IDENTITY_URL");
   if (value) return value.replace(/\/+$/, "");
+  const hub = hubCredential();
+  if (hub !== null && hub.apiBase === apiBase.replace(/\/+$/, "")) return hub.issuer;
   const api = new URL(apiBase);
   if (api.origin === "https://api.aible-campus.com") return DEFAULT_IDENTITY_URL;
   if (!api.hostname.startsWith("api.")) {
@@ -129,40 +135,51 @@ function resourceIndicator(): string {
   return appsEnv("RESOURCE") || DEFAULT_RESOURCE;
 }
 
-function tokenEndpoint(apiBase: string): string {
-  return `${identityBase(apiBase)}/token`;
+/**
+ * 로그인(oidc-provider)과 이야기하는 openid-client 설정. 끝점은 discovery 없이 정해 둔다(요청 수와 주소가 0.38.0과 같다).
+ * 공개 client라 client_id만 본문에 보낸다. http 로그인 주소(APPS_IDENTITY_URL로 정한 로컬 개발)는 그대로 허용한다
+ */
+function oidcConfiguration(apiBase: string): oidc.Configuration {
+  const issuer = identityBase(apiBase);
+  const configuration = new oidc.Configuration(
+    { issuer, token_endpoint: `${issuer}/token`, device_authorization_endpoint: `${issuer}/device/auth` },
+    clientId(),
+    undefined,
+    oidc.None(),
+  );
+  if (new URL(issuer).protocol === "http:") oidc.allowInsecureRequests(configuration);
+  return configuration;
 }
 
-function tokenCredential(body: Record<string, unknown>, args: {
+/** 로그인이 준 오류 코드(invalid_grant 등). 응답 본문 오류가 아니면 null */
+function oauthError(error: unknown): string | null {
+  return error instanceof oidc.ResponseBodyError ? error.error : null;
+}
+
+function tokenCredential(tokens: oidc.TokenEndpointResponse, args: {
   previousRefreshToken?: string;
   deviceLabel: string;
   privateJwk: JsonWebKey;
 }): StoredCredential {
-  if (typeof body["access_token"] !== "string") {
-    throw new Error("Identity 응답에 access_token이 없다");
-  }
-  if (String(body["token_type"] ?? "").toLowerCase() !== "dpop") {
+  if (tokens.token_type.toLowerCase() !== "dpop") {
     throw new Error("Identity가 DPoP access token을 반환하지 않았다");
   }
-  const refreshToken = typeof body["refresh_token"] === "string"
-    ? body["refresh_token"]
-    : args.previousRefreshToken;
+  const refreshToken = tokens.refresh_token ?? args.previousRefreshToken;
   if (!refreshToken) throw new Error("Identity 응답에 refresh_token이 없다");
-  const expiresIn = body["expires_in"];
-  if (typeof expiresIn !== "number" || expiresIn <= 0) {
+  if (tokens.expires_in === undefined || tokens.expires_in <= 0) {
     throw new Error("Identity access token 만료 시간이 올바르지 않다");
   }
   return {
-    accessToken: body["access_token"],
+    accessToken: tokens.access_token,
     refreshToken,
-    expiresAt: Date.now() + expiresIn * 1000,
+    expiresAt: Date.now() + tokens.expires_in * 1000,
     deviceLabel: args.deviceLabel,
     privateJwk: args.privateJwk,
   };
 }
 
 async function refreshCredential(apiBase: string): Promise<StoredCredential | null> {
-  // 여러 프로세스(Claude Code 와 Codex)가 같은 device.json 을 동시에 갱신하면
+  // 여러 MCP 프로세스(Cowork와 Code 대화)가 같은 device.json 을 동시에 갱신하면
   // 회전된 refresh token 이 유실되므로 갱신 전체를 파일 잠금으로 직렬화한다.
   // 잠금을 잡은 뒤 다시 읽어, 다른 프로세스가 방금 갱신했으면 그 값을 쓴다.
   return withFileLock(stateFile(), async () => {
@@ -179,35 +196,21 @@ async function refreshLocked(
   state: LocalState,
   credential: StoredCredential,
 ): Promise<StoredCredential | null> {
-  const endpoint = tokenEndpoint(apiBase);
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-      accept: "application/json",
-      dpop: createDpopProof({
-        privateJwk: credential.privateJwk,
-        method: "POST",
-        url: endpoint,
-      }),
-    },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: clientId(),
-      refresh_token: credential.refreshToken,
-      resource: resourceIndicator(),
-    }),
-  });
-  const body = await response.json() as Record<string, unknown>;
-  if (!response.ok) {
-    if (body["error"] === "invalid_grant") {
+  const configuration = oidcConfiguration(apiBase);
+  let tokens: oidc.TokenEndpointResponse;
+  try {
+    tokens = await oidc.refreshTokenGrant(configuration, credential.refreshToken, { resource: resourceIndicator() }, {
+      DPoP: oidc.getDPoPHandle(configuration, await dpopKeyPair(credential.privateJwk)),
+    });
+  } catch (error) {
+    if (oauthError(error) === "invalid_grant") {
       state.credential = null;
       await writeState(state);
       return null;
     }
-    throw new Error(`Identity가 기기 Credential을 갱신하지 못했다: ${String(body["error"] ?? response.status)}`);
+    throw new Error(`Identity가 기기 Credential을 갱신하지 못했다: ${oauthError(error) ?? "응답 없음"}`, { cause: error });
   }
-  const refreshed = tokenCredential(body, {
+  const refreshed = tokenCredential(tokens, {
     previousRefreshToken: credential.refreshToken,
     deviceLabel: credential.deviceLabel,
     privateJwk: credential.privateJwk,
@@ -230,13 +233,11 @@ export async function deviceRequestHeaders(
   url: string,
   method: string,
 ): Promise<Record<string, string> | null> {
-  const managed = await managedRequestHeaders(apiBase, url, method);
-  if (managed !== null) return managed;
   const credential = await activeCredential(apiBase);
   if (credential === null) return null;
   return {
     authorization: `DPoP ${credential.accessToken}`,
-    dpop: createDpopProof({
+    dpop: await createDpopProof({
       privateJwk: credential.privateJwk,
       method,
       url,
@@ -252,49 +253,40 @@ export async function startDeviceLogin(apiBase: string): Promise<{
   expiresAt: string;
 }> {
   const privateJwk = generateDpopPrivateJwk();
-  const response = await fetch(`${identityBase(apiBase)}/device/auth`, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-    body: new URLSearchParams({
-      client_id: clientId(),
+  let authorization: oidc.DeviceAuthorizationResponse;
+  try {
+    authorization = await oidc.initiateDeviceAuthorization(oidcConfiguration(apiBase), {
       scope: "openid profile apps:access offline_access",
       device_name: deviceName(),
       resource: resourceIndicator(),
-    }),
-  });
-  const body = await response.json() as Record<string, unknown>;
-  if (!response.ok) throw new Error("Identity가 기기 로그인을 시작하지 못했다");
-  const deviceCode = typeof body["device_code"] === "string" ? body["device_code"] : null;
-  const userCode = typeof body["user_code"] === "string" ? body["user_code"] : null;
-  const verificationUri = typeof body["verification_uri"] === "string" ? body["verification_uri"] : null;
-  const expiresIn = typeof body["expires_in"] === "number" ? body["expires_in"] : null;
-  const interval = typeof body["interval"] === "number" ? Math.max(1, Math.ceil(body["interval"])) : 5;
-  if (!deviceCode || !userCode || !verificationUri || !expiresIn || expiresIn <= 0) {
-    throw new Error("Identity Device Flow 응답 형식이 올바르지 않다");
+    });
+  } catch (error) {
+    throw new Error("Identity가 기기 로그인을 시작하지 못했다", { cause: error });
   }
+  const interval = Math.max(1, Math.ceil(authorization.interval ?? 5));
   const pending: PendingAuthorization = {
-    deviceCode,
-    userCode,
-    verificationUri,
-    verificationUriComplete:
-      typeof body["verification_uri_complete"] === "string"
-        ? body["verification_uri_complete"]
-        : null,
+    deviceCode: authorization.device_code,
+    userCode: authorization.user_code,
+    verificationUri: authorization.verification_uri,
+    verificationUriComplete: authorization.verification_uri_complete ?? null,
     intervalSeconds: interval,
     nextPollAt: Date.now() + interval * 1000,
-    expiresAt: Date.now() + expiresIn * 1000,
+    expiresAt: Date.now() + authorization.expires_in * 1000,
     privateJwk,
   };
   const state = await readState(apiBase);
   state.pending = pending;
   await writeState(state);
   return {
-    userCode,
-    verificationUri,
+    userCode: pending.userCode,
+    verificationUri: pending.verificationUri,
     verificationUriComplete: pending.verificationUriComplete,
     expiresAt: new Date(pending.expiresAt).toISOString(),
   };
 }
+
+/** 한 번 부를 때 기다리는 최대 polling 횟수(간격마다 한 번). 넘으면 polling_limit으로 돌려주고 에이전트가 다시 부른다 */
+const POLLS_PER_CALL = 12;
 
 export async function completeDeviceLogin(apiBase: string): Promise<
   | { status: "approved"; deviceLabel: string }
@@ -303,64 +295,66 @@ export async function completeDeviceLogin(apiBase: string): Promise<
   const state = await readState(apiBase);
   const pending = state.pending;
   if (pending === null) throw new Error("먼저 start_apps_login 을 실행해야 한다");
-  let intervalSeconds = pending.intervalSeconds;
-  let nextPollAt = pending.nextPollAt;
-  for (let poll = 0; poll < 12; poll += 1) {
-    if (Date.now() >= pending.expiresAt) {
-      state.pending = null;
-      await writeState(state);
-      return { status: "expired" };
+  const expire = async () => {
+    state.pending = null;
+    await writeState(state);
+    return { status: "expired" as const };
+  };
+  const remaining = pending.expiresAt - Date.now();
+  if (remaining <= 0) return expire();
+  const configuration = oidcConfiguration(apiBase);
+  // openid-client가 간격(interval, slow_down이면 5초씩 늘린다)마다 polling한다. 한 번 부를 때는 POLLS_PER_CALL 간격까지만 기다린다.
+  // 그 시각에 토큰 요청이 오가는 중이면 끊지 않고 응답을 받은 뒤 멈춘다. 끊으면 그사이 승인되어 Identity가 낸 토큰을 잃고
+  // 기기 코드도 다시 쓸 수 없어 처음부터 다시 로그인해야 한다
+  const limit = new AbortController();
+  let inFlight = 0;
+  let limitReached = false;
+  configuration[oidc.customFetch] = async (url, options) => {
+    inFlight += 1;
+    try {
+      const response = await fetch(url, options);
+      // 응답 뒤 멈춰도 본문 읽기가 끊기지 않게 본문까지 받아 둔다
+      const body = await response.arrayBuffer();
+      return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+    } finally {
+      inFlight -= 1;
+      if (limitReached && inFlight === 0) limit.abort();
     }
-    const waitMilliseconds = Math.max(0, nextPollAt - Date.now());
-    if (waitMilliseconds > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitMilliseconds));
-    }
-    const endpoint = tokenEndpoint(apiBase);
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        accept: "application/json",
-        dpop: createDpopProof({
-          privateJwk: pending.privateJwk,
-          method: "POST",
-          url: endpoint,
-        }),
-      },
-      body: new URLSearchParams({
-        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+  };
+  const timer = setTimeout(() => {
+    limitReached = true;
+    if (inFlight === 0) limit.abort();
+  }, Math.min(remaining, POLLS_PER_CALL * pending.intervalSeconds * 1000));
+  try {
+    const tokens = await oidc.pollDeviceAuthorizationGrant(
+      configuration,
+      {
         device_code: pending.deviceCode,
-        client_id: clientId(),
-        resource: resourceIndicator(),
-      }),
-    });
-    const body = await response.json() as Record<string, unknown>;
-    if (response.ok) {
-      const deviceLabel = deviceName();
-      state.credential = tokenCredential(body, {
-        deviceLabel,
-        privateJwk: pending.privateJwk,
-      });
+        user_code: pending.userCode,
+        verification_uri: pending.verificationUri,
+        ...(pending.verificationUriComplete === null ? {} : { verification_uri_complete: pending.verificationUriComplete }),
+        expires_in: Math.ceil(remaining / 1000),
+        interval: pending.intervalSeconds,
+      },
+      { resource: resourceIndicator() },
+      { DPoP: oidc.getDPoPHandle(configuration, await dpopKeyPair(pending.privateJwk)), signal: limit.signal },
+    );
+    const deviceLabel = deviceName();
+    state.credential = tokenCredential(tokens, { deviceLabel, privateJwk: pending.privateJwk });
+    state.pending = null;
+    await writeState(state);
+    return { status: "approved", deviceLabel };
+  } catch (error) {
+    const code = oauthError(error);
+    if (code === "access_denied") {
       state.pending = null;
       await writeState(state);
-      return { status: "approved", deviceLabel };
+      return { status: "denied" };
     }
-    const error = body["error"];
-    if (error === "authorization_pending") {
-      nextPollAt = Date.now() + intervalSeconds * 1000;
-      continue;
-    }
-    if (error === "slow_down") {
-      intervalSeconds += 5;
-      nextPollAt = Date.now() + intervalSeconds * 1000;
-      continue;
-    }
-    if (error === "access_denied" || error === "expired_token") {
-      state.pending = null;
-      await writeState(state);
-      return { status: error === "access_denied" ? "denied" : "expired" };
-    }
-    throw new Error(`Identity Device Flow가 실패했다: ${String(error)}`);
+    if (code === "expired_token" || (limit.signal.aborted && Date.now() >= pending.expiresAt)) return expire();
+    if (limit.signal.aborted) return { status: "polling_limit" };
+    throw new Error(`Identity Device Flow가 실패했다: ${code ?? "응답 없음"}`, { cause: error });
+  } finally {
+    clearTimeout(timer);
   }
-  return { status: "polling_limit" };
 }

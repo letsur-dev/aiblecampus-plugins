@@ -1,7 +1,7 @@
 import { mkdir, rmdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-// 같은 파일을 여러 프로세스(Claude Code 와 Codex 가 각자 MCP 서버를 띄우는 경우)가
+// 같은 파일을 여러 프로세스(Cowork와 Code 대화가 각자 MCP 서버를 띄우는 경우)가
 // 동시에 갱신할 때 마지막 쓰기가 앞선 갱신을 덮어써 데이터가 유실되는 것을 막는다.
 // mkdir 의 원자성을 잠금으로 쓴다.
 const LOCK_STALE_MS = 10_000;

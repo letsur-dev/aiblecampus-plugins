@@ -9,9 +9,9 @@ import { loadSelectedLocalEnv } from "./local-env.ts";
 
 export class AiSetupError extends Error {}
 
-export const AI_ENV_FILE = ".env.apps-ai";
-export const AI_ENV_KEYS = ["LETSUR_BASE_URL", "LETSUR_MODEL"];
-export const AI_SECRET_KEYS = ["LETSUR_API_KEY"];
+const AI_ENV_FILE = ".env.apps-ai";
+const AI_ENV_KEYS = ["LETSUR_BASE_URL", "LETSUR_MODEL"];
+const AI_SECRET_KEYS = ["LETSUR_API_KEY"];
 const configurationSchema = z.object({
   environment: z.object({ id: z.string().uuid(), name: z.string().min(1).max(200) }),
   baseUrl: z.literal("https://gw.letsur.ai/v1"),
