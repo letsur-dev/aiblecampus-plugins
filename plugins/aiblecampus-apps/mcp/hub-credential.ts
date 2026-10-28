@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
  * hub 마켓플레이스가 플러그인 압축 파일에 넣은 자동 연결 Credential(0.37.0).
  *
  * Claude 데스크톱이 에이블캠퍼스 로그인으로 hub 마켓플레이스에서 플러그인을 자동 설치하면 플러그인 루트에
- * `aiblecampus-credential.json`({ version: 1, token: "amc_...", apiBase, issuer, expiresAt })이 있다.
- * MCP는 이 파일이 올바르고, 설정한 API 주소와 같고, 만료 전이면 `Authorization: Bearer amc_...`로 api.를 부른다(DPoP 없음).
+ * `aiblecampus-credential.json`({ version: 1, token: "amc_..." 또는 참가자 화면 지정에 묶인 "amp_...", apiBase, issuer, expiresAt })이 있다.
+ * MCP는 이 파일이 올바르고, 설정한 API 주소와 같고, 만료 전이면 `Authorization: Bearer amc_...`(참가자 화면은 amp_...)로 api.를 부른다(DPoP 없음).
  * 파일이 없거나, 만료됐거나, api.가 401로 거절하면 기기 로그인(start_apps_login)으로 넘어간다.
  * 파일의 apiBase와 issuer는 APPS_API_URL, APPS_IDENTITY_URL이 없을 때 이 설치의 기본 주소가 된다(스테이징 hub가 준 플러그인은 스테이징 api.를 부른다).
  */
@@ -38,7 +38,7 @@ export function parseHubCredential(raw: string): HubCredential | null {
     if (
       value["version"] !== 1 ||
       typeof value["token"] !== "string" ||
-      !/^amc_[A-Za-z0-9_-]{43}$/.test(value["token"]) ||
+      !/^am[cp]_[A-Za-z0-9_-]{43}$/.test(value["token"]) ||
       !isOrigin(value["apiBase"]) ||
       !isOrigin(value["issuer"]) ||
       !Number.isFinite(expiresAt)
