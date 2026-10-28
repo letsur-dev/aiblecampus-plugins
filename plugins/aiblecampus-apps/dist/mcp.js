@@ -26061,7 +26061,7 @@ function parseHubCredential(raw) {
   try {
     const value = JSON.parse(raw);
     const expiresAt = typeof value["expiresAt"] === "string" ? Date.parse(value["expiresAt"]) : Number.NaN;
-    if (value["version"] !== 1 || typeof value["token"] !== "string" || !/^amc_[A-Za-z0-9_-]{43}$/.test(value["token"]) || !isOrigin(value["apiBase"]) || !isOrigin(value["issuer"]) || !Number.isFinite(expiresAt)) {
+    if (value["version"] !== 1 || typeof value["token"] !== "string" || !/^am[cp]_[A-Za-z0-9_-]{43}$/.test(value["token"]) || !isOrigin(value["apiBase"]) || !isOrigin(value["issuer"]) || !Number.isFinite(expiresAt)) {
       return null;
     }
     return { token: value["token"], apiBase: value["apiBase"], issuer: value["issuer"], expiresAt };
@@ -38442,7 +38442,7 @@ function failureFacts(prefix, result, note) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.46.0";
+var PLUGIN_VERSION = "0.46.1";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || hubCredential()?.apiBase || "https://api.aible-campus.com";
