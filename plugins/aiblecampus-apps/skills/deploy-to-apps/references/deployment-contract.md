@@ -29,7 +29,9 @@ server.listen(port, "0.0.0.0");
 | `queue` | 작업 대기열 또는 실행 계층 용량이 부족함 | `details.retryable`이 true일 때만 한 번 다시 시도한다. false면 운영자 조치가 필요하다고 알린다 |
 | `build` | 이미지 빌드 실패 | build 로그를 읽고 의존성, lockfile과 build 명령을 수정한다 |
 | `run` | 앱 프로세스 기동 실패 | runtime 로그와 실행 명령, 필수 설정을 확인한다 |
-| `health` | 앱이 제시간에 응답하지 않음 | `PORT`, bind 주소, 시작 시간과 healthcheck 경로를 확인한다 |
+| `health` | 앱이 제시간에 응답하지 않음 | `PORT`, bind 주소, 시작 시간과 healthcheck 경로를 확인한다. `details.code`가 `public-tls-not-ready`이면 공개 주소 인증서 준비 문제다. 코드나 메모리를 바꾸지 않고 `deployment_status`로 상태를 보며 같은 요청을 다시 배포하지 않는다 |
+
+도구의 실패 결과는 `실패`, `상태`, `원인`, `응답`(서버 JSON의 `error`, `code`, `message`, `stage`, `details` 등), `참고`만 담는다. JSON이 아닌 응답(HTML 오류 페이지 등)은 본문을 싣지 않는다. 404는 대상이 없거나 접근 권한이 없다는 뜻이다. 다른 공간의 앱인지 추측해 설명하지 않는다.
 
 ## 패키징과 컨테이너 검증
 

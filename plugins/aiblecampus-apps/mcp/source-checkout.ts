@@ -2,16 +2,23 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 const State = z.object({ api: z.string(), deployment: z.string(), workspace: z.string().nullable(), commit: z.string().regex(/^[a-f0-9]{40}$/) });
+/** 폴더가 연결된 앱과 공간, 기준 커밋(.apps-source.json) */
+export type SourceState = z.infer<typeof State>;
 const Snapshot = z.object({ commit: z.string().regex(/^[a-f0-9]{40}$/), files: z.array(z.object({ path: z.string(), content: z.string(), executable: z.boolean() })).max(5000) });
+/** 폴더 기록(.apps-source.json). 없으면 undefined, 형식이 틀리면 오류다 */
+export async function readSourceState(root: string): Promise<SourceState | undefined> {
+  let text: string;
+  try { text = await readFile(path.join(root, ".apps-source.json"), "utf8"); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
+  return State.parse(JSON.parse(text));
+}
 /**
  * 폴더에 남은 기준 커밋(.apps-source.json). 다른 앱이나 공간에 연결된 폴더면 사용자에게 고르게 하는 오류다.
  * newApp이면(사용자가 다른 이름의 새 앱을 골랐다) 같은 API와 공간에서 다른 앱 이름일 때 기준 없이 새 앱으로 배포한다. 배포 뒤 연결은 새 앱으로 바뀐다
  */
 export async function readSourceBase(root: string, api: string, deployment: string, workspace?: string, newApp = false): Promise<string | undefined> {
-  let text: string;
-  try { text = await readFile(path.join(root, ".apps-source.json"), "utf8"); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
-  const state = State.parse(JSON.parse(text));
+  const state = await readSourceState(root);
+  if (state === undefined) return undefined;
   if (state.api === api && state.deployment === deployment && state.workspace === (workspace ?? null)) return state.commit;
   if (newApp && state.api === api && state.workspace === (workspace ?? null)) return undefined;
   if (state.api === api && state.workspace === (workspace ?? null)) {
