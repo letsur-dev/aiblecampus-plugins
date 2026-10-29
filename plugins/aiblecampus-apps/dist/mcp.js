@@ -3654,8 +3654,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path12) {
-      let input = path12;
+    function removeDotSegments(path13) {
+      let input = path13;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -4064,8 +4064,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path12 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path12 && path12 !== "/" ? path12 : void 0;
+        const path13 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path13 && path13 !== "/" ? path13 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -8360,10 +8360,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path12) {
-  if (!path12)
+function getElementAtPath(obj, path13) {
+  if (!path13)
     return obj;
-  return path12.reduce((acc, key) => acc?.[key], obj);
+  return path13.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8772,11 +8772,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path12, issues) {
+function prefixIssues(path13, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path12);
+    iss.path.unshift(path13);
     return iss;
   });
 }
@@ -8923,16 +8923,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path12 = []) => {
+  const processError = (error52, path13 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path13, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
       } else {
-        const fullpath = [...path12, ...issue2.path];
+        const fullpath = [...path13, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8959,17 +8959,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path12 = []) => {
+  const processError = (error52, path13 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path13, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
       } else {
-        const fullpath = [...path12, ...issue2.path];
+        const fullpath = [...path13, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -9001,8 +9001,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path12 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path12) {
+  const path13 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path13) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -21694,13 +21694,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path12 = ref.slice(1).split("/").filter(Boolean);
-  if (path12.length === 0) {
+  const path13 = ref.slice(1).split("/").filter(Boolean);
+  if (path13.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path12[0] === defsKey) {
-    const key = path12[1];
+  if (path13[0] === defsKey) {
+    const key = path13[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -25814,12 +25814,12 @@ async function assertNotTracked(root) {
   }
 }
 async function plainFile(file2) {
-  const stat3 = await lstat(file2).catch((error51) => {
+  const stat4 = await lstat(file2).catch((error51) => {
     if (error51.code === "ENOENT") return null;
     throw error51;
   });
-  if (!stat3) return false;
-  if (!stat3.isFile() || stat3.isSymbolicLink() || stat3.nlink !== 1) throw new AiSetupError("\uC124\uC815 \uACBD\uB85C\uB294 \uC5F0\uACB0 \uD30C\uC77C\uC774 \uC544\uB2CC \uC77C\uBC18 \uD30C\uC77C\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.");
+  if (!stat4) return false;
+  if (!stat4.isFile() || stat4.isSymbolicLink() || stat4.nlink !== 1) throw new AiSetupError("\uC124\uC815 \uACBD\uB85C\uB294 \uC5F0\uACB0 \uD30C\uC77C\uC774 \uC544\uB2CC \uC77C\uBC18 \uD30C\uC77C\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.");
   return true;
 }
 async function configureAiGateway(projectPath, model, input) {
@@ -25930,7 +25930,10 @@ var GeneratedImage = external_exports.looseObject({
   size: external_exports.enum(IMAGE_SIZES),
   mimeType: external_exports.enum(["image/png", "image/jpeg", "image/webp"]),
   imageBase64: external_exports.string().min(1).regex(/^[A-Za-z0-9+/]+={0,2}$/),
-  remainingToday: external_exports.number().int().min(0)
+  remainingToday: external_exports.number().int().min(0),
+  /** 교육에서 정한 하루 한도와 다시 채워지는 시각(0.48.0 서버부터). 옛 서버 응답에는 없다 */
+  dailyLimit: external_exports.number().int().min(0).optional(),
+  resetsAt: external_exports.iso.datetime({ offset: true }).optional()
 });
 var EXTENSIONS = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
 function imageDirectory(directory, cwd = process.cwd()) {
@@ -25966,38 +25969,234 @@ async function saveImage(directory, prompt, image, now = /* @__PURE__ */ new Dat
   }
   throw new Error("\uAC19\uC740 \uC774\uB984\uC758 \uD30C\uC77C\uC774 \uB108\uBB34 \uB9CE\uB2E4");
 }
-var FALLBACK = {
-  400: "\uC774\uBBF8\uC9C0 \uC694\uCCAD \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC124\uBA85\uC744 4000\uC790 \uC548\uC73C\uB85C \uC904\uC774\uACE0 \uD06C\uAE30\uB294 1024x1024, 1536x1024, 1024x1536 \uC911\uC5D0\uC11C \uACE8\uB77C \uC8FC\uC138\uC694.",
-  403: "\uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4E4 \uC218 \uC788\uB294 \uAD50\uC721\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC9C0\uAE08 \uCC38\uC5EC \uC911\uC778 \uAD50\uC721\uC774 \uC788\uC73C\uBA74 \uAD50\uC721 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uBB38\uC758\uD574 \uC8FC\uC138\uC694.",
-  404: "\uC774\uBBF8\uC9C0 \uB9CC\uB4E4\uAE30\uB97C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. Apps \uB85C\uADF8\uC778\uACFC \uD50C\uB7EC\uADF8\uC778 \uBC84\uC804\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694.",
-  409: "\uC774\uBBF8\uC9C0\uB97C \uC774\uBBF8 \uB9CC\uB4E4\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uB05D\uB09C \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694.",
-  429: "\uC624\uB298 \uB9CC\uB4E4 \uC218 \uC788\uB294 \uC774\uBBF8\uC9C0\uB97C \uBAA8\uB450 \uB9CC\uB4E4\uC5C8\uC2B5\uB2C8\uB2E4. \uB0B4\uC77C \uB2E4\uC2DC \uC774\uC6A9\uD574 \uC8FC\uC138\uC694.",
-  502: "\uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694.",
-  503: "\uC774\uBBF8\uC9C0 \uB9CC\uB4E4\uAE30\uAC00 \uC544\uC9C1 \uC900\uBE44\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uBB38\uC758\uD574 \uC8FC\uC138\uC694."
+
+// mcp/generate-video.ts
+import { mkdir as mkdir5, open as open4, stat as stat2, unlink as unlink3 } from "node:fs/promises";
+import path7 from "node:path";
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+
+// mcp/media-failure.ts
+var LABEL = { image: { noun: "\uC774\uBBF8\uC9C0", obj: "\uC774\uBBF8\uC9C0\uB97C", unit: "\uC7A5" }, video: { noun: "\uC601\uC0C1", obj: "\uC601\uC0C1\uC744", unit: "\uAC1C" } };
+var MediaFailureBody = external_exports.looseObject({
+  message: external_exports.string().trim().min(1).max(1e3).optional(),
+  dailyLimit: external_exports.number().int().min(0).optional(),
+  remainingToday: external_exports.number().int().min(0).optional(),
+  resetsAt: external_exports.iso.datetime({ offset: true }).optional()
+});
+function koreanTime(iso) {
+  const time3 = Date.parse(iso);
+  if (!Number.isFinite(time3)) return iso;
+  const kst = new Date(time3 + 9 * 60 * 60 * 1e3);
+  const pad3 = (value) => String(value).padStart(2, "0");
+  return `${kst.getUTCFullYear()}\uB144 ${kst.getUTCMonth() + 1}\uC6D4 ${kst.getUTCDate()}\uC77C ${pad3(kst.getUTCHours())}:${pad3(kst.getUTCMinutes())}`;
+}
+function fallback(kind, status) {
+  const { noun, obj } = LABEL[kind];
+  const texts = {
+    400: kind === "image" ? "\uC774\uBBF8\uC9C0 \uC694\uCCAD \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC124\uBA85\uC744 4000\uC790 \uC548\uC73C\uB85C \uC904\uC774\uACE0 \uD06C\uAE30\uB294 1024x1024, 1536x1024, 1024x1536 \uC911\uC5D0\uC11C \uACE8\uB77C \uC8FC\uC138\uC694." : "\uC601\uC0C1 \uC694\uCCAD \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC124\uBA85\uC744 4000\uC790 \uC548\uC73C\uB85C \uC904\uC774\uACE0 \uAE38\uC774, \uD574\uC0C1\uB3C4, \uD654\uBA74 \uBE44\uC728\uC744 \uC815\uD574\uC9C4 \uAC12\uC5D0\uC11C \uACE8\uB77C \uC8FC\uC138\uC694.",
+    403: `${obj} \uB9CC\uB4E4 \uC218 \uC788\uB294 \uAD50\uC721\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC774 \uAD50\uC721\uC5D0\uC11C ${noun} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uAC70\uB098 \uCC38\uC5EC \uC911\uC778 \uAD50\uC721\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uBB38\uC758\uD574 \uC8FC\uC138\uC694.`,
+    404: kind === "image" ? "\uC774\uBBF8\uC9C0 \uB9CC\uB4E4\uAE30\uB97C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. Apps \uB85C\uADF8\uC778\uACFC \uD50C\uB7EC\uADF8\uC778 \uBC84\uC804\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694." : "\uC601\uC0C1 \uC791\uC5C5\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC791\uC5C5 ID\uC640 Apps \uB85C\uADF8\uC778, \uD50C\uB7EC\uADF8\uC778 \uBC84\uC804\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694.",
+    409: `${obj} \uC774\uBBF8 \uB9CC\uB4E4\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uB05D\uB09C \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694.`,
+    429: `\uC624\uB298 \uB9CC\uB4E4 \uC218 \uC788\uB294 ${obj} \uBAA8\uB450 \uB9CC\uB4E4\uC5C8\uC2B5\uB2C8\uB2E4. \uB0B4\uC77C \uB2E4\uC2DC \uC774\uC6A9\uD574 \uC8FC\uC138\uC694.`,
+    502: kind === "image" ? "\uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694." : "\uC601\uC0C1 \uC11C\uBE44\uC2A4\uC5D0 \uC5F0\uACB0\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694.",
+    503: `${noun} \uB9CC\uB4E4\uAE30\uAC00 \uC544\uC9C1 \uC900\uBE44\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uBB38\uC758\uD574 \uC8FC\uC138\uC694.`
+  };
+  return texts[status];
+}
+function nextAction(kind, status) {
+  const { noun } = LABEL[kind];
+  const stop = `\uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. API \uD0A4\uB97C \uBB3B\uAC70\uB098 \uB2E4\uB978 ${noun} \uC11C\uBE44\uC2A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4.`;
+  const texts = {
+    409: kind === "image" ? "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC55E \uC694\uCCAD\uC774 \uB05D\uB09C \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uB2E4\uC2DC \uBD80\uB978\uB2E4." : "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC9C4\uD589 \uC911\uC778 \uC791\uC5C5\uC740 video_status\uB85C \uD655\uC778\uD558\uACE0, \uB05D\uB09C \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uC0C8\uB85C \uC811\uC218\uD55C\uB2E4.",
+    429: `\uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uB2E4\uB978 ${noun} \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB97C \uCC3E\uC544 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uD55C\uB3C4\uAC00 \uB2E4\uC2DC \uCC44\uC6CC\uC9C0\uB294 \uC2DC\uAC01\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4.`,
+    502: "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uD55C \uBC88 \uB2E4\uC2DC \uBD80\uB978\uB2E4.",
+    503: stop,
+    403: stop
+  };
+  return texts[status];
+}
+function limitFacts(kind, body) {
+  const { noun, unit } = LABEL[kind];
+  const parts = [
+    ...body.dailyLimit === void 0 ? [] : [`\uD558\uB8E8 \uD55C\uB3C4\uB294 ${noun} ${body.dailyLimit}${unit}`],
+    ...body.remainingToday === void 0 ? [] : [`\uC624\uB298 \uB0A8\uC740 \uC218\uB294 ${body.remainingToday}${unit}`],
+    ...body.resetsAt === void 0 ? [] : [`${koreanTime(body.resetsAt)}(\uD55C\uAD6D \uC2DC\uAC04)\uBD80\uD130 \uB2E4\uC2DC \uC4F8 \uC218 \uC788\uB2E4`]
+  ];
+  return parts.length === 0 ? null : `\uD55C\uB3C4 \uC548\uB0B4(\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4): ${parts.join(", ")}.`;
+}
+function mediaFailureText(kind, status, body) {
+  const parsed = MediaFailureBody.safeParse(body);
+  const message2 = (parsed.success ? parsed.data.message : void 0) ?? fallback(kind, status) ?? `${LABEL[kind].obj} \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4(\uC0C1\uD0DC ${status}).`;
+  const facts = status === 429 && parsed.success ? limitFacts(kind, parsed.data) : null;
+  const next = nextAction(kind, status);
+  return [`\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4: ${message2}`, ...facts === null ? [] : [facts], ...next === void 0 ? [] : [next]].join("\n");
+}
+
+// mcp/generate-video.ts
+var VIDEO_PROMPT_MAX_LENGTH = 4e3;
+var VIDEO_DURATION_MIN = 4;
+var VIDEO_DURATION_MAX = 15;
+var VIDEO_RESOLUTIONS = ["480p", "720p"];
+var VIDEO_ASPECT_RATIOS = ["16:9", "9:16", "1:1"];
+var VIDEO_JOB_TIMEOUT_MINUTES = 20;
+var VIDEO_DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024;
+var Iso = external_exports.iso.datetime({ offset: true });
+var AcceptedVideo = external_exports.looseObject({
+  id: external_exports.uuid(),
+  model: external_exports.string().min(1),
+  status: external_exports.enum(["queued", "running"]),
+  durationSeconds: external_exports.number().int(),
+  resolution: external_exports.enum(VIDEO_RESOLUTIONS),
+  aspectRatio: external_exports.enum(VIDEO_ASPECT_RATIOS),
+  remainingToday: external_exports.number().int().min(0),
+  dailyLimit: external_exports.number().int().min(0),
+  resetsAt: Iso,
+  pollAfterSeconds: external_exports.number().int().min(1)
+});
+var VideoStatusResult = external_exports.looseObject({
+  id: external_exports.uuid(),
+  model: external_exports.string().min(1),
+  status: external_exports.enum(["queued", "running", "succeeded", "failed"]),
+  createdAt: Iso,
+  durationSeconds: external_exports.number().int(),
+  resolution: external_exports.enum(VIDEO_RESOLUTIONS),
+  aspectRatio: external_exports.enum(VIDEO_ASPECT_RATIOS),
+  elapsedSeconds: external_exports.number().int().min(0),
+  failure: external_exports.string().nullable(),
+  failureCode: external_exports.string().nullable(),
+  download: external_exports.looseObject({ url: external_exports.url(), expiresAt: Iso.nullable(), contentType: external_exports.string().min(1), sizeBytes: external_exports.number().int().min(0).nullable() }).nullable(),
+  remainingToday: external_exports.number().int().min(0),
+  dailyLimit: external_exports.number().int().min(0),
+  resetsAt: Iso,
+  pollAfterSeconds: external_exports.number().int().min(1)
+});
+function videoDirectory(directory, cwd = process.cwd()) {
+  return directory === void 0 ? path7.join(cwd, "videos") : path7.resolve(cwd, directory);
+}
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+function videoFileStem(id, createdAt) {
+  const time3 = new Date(createdAt);
+  const stamp = `${time3.getFullYear()}${pad2(time3.getMonth() + 1)}${pad2(time3.getDate())}-${pad2(time3.getHours())}${pad2(time3.getMinutes())}${pad2(time3.getSeconds())}`;
+  return `${stamp}-video-${id.replace(/[^0-9a-f]/gi, "").slice(0, 8)}`;
+}
+var EXTENSIONS2 = { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov" };
+function videoExtension(contentType2) {
+  return EXTENSIONS2[contentType2.split(";")[0].trim().toLowerCase()] ?? "mp4";
+}
+var VideoDownloadError = class extends Error {
 };
-var NEXT = {
-  409: "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC55E \uC694\uCCAD\uC774 \uB05D\uB09C \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uB2E4\uC2DC \uBD80\uB978\uB2E4.",
-  429: "\uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uB2E4\uB978 \uC774\uBBF8\uC9C0 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB97C \uCC3E\uC544 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4.",
-  502: "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uD55C \uBC88 \uB2E4\uC2DC \uBD80\uB978\uB2E4.",
-  503: "\uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. API \uD0A4\uB97C \uBB3B\uAC70\uB098 \uB2E4\uB978 \uC774\uBBF8\uC9C0 \uC11C\uBE44\uC2A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4.",
-  403: "\uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. API \uD0A4\uB97C \uBB3B\uAC70\uB098 \uB2E4\uB978 \uC774\uBBF8\uC9C0 \uC11C\uBE44\uC2A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4."
-};
-function imageFailureText(status, body) {
-  const parsed = external_exports.object({ message: external_exports.string().trim().min(1).max(1e3) }).safeParse(body);
-  const message2 = parsed.success ? parsed.data.message : FALLBACK[status] ?? `\uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4(\uC0C1\uD0DC ${status}).`;
-  const next = NEXT[status];
-  return [`\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4: ${message2}`, ...next === void 0 ? [] : [next]].join("\n");
+async function saveVideo(directory, stem, extension, expectedBytes, openBody) {
+  if (expectedBytes !== null && expectedBytes > VIDEO_DOWNLOAD_MAX_BYTES) throw new VideoDownloadError("\uC601\uC0C1 \uD30C\uC77C\uC774 \uB108\uBB34 \uCEE4\uC11C \uBC1B\uC9C0 \uC54A\uC558\uB2E4");
+  await mkdir5(directory, { recursive: true });
+  for (let attempt = 1; attempt <= 1e3; attempt += 1) {
+    const file2 = path7.join(directory, `${stem}${attempt === 1 ? "" : `-${attempt}`}.${extension}`);
+    const existing = await stat2(file2).catch((error51) => {
+      if (error51.code === "ENOENT") return null;
+      throw error51;
+    });
+    if (existing !== null) {
+      if (expectedBytes !== null && existing.size === expectedBytes) return { file: file2, bytes: existing.size, reused: true };
+      continue;
+    }
+    const body = await openBody();
+    const handle = await open4(file2, "wx", 420).catch(async (error51) => {
+      await body.cancel().catch(() => void 0);
+      if (error51.code === "EEXIST") return null;
+      throw error51;
+    });
+    if (handle === null) continue;
+    let bytes = 0;
+    const counter = new Transform({
+      transform(chunk, _encoding, done) {
+        bytes += chunk.length;
+        done(bytes > VIDEO_DOWNLOAD_MAX_BYTES ? new VideoDownloadError("\uC601\uC0C1 \uD30C\uC77C\uC774 \uB108\uBB34 \uCEE4\uC11C \uBC1B\uB2E4\uAC00 \uBA48\uCDC4\uB2E4") : null, chunk);
+      }
+    });
+    try {
+      await pipeline(Readable.fromWeb(body), counter, handle.createWriteStream());
+      if (bytes === 0) throw new VideoDownloadError("\uC601\uC0C1 \uB370\uC774\uD130\uAC00 \uBE44\uC5B4 \uC788\uB2E4");
+      if (expectedBytes !== null && bytes !== expectedBytes) throw new VideoDownloadError(`\uC601\uC0C1\uC744 \uB05D\uAE4C\uC9C0 \uBC1B\uC9C0 \uBABB\uD588\uB2E4(${bytes}\uBC14\uC774\uD2B8, \uAE30\uB300 ${expectedBytes}\uBC14\uC774\uD2B8)`);
+    } catch (error51) {
+      await handle.close().catch(() => void 0);
+      await unlink3(file2).catch(() => void 0);
+      throw error51;
+    }
+    return { file: file2, bytes, reused: false };
+  }
+  throw new Error("\uAC19\uC740 \uC774\uB984\uC758 \uD30C\uC77C\uC774 \uB108\uBB34 \uB9CE\uB2E4");
+}
+function elapsedText(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  return minutes === 0 ? `${seconds}\uCD08` : `${minutes}\uBD84 ${seconds % 60}\uCD08`;
+}
+function videoLimitFacts(job) {
+  return { \uC624\uB298_\uB0A8\uC740_\uAC1C\uC218: job.remainingToday, \uD558\uB8E8_\uD55C\uB3C4: job.dailyLimit, \uD55C\uB3C4_\uCD08\uAE30\uD654_\uC2DC\uAC01: `${koreanTime(job.resetsAt)}(\uD55C\uAD6D \uC2DC\uAC04)` };
+}
+
+// mcp/tools-config.ts
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+var PLUGIN_TOOLS_FILE = "aiblecampus-tools.json";
+var TOOL_GROUP_IDS = ["mcp-image", "mcp-video", "mcp-apps", "mcp-files", "mcp-google", "mcp-gallery"];
+var MediaSummary = external_exports.strictObject({
+  enabled: external_exports.boolean(),
+  model: external_exports.string().min(1).max(200).nullable(),
+  dailyLimit: external_exports.number().int().min(0)
+});
+var ToolsConfigSchema = external_exports.strictObject({
+  version: external_exports.literal(1),
+  groups: external_exports.array(external_exports.enum(TOOL_GROUP_IDS)).max(TOOL_GROUP_IDS.length),
+  image: MediaSummary,
+  video: MediaSummary
+});
+function parseToolsConfig(raw) {
+  try {
+    const parsed = ToolsConfigSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+var cached2;
+function toolsConfig(file2) {
+  if (file2 === void 0 && cached2 !== void 0) return cached2;
+  let found;
+  try {
+    found = parseToolsConfig(readFileSync(file2 ?? fileURLToPath(new URL(`../${PLUGIN_TOOLS_FILE}`, import.meta.url)), "utf8"));
+  } catch {
+    found = null;
+  }
+  if (file2 === void 0) cached2 = found;
+  return found;
+}
+function toolGroupEnabled(config2, group) {
+  if (config2 === null) return true;
+  return group === "base" ? config2.groups.length > 0 : config2.groups.includes(group);
+}
+function mediaToolNote(summary, unit, label) {
+  if (summary === void 0) return "";
+  if (!summary.enabled) return ` \uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uB294\uB2E4(\uBAA8\uB378\uC744 \uC815\uD558\uC9C0 \uC54A\uC558\uAC70\uB098 \uD558\uB8E8 \uD55C\uB3C4\uAC00 0\uC774\uB2E4). \uBD80\uB974\uC9C0 \uB9D0\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694"\uB77C\uACE0 \uC54C\uB9B0\uB2E4.`;
+  return ` \uC774 \uAD50\uC721\uC5D0\uC11C\uB294 \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8 ${summary.dailyLimit}${unit}\uAE4C\uC9C0 \uB9CC\uB4E4 \uC218 \uC788\uACE0 \uBAA8\uB378\uC740 ${summary.model ?? "\uC11C\uBC84\uAC00 \uACE0\uB978 \uBAA8\uB378"}\uC774\uB2E4.`;
+}
+function toolsInstructions(config2) {
+  if (config2 === null) return null;
+  const line = (summary, label, unit) => summary.enabled ? `${label} \uC0DD\uC131: \uC4F8 \uC218 \uC788\uB2E4. \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8 ${summary.dailyLimit}${unit}\uAE4C\uC9C0, \uBAA8\uB378\uC740 ${summary.model ?? "\uC11C\uBC84\uAC00 \uACE0\uB978 \uBAA8\uB378"}\uC774\uB2E4.` : `${label} \uC0DD\uC131: \uC774 \uAD50\uC721\uC5D0\uC11C\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uC694\uCCAD\uBC1B\uC73C\uBA74 \uB3C4\uAD6C\uB97C \uCC3E\uAC70\uB098 \uB2E4\uB978 \uC11C\uBE44\uC2A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694"\uB77C\uACE0 \uC54C\uB9B0\uB2E4.`;
+  const only = config2.image.enabled && !config2.video.enabled ? ' \uC0AC\uC6A9\uC790\uC5D0\uAC8C\uB294 "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 \uC601\uC0C1 \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694, \uC774\uBBF8\uC9C0 \uC0DD\uC131\uB9CC \uAC00\uB2A5\uD574\uC694"\uCC98\uB7FC \uC54C\uB9B0\uB2E4.' : "";
+  return [line(config2.image, "\uC774\uBBF8\uC9C0", "\uC7A5"), line(config2.video, "\uC601\uC0C1", "\uAC1C")].join("\n") + only;
 }
 
 // mcp/source-checkout.ts
-import { mkdir as mkdir5, readFile as readFile4, writeFile as writeFile2 } from "node:fs/promises";
-import path7 from "node:path";
+import { mkdir as mkdir6, readFile as readFile4, writeFile as writeFile2 } from "node:fs/promises";
+import path8 from "node:path";
 var State2 = external_exports.object({ api: external_exports.string(), deployment: external_exports.string(), workspace: external_exports.string().nullable(), commit: external_exports.string().regex(/^[a-f0-9]{40}$/) });
 var Snapshot = external_exports.object({ commit: external_exports.string().regex(/^[a-f0-9]{40}$/), files: external_exports.array(external_exports.object({ path: external_exports.string(), content: external_exports.string(), executable: external_exports.boolean() })).max(5e3) });
 async function readSourceState(root) {
   let text;
   try {
-    text = await readFile4(path7.join(root, ".apps-source.json"), "utf8");
+    text = await readFile4(path8.join(root, ".apps-source.json"), "utf8");
   } catch (error51) {
     if (error51.code === "ENOENT") return void 0;
     throw error51;
@@ -26018,22 +26217,22 @@ async function readSourceBase(root, api, deployment, workspace, newApp = false) 
 }
 async function saveSourceBase(root, api, deployment, workspace, commit) {
   const state = State2.parse({ api, deployment, workspace: workspace ?? null, commit });
-  await writeFile2(path7.join(root, ".apps-source.json"), JSON.stringify(state, null, 2) + "\n", { mode: 384 });
+  await writeFile2(path8.join(root, ".apps-source.json"), JSON.stringify(state, null, 2) + "\n", { mode: 384 });
 }
 async function checkoutSnapshot(root, raw, api, deployment, workspace) {
   const snapshot = Snapshot.parse(raw);
   let bytes = 0;
   const seen = /* @__PURE__ */ new Set();
   for (const file2 of snapshot.files) {
-    if (!file2.path || file2.path.includes("\\") || file2.path.includes(":") || path7.posix.isAbsolute(file2.path) || file2.path.includes("\0") || file2.path.split("/").some((part) => !part || part === "." || part === ".." || part === ".git" || part === ".apps-source.json") || seen.has(file2.path)) throw new Error("\uC18C\uC2A4 \uD30C\uC77C \uACBD\uB85C\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+    if (!file2.path || file2.path.includes("\\") || file2.path.includes(":") || path8.posix.isAbsolute(file2.path) || file2.path.includes("\0") || file2.path.split("/").some((part) => !part || part === "." || part === ".." || part === ".git" || part === ".apps-source.json") || seen.has(file2.path)) throw new Error("\uC18C\uC2A4 \uD30C\uC77C \uACBD\uB85C\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
     seen.add(file2.path);
     bytes += Buffer.byteLength(file2.content, "base64");
     if (bytes > 64 * 1024 * 1024) throw new Error("\uC18C\uC2A4 \uD06C\uAE30 \uC0C1\uD55C\uC744 \uCD08\uACFC\uD588\uB2E4");
   }
-  await mkdir5(root, { recursive: false, mode: 448 });
+  await mkdir6(root, { recursive: false, mode: 448 });
   for (const file2 of snapshot.files) {
-    const target = path7.join(root, file2.path);
-    await mkdir5(path7.dirname(target), { recursive: true });
+    const target = path8.join(root, file2.path);
+    await mkdir6(path8.dirname(target), { recursive: true });
     await writeFile2(target, Buffer.from(file2.content, "base64"), { flag: "wx", mode: file2.executable ? 448 : 384 });
   }
   await saveSourceBase(root, api, deployment, workspace, snapshot.commit);
@@ -26041,12 +26240,12 @@ async function checkoutSnapshot(root, raw, api, deployment, workspace) {
 }
 
 // mcp/hub-credential.ts
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { readFileSync as readFileSync2 } from "node:fs";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 var HUB_CREDENTIAL_FILE = "aiblecampus-credential.json";
 var EXPIRY_MARGIN_MS = 6e4;
 var rejected = /* @__PURE__ */ new Set();
-var cached2;
+var cached3;
 function isOrigin(value) {
   if (typeof value !== "string") return false;
   try {
@@ -26070,14 +26269,14 @@ function parseHubCredential(raw) {
   }
 }
 function hubCredential(file2) {
-  if (file2 === void 0 && cached2 !== void 0) return cached2;
+  if (file2 === void 0 && cached3 !== void 0) return cached3;
   let found;
   try {
-    found = parseHubCredential(readFileSync(file2 ?? fileURLToPath(new URL(`../${HUB_CREDENTIAL_FILE}`, import.meta.url)), "utf8"));
+    found = parseHubCredential(readFileSync2(file2 ?? fileURLToPath2(new URL(`../${HUB_CREDENTIAL_FILE}`, import.meta.url)), "utf8"));
   } catch {
     found = null;
   }
-  if (file2 === void 0) cached2 = found;
+  if (file2 === void 0) cached3 = found;
   return found;
 }
 function usableHubCredential(apiBase2, now = Date.now(), file2) {
@@ -26092,24 +26291,24 @@ function rejectHubCredential(token) {
 var HUB_CREDENTIAL_RENEW_NOTICE = '\uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uC790\uB3D9 \uC5F0\uACB0\uC744 \uC4F8 \uC218 \uC5C6\uC5B4 \uAE30\uAE30 \uB85C\uADF8\uC778\uC73C\uB85C \uC9C4\uD589\uD55C\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC774\uB807\uAC8C \uC548\uB0B4\uD55C\uB2E4: "\uC790\uB3D9 \uC5F0\uACB0\uC774 \uB9CC\uB8CC\uB410\uAC70\uB098 \uD574\uC81C\uB410\uC5B4\uC694. Claude\uC5D0\uC11C \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4\uB85C \uB2E4\uC2DC \uB85C\uADF8\uC778\uD558\uBA74 \uC790\uB3D9 \uC5F0\uACB0\uC774 \uC0C8\uB85C \uB3FC\uC694. \uC9C0\uAE08\uC740 \uAE30\uAE30 \uB85C\uADF8\uC778\uC73C\uB85C \uC774\uC5B4\uC11C \uD560\uAC8C\uC694." \uADF8\uB2E4\uC74C start_apps_login\uACFC complete_apps_login\uC73C\uB85C \uB85C\uADF8\uC778\uD55C\uB2E4.';
 
 // mcp/distribution.ts
-import { readFileSync as readFileSync2 } from "node:fs";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
+import { readFileSync as readFileSync3 } from "node:fs";
+import { fileURLToPath as fileURLToPath3 } from "node:url";
 function distributionOf(manifestVersion2, hasHubCredential) {
   if (hasHubCredential || manifestVersion2 !== null && /\+hub\./.test(manifestVersion2)) return "hub";
   return manifestVersion2 === null ? "unknown" : "public";
 }
-function manifestVersion(file2 = fileURLToPath2(new URL("../.claude-plugin/plugin.json", import.meta.url))) {
+function manifestVersion(file2 = fileURLToPath3(new URL("../.claude-plugin/plugin.json", import.meta.url))) {
   try {
-    const version2 = JSON.parse(readFileSync2(file2, "utf8")).version;
+    const version2 = JSON.parse(readFileSync3(file2, "utf8")).version;
     return typeof version2 === "string" ? version2 : null;
   } catch {
     return null;
   }
 }
-var cached3;
+var cached4;
 function pluginDistribution() {
-  cached3 ??= distributionOf(manifestVersion(), hubCredential() !== null);
-  return cached3;
+  cached4 ??= distributionOf(manifestVersion(), hubCredential() !== null);
+  return cached4;
 }
 
 // ../../node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/helpers/util.js
@@ -26471,8 +26670,8 @@ function getErrorMap2() {
 
 // ../../node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path12, errorMaps, issueData } = params;
-  const fullPath = [...path12, ...issueData.path || []];
+  const { data, path: path13, errorMaps, issueData } = params;
+  const fullPath = [...path13, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -26587,11 +26786,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path12, key) {
+  constructor(parent, value, path13, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path12;
+    this._path = path13;
     this._key = key;
   }
   get path() {
@@ -30119,11 +30318,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path12) {
-  if (path12.length === 0) {
+function getDotPath(path13) {
+  if (path13.length === 0) {
     return "object root";
   }
-  return path12.reduce((acc, seg, index) => {
+  return path13.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -35750,12 +35949,12 @@ var StdioServerTransport = class {
 // mcp/index.ts
 import { createHash as createHash4 } from "node:crypto";
 import { existsSync } from "node:fs";
-import path11 from "node:path";
+import path12 from "node:path";
 
 // mcp/device-auth.ts
-import { mkdir as mkdir6, readFile as readFile5, rename as rename3, writeFile as writeFile3 } from "node:fs/promises";
+import { mkdir as mkdir7, readFile as readFile5, rename as rename3, writeFile as writeFile3 } from "node:fs/promises";
 import { homedir as homedir2, hostname as hostname3 } from "node:os";
-import path8 from "node:path";
+import path9 from "node:path";
 
 // ../../node_modules/.pnpm/oauth4webapi@3.8.8/node_modules/oauth4webapi/build/index.js
 var USER_AGENT;
@@ -36758,7 +36957,7 @@ async function validateJwt(jws, checkAlg, clockSkew2, clockTolerance2, decryptJw
   }
   return { header, claims, jwt: jws };
 }
-function checkSigningAlgorithm(client, issuer, fallback, header) {
+function checkSigningAlgorithm(client, issuer, fallback2, header) {
   if (client !== void 0) {
     if (typeof client === "string" ? header.alg !== client : !client.includes(header.alg)) {
       throw OPE('unexpected JWT "alg" header parameter', INVALID_RESPONSE, {
@@ -36779,17 +36978,17 @@ function checkSigningAlgorithm(client, issuer, fallback, header) {
     }
     return;
   }
-  if (fallback !== void 0) {
-    if (typeof fallback === "string" ? header.alg !== fallback : typeof fallback === "function" ? !fallback(header.alg) : !fallback.includes(header.alg)) {
+  if (fallback2 !== void 0) {
+    if (typeof fallback2 === "string" ? header.alg !== fallback2 : typeof fallback2 === "function" ? !fallback2(header.alg) : !fallback2.includes(header.alg)) {
       throw OPE('unexpected JWT "alg" header parameter', INVALID_RESPONSE, {
         header,
-        expected: fallback,
+        expected: fallback2,
         reason: "default value"
       });
     }
     return;
   }
-  throw OPE('missing client or server configuration to verify used JWT "alg" header parameter', void 0, { client, issuer, fallback });
+  throw OPE('missing client or server configuration to verify used JWT "alg" header parameter', void 0, { client, issuer, fallback: fallback2 });
 }
 var skipStateCheck = Symbol();
 var expectNoState = Symbol();
@@ -37064,14 +37263,14 @@ async function prepareKey(entry, key, usage) {
   }
   cache ||= /* @__PURE__ */ new WeakMap();
   const cacheKey = key;
-  let cached4 = cache.get(cacheKey);
-  if (cached4?.[alg])
-    return cached4[alg];
-  if (cached4 || cache.set(cacheKey, cached4 = {}), keyObject && typeof keyObject.toCryptoKey == "function") {
+  let cached5 = cache.get(cacheKey);
+  if (cached5?.[alg])
+    return cached5[alg];
+  if (cached5 || cache.set(cacheKey, cached5 = {}), keyObject && typeof keyObject.toCryptoKey == "function") {
     const isPublic = keyObject.type === "public", crv = nist[keyObject.asymmetricKeyDetails?.namedCurve], params = entry.resolve?.({ crv, asymmetricKeyType: keyObject.asymmetricKeyType }) ?? entry.subtle;
-    return cached4[alg] = keyObject.toCryptoKey(params, isPublic, entry.usages[isPublic ? 0 : 1]);
+    return cached5[alg] = keyObject.toCryptoKey(params, isPublic, entry.usages[isPublic ? 0 : 1]);
   }
-  return normalized ??= keyObject.export({ format: "jwk" }), normalized.alg = alg, cached4[alg] = await jwkToKey(entry, normalized);
+  return normalized ??= keyObject.export({ format: "jwk" }), normalized.alg = alg, cached5[alg] = await jwkToKey(entry, normalized);
 }
 var cache;
 var nist = {
@@ -37815,9 +38014,9 @@ var DEFAULT_RESOURCE = "urn:aiblecampus:apps";
 var refreshes = /* @__PURE__ */ new Map();
 function stateFile() {
   const configured = appsEnv("CREDENTIAL_FILE");
-  if (configured) return path8.resolve(configured);
-  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path8.join(homedir2(), ".config");
-  return path8.join(configRoot, "aiblecampus-apps", "device.json");
+  if (configured) return path9.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path9.join(homedir2(), ".config");
+  return path9.join(configRoot, "aiblecampus-apps", "device.json");
 }
 function emptyState(apiBase2) {
   return { version: 1, apiBase: apiBase2, issuer: identityBase(apiBase2), credential: null, pending: null };
@@ -37852,7 +38051,7 @@ async function readState(apiBase2) {
 }
 async function writeState(state) {
   const file2 = stateFile();
-  await mkdir6(path8.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir7(path9.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.tmp`;
   await writeFile3(temporary, `${JSON.stringify(state, null, 2)}
 `, { mode: 384 });
@@ -38068,9 +38267,9 @@ async function completeDeviceLogin(apiBase2) {
 
 // mcp/persistence-migration.ts
 import { createHash as createHash3 } from "node:crypto";
-import { mkdir as mkdir7, readFile as readFile6, readdir, stat as stat2 } from "node:fs/promises";
+import { mkdir as mkdir8, readFile as readFile6, readdir, stat as stat3 } from "node:fs/promises";
 import { backup, DatabaseSync } from "node:sqlite";
-import path9 from "node:path";
+import path10 from "node:path";
 var SAFE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 var MAX_TABLES = 100;
 var MAX_ROWS = 1e5;
@@ -38100,7 +38299,7 @@ function snapshotValue(value) {
   throw new Error(`\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 SQLite \uAC12 \uD615\uC2DD\uC774\uB2E4: ${typeof value}`);
 }
 async function snapshotSqlite(databasePath) {
-  const absolute = path9.resolve(databasePath);
+  const absolute = path10.resolve(databasePath);
   const source = await readFile6(absolute);
   const database = new DatabaseSync(absolute, { readOnly: true });
   try {
@@ -38160,9 +38359,9 @@ async function snapshotSqlite(databasePath) {
   }
 }
 function withinProject(projectRoot, candidate) {
-  const root = path9.resolve(projectRoot);
-  const absolute = path9.resolve(candidate);
-  if (absolute !== root && !absolute.startsWith(`${root}${path9.sep}`)) {
+  const root = path10.resolve(projectRoot);
+  const absolute = path10.resolve(candidate);
+  if (absolute !== root && !absolute.startsWith(`${root}${path10.sep}`)) {
     throw new Error("\uC774\uC804 \uB300\uC0C1\uC740 \uD504\uB85C\uC81D\uD2B8 \uD3F4\uB354 \uC548\uC5D0 \uC788\uC5B4\uC57C \uD55C\uB2E4");
   }
   return absolute;
@@ -38173,11 +38372,11 @@ function backupName(label, extension) {
 }
 async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   const source = withinProject(projectRoot, databasePath);
-  const backupRoot = path9.join(path9.resolve(projectRoot), ".apps-backups");
-  await mkdir7(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path9.join(
+  const backupRoot = path10.join(path10.resolve(projectRoot), ".apps-backups");
+  await mkdir8(backupRoot, { recursive: true, mode: 448 });
+  const backupPath = path10.join(
     backupRoot,
-    backupName(path9.basename(source), ".sqlite")
+    backupName(path10.basename(source), ".sqlite")
   );
   const database = new DatabaseSync(source, { readOnly: true });
   try {
@@ -38188,7 +38387,7 @@ async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   return { backupPath, snapshot: await snapshotSqlite(backupPath) };
 }
 function contentType(file2) {
-  const extension = path9.extname(file2).toLowerCase();
+  const extension = path10.extname(file2).toLowerCase();
   if (extension === ".json") return "application/json";
   if (extension === ".html") return "text/html; charset=utf-8";
   if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
@@ -38205,31 +38404,31 @@ async function collectFiles(root, current, files) {
     if (files.length >= MAX_FILES) {
       throw new Error(`\uD30C\uC77C\uC740 ${MAX_FILES}\uAC1C\uAE4C\uC9C0 \uC790\uB3D9 \uC774\uC804\uD560 \uC218 \uC788\uB2E4`);
     }
-    const absolute = path9.join(current, entry.name);
+    const absolute = path10.join(current, entry.name);
     if (entry.isSymbolicLink()) {
       throw new Error(`\uC2EC\uBCFC\uB9AD \uB9C1\uD06C\uB294 \uC790\uB3D9 \uC774\uC804\uD558\uC9C0 \uC54A\uB294\uB2E4: ${absolute}`);
     }
     if (entry.isDirectory()) await collectFiles(root, absolute, files);
-    else if (entry.isFile()) files.push(path9.relative(root, absolute));
+    else if (entry.isFile()) files.push(path10.relative(root, absolute));
   }
 }
 async function snapshotFiles(sourceDirectory) {
-  const root = path9.resolve(sourceDirectory);
+  const root = path10.resolve(sourceDirectory);
   const files = [];
   await collectFiles(root, root, files);
   files.sort();
   const objects = [];
   let totalBytes = 0;
   for (const key of files) {
-    const absolute = path9.join(root, key);
-    const info = await stat2(absolute);
+    const absolute = path10.join(root, key);
+    const info = await stat3(absolute);
     totalBytes += info.size;
     if (totalBytes > MAX_TOTAL_BYTES) {
       throw new Error("\uD30C\uC77C \uC774\uC804 \uC804\uCCB4 \uD06C\uAE30\uB294 512MB \uC774\uD558\uC5EC\uC57C \uD55C\uB2E4");
     }
     const content = await readFile6(absolute);
     objects.push({
-      key: key.split(path9.sep).join("/"),
+      key: key.split(path10.sep).join("/"),
       contentType: contentType(key),
       size: content.byteLength,
       sha256: sha2562(content),
@@ -38251,11 +38450,11 @@ async function snapshotFiles(sourceDirectory) {
 }
 async function backupAndSnapshotFiles(projectRoot, sourceDirectory) {
   const source = withinProject(projectRoot, sourceDirectory);
-  const backupRoot = path9.join(path9.resolve(projectRoot), ".apps-backups");
-  await mkdir7(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path9.join(
+  const backupRoot = path10.join(path10.resolve(projectRoot), ".apps-backups");
+  await mkdir8(backupRoot, { recursive: true, mode: 448 });
+  const backupPath = path10.join(
     backupRoot,
-    backupName(path9.basename(source), ".tar.gz")
+    backupName(path10.basename(source), ".tar.gz")
   );
   await Qn(
     { cwd: source, file: backupPath, gzip: true, portable: true },
@@ -38316,15 +38515,15 @@ async function openVerificationUrl(url2) {
 
 // mcp/deployment-attempts.ts
 import { randomUUID as randomUUID4 } from "node:crypto";
-import { mkdir as mkdir8, readFile as readFile7, rename as rename4, writeFile as writeFile4 } from "node:fs/promises";
+import { mkdir as mkdir9, readFile as readFile7, rename as rename4, writeFile as writeFile4 } from "node:fs/promises";
 import { homedir as homedir3 } from "node:os";
-import path10 from "node:path";
+import path11 from "node:path";
 var DEFAULT_TTL_MS = 30 * 60 * 1e3;
 function defaultAttemptFile() {
   const configured = appsEnv("DEPLOYMENT_ATTEMPT_FILE");
-  if (configured) return path10.resolve(configured);
-  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path10.join(homedir3(), ".config");
-  return path10.join(
+  if (configured) return path11.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path11.join(homedir3(), ".config");
+  return path11.join(
     configRoot,
     "aiblecampus-apps",
     "deployment-attempts.json"
@@ -38365,7 +38564,7 @@ async function readState2(file2) {
   }
 }
 async function writeState2(file2, state) {
-  await mkdir8(path10.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir9(path11.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.${randomUUID4()}.tmp`;
   await writeFile4(temporary, `${JSON.stringify(state, null, 2)}
 `, {
@@ -38442,7 +38641,7 @@ function failureFacts(prefix, result, note) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.47.0";
+var PLUGIN_VERSION = "0.48.0";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || hubCredential()?.apiBase || "https://api.aible-campus.com";
@@ -38705,11 +38904,17 @@ async function deploymentFailure(result, deployment, workspace, sourceBaseCommit
     }
   }, null, 2));
 }
-var server = new McpServer({
-  name: "aiblecampus-apps",
-  version: PLUGIN_VERSION
-});
-server.registerTool("get_plugin_skill", {
+var toolSettings = toolsConfig();
+var instructions = toolsInstructions(toolSettings);
+var server = new McpServer(
+  { name: "aiblecampus-apps", version: PLUGIN_VERSION },
+  instructions === null ? void 0 : { instructions }
+);
+var skippedServer = { registerTool: () => void 0 };
+function groupServer(group) {
+  return toolGroupEnabled(toolSettings, group) ? server : skippedServer;
+}
+groupServer("base").registerTool("get_plugin_skill", {
   title: "\uCD5C\uC2E0 Apps \uC2A4\uD0AC \uC9C0\uCE68 \uC870\uD68C",
   description: "Apps \uC2A4\uD0AC \uC791\uC5C5\uC744 \uC2DC\uC791\uD560 \uB54C \uD604\uC7AC \uAC8C\uC2DC\uB41C \uC138\uBD80 \uC9C0\uCE68\uC744 \uAC00\uC838\uC628\uB2E4. Claude \uB370\uC2A4\uD06C\uD1B1\uC758 Cowork\uC640 Code\uC5D0\uC11C \uB3D9\uC77C\uD558\uAC8C \uC0AC\uC6A9\uD55C\uB2E4. \uBC18\uD658\uB41C \uBC84\uC804\uC740 \uC774\uBC88 \uC791\uC5C5\uC5D0 \uC0AC\uC6A9\uD558\uACE0 \uC0C8 \uC791\uC5C5\uC5D0\uC11C\uB294 \uB2E4\uC2DC \uC870\uD68C\uD55C\uB2E4. \uC124\uCE58 \uBCC0\uACBD\uC774\uB098 \uBC30\uD3EC\uB294 \uC218\uD589\uD558\uC9C0 \uC54A\uB294\uB2E4.",
   // 원본 그대로 넣은 스킬(frontend-design, eli5, ask-questions-if-underspecified)은 원격 지침을 받지 않는다(0.39.1). 서버는 옛 플러그인을 위해 계속 받는다
@@ -38728,7 +38933,7 @@ server.registerTool("get_plugin_skill", {
   return parsed.success ? textResult(parsed.data.skill) : errorResult("\uC2A4\uD0AC \uC751\uB2F5 \uD615\uC2DD\uC774 \uD638\uD658\uB418\uC9C0 \uC54A\uB294\uB2E4. \uB3D9\uBD09\uB41C references/bundled-workflow.md\uB97C \uC0AC\uC6A9\uD55C\uB2E4.");
 });
 var PUBLIC_AI_GATEWAY_UNAVAILABLE = '\uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uC571\uC6A9 AI \uD658\uACBD\uC744 \uC4F0\uB824\uBA74 Apps \uB85C\uADF8\uC778\uC774 \uD544\uC694\uD558\uB2E4(\uACF5\uAC1C \uB9C8\uCF13\uD50C\uB808\uC774\uC2A4 \uC124\uCE58, \uB85C\uADF8\uC778 \uC5C6\uC74C). \uC0AC\uC6A9\uC790\uAC00 \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uAD50\uC721 \uCC38\uAC00\uC790\uC774\uBA74 start_apps_login\uACFC complete_apps_login\uC73C\uB85C \uD55C \uBC88 \uB85C\uADF8\uC778\uD55C \uB4A4 \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uACC4\uC815\uC774 \uC5C6\uC73C\uBA74 \uB85C\uADF8\uC778\uC744 \uBC18\uBCF5\uD558\uC9C0 \uC54A\uACE0 build-ai-feature \uC2A4\uD0AC\uC758 "\uC571\uC6A9 AI \uD658\uACBD\uC774 \uC5C6\uC744 \uB54C" \uC808\uCC28\uB85C \uC9C4\uD589\uD55C\uB2E4: \uC0AC\uC6A9\uC790\uAC00 \uAC00\uC9C4 AI \uC81C\uACF5\uC790 API \uD0A4\uB97C Git\uC5D0\uC11C \uC81C\uC678\uD55C .env.local\uC5D0 \uC0AC\uC6A9\uC790\uAC00 \uC9C1\uC811 \uB123\uACE0 \uC11C\uBC84\uC5D0\uC11C\uB9CC \uC77D\uB294\uB2E4. Claude \uAD6C\uB3C5(Pro, Max) \uB85C\uADF8\uC778\uC740 \uC571 \uC11C\uBC84\uAC00 \uBD80\uB97C API \uD0A4\uAC00 \uC544\uB2C8\uB2E4.';
-server.registerTool("get_ai_gateway", {
+groupServer("mcp-apps").registerTool("get_ai_gateway", {
   title: "\uC0B0\uCD9C\uBB3C AI \uD658\uACBD\uACFC \uBAA8\uB378 \uD655\uC778",
   description: "AI\uB85C \uC694\uCCAD\uD558\uACE0 \uC751\uB2F5\uD558\uB294 \uAE30\uB2A5, \uCC57\uBD07, \uC694\uC57D \uB4F1 \uC0B0\uCD9C\uBB3C AI \uAE30\uB2A5 \uAD6C\uD604\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uAC00 \uD5C8\uBE0C(hub.aible-campus.com)\uC5D0\uC11C \uC815\uD55C \uC571\uC6A9 AI \uD658\uACBD\uACFC \uD604\uC7AC \uBAA8\uB378 \uBAA9\uB85D\uC744 \uD655\uC778\uD558\uBA70 API \uD0A4\uB294 \uBC18\uD658\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC9C0\uC6D0 \uBAA8\uB378\uC740 \uC774 \uACB0\uACFC\uB85C \uC548\uB0B4\uD558\uACE0 \uACE0\uC815 \uBAA9\uB85D\uC744 \uC57D\uC18D\uD558\uC9C0 \uC54A\uB294\uB2E4. \uBAA9\uB85D\uC5D0 \uC788\uC5B4\uB3C4 \uBAA8\uB4E0 API\uB97C \uC9C0\uC6D0\uD558\uC9C0\uB294 \uC54A\uC73C\uBA70 \uBAA9\uB85D \uD655\uC778\uC740 \uC2E4\uC81C \uC751\uB2F5 \uAC80\uC99D\uC774 \uC544\uB2C8\uB2E4. \uBC30\uD3EC \uB300\uC0C1\uC774 \uC5C6\uC73C\uBA74 workspace\uB97C \uC0DD\uB7B5\uD574 \uC870\uD68C\uD574\uB3C4 \uB418\uACE0 \uC774 \uC870\uD68C\uB97C \uBC30\uD3EC \uB300\uC0C1 \uC120\uD0DD\uC73C\uB85C \uAE30\uB85D\uD558\uC9C0 \uC54A\uB294\uB2E4.",
   inputSchema: { workspace: WorkspaceInputSchema },
@@ -38742,7 +38947,7 @@ server.registerTool("get_ai_gateway", {
   const parsed = external_exports.object({ environment: external_exports.object({ id: external_exports.string().uuid(), name: external_exports.string() }), baseUrl: external_exports.literal("https://gw.letsur.ai/v1"), models: external_exports.array(external_exports.string()), documentationUrl: external_exports.string() }).safeParse(result.body);
   return parsed.success ? textResult(parsed.data) : errorResult("AI \uD658\uACBD \uC751\uB2F5 \uD615\uC2DD\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
 });
-server.registerTool("configure_ai_gateway", {
+groupServer("mcp-apps").registerTool("configure_ai_gateway", {
   title: "\uD504\uB85C\uC81D\uD2B8\uC5D0 \uC0B0\uCD9C\uBB3C AI \uC124\uC815 \uC5F0\uACB0",
   description: "AI \uAE30\uB2A5 \uAD6C\uD604\uC744 \uC704\uD574 \uC571\uC6A9 AI \uD658\uACBD\uC758 \uCD5C\uC2E0 \uD0A4\uB97C MCP \uB0B4\uBD80\uC5D0\uC11C \uBC1B\uC544 \uD504\uB85C\uC81D\uD2B8 .env.apps-ai\uC5D0 \uC800\uC7A5\uD569\uB2C8\uB2E4. \uBAA8\uB378\uC740 get_ai_gateway \uACB0\uACFC\uC5D0\uC11C \uC120\uD0DD\uD569\uB2C8\uB2E4. \uD0A4\uB97C \uC751\uB2F5\uC5D0 \uCD9C\uB825\uD558\uC9C0 \uC54A\uC73C\uBA70 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C API \uD0A4\uB098 \uC6B4\uC601 \uD654\uBA74 \uC815\uBCF4\uB97C \uBC1B\uC9C0 \uC54A\uB294\uB2E4. \uC0C8\uB85C \uBC1B\uC740 \uD3F4\uB354\uC774\uAC70\uB098 \uC6B4\uC601\uC9C4\uC774 \uD0A4\uB97C \uBC14\uAFBC \uB4A4\uC5D0\uB294 \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uACB0\uACFC\uC758 localEnv\uB97C validate_project\uC640 deploy_project\uC5D0 \uADF8\uB300\uB85C \uB123\uB294\uB2E4. Claude \uB370\uC2A4\uD06C\uD1B1 \uC790\uCCB4 \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC124\uC815\uC740 \uBC14\uAFB8\uC9C0 \uC54A\uB294\uB2E4.",
   inputSchema: { path: external_exports.string().min(1), model: external_exports.string().min(1).max(200), workspace: WorkspaceInputSchema },
@@ -38757,7 +38962,7 @@ server.registerTool("configure_ai_gateway", {
     return errorResult("AI \uC124\uC815\uC744 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uD504\uB85C\uC81D\uD2B8 \uACBD\uB85C, \uAE30\uC874 .env.apps-ai\uC640 .gitignore\uC758 \uD30C\uC77C \uC18C\uC720 \uBC0F \uC7A0\uAE08 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC2ED\uC2DC\uC624. \uAE30\uC874 \uD30C\uC77C \uB0B4\uC6A9\uC744 \uB300\uD654\uC5D0 \uCD9C\uB825\uD558\uC9C0 \uB9C8\uC2ED\uC2DC\uC624.");
   }
 });
-server.registerTool("verify_ai_gateway", {
+groupServer("mcp-apps").registerTool("verify_ai_gateway", {
   title: "\uC0B0\uCD9C\uBB3C AI \uC694\uCCAD\uACFC \uC751\uB2F5 \uAC80\uC99D",
   description: "\uD504\uB85C\uC81D\uD2B8 .env.apps-ai\uB97C \uB0B4\uBD80\uC5D0\uC11C \uC77D\uC5B4 \uC9E7\uC740 \uC2E4\uC81C AI \uC694\uCCAD\uC744 \uD55C \uBC88 \uBCF4\uB0C5\uB2C8\uB2E4. \uC18C\uB7C9\uC758 \uC0AC\uC6A9\uB7C9\uC774 \uBC1C\uC0DD\uD569\uB2C8\uB2E4. \uD0A4\uC640 \uC751\uB2F5 \uC6D0\uBB38\uC740 \uCD9C\uB825\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC0B0\uCD9C\uBB3C \uC11C\uBC84 \uD1B5\uD569 \uAC80\uC99D\uC774\uB098 \uBC30\uD3EC\uB97C \uB300\uC2E0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
   inputSchema: { path: external_exports.string().min(1) },
@@ -38769,9 +38974,9 @@ server.registerTool("verify_ai_gateway", {
     return errorResult("AI \uC5F0\uACB0 \uAC80\uC99D\uC744 \uC644\uB8CC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. .env.apps-ai \uC124\uC815\uACFC \uB124\uD2B8\uC6CC\uD06C\uB97C \uD655\uC778\uD558\uC2ED\uC2DC\uC624. \uC790\uB3D9 \uC7AC\uC2DC\uB3C4\uB294 \uC218\uD589\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.");
   }
 });
-server.registerTool("generate_image", {
+groupServer("mcp-image").registerTool("generate_image", {
   title: "\uC774\uBBF8\uC9C0 \uB9CC\uB4E4\uAE30",
-  description: "\uC0AC\uC6A9\uC790\uAC00 \uB300\uD654\uC5D0\uC11C \uC774\uBBF8\uC9C0, \uADF8\uB9BC, \uC0AC\uC9C4, \uB85C\uACE0, \uC544\uC774\uCF58, \uC77C\uB7EC\uC2A4\uD2B8, \uD3EC\uC2A4\uD130\uB098 \uC0BD\uD654\uB97C \uB9CC\uB4E4\uC5B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uB3C4\uAD6C\uB85C \uB9CC\uB4E0\uB2E4. \uD074\uB85C\uB4DC\uC5D0\uB294 \uC774\uBBF8\uC9C0 \uC0DD\uC131 \uBAA8\uB378\uC774 \uC5C6\uC73C\uBBC0\uB85C \uC9C1\uC811 \uADF8\uB9AC\uAC70\uB098 SVG, HTML, \uCF54\uB4DC\uB85C \uB300\uC2E0 \uB9CC\uB4E4\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBC29\uC2DD\uC744 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uADF8\uB807\uAC8C \uD55C\uB2E4. \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uD5C8\uBE0C\uC758 \uC571\uC6A9 AI \uC774\uBBF8\uC9C0 \uBAA8\uB378\uC744 \uC11C\uBC84\uAC00 \uACE8\uB77C \uBD80\uB974\uBA70 API \uD0A4\uB294 \uD544\uC694 \uC5C6\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4. \uB9CC\uB4E0 \uC774\uBBF8\uC9C0\uB294 \uACB0\uACFC\uC5D0 \uBC14\uB85C \uBCF4\uC774\uACE0 \uC800\uC7A5 \uD3F4\uB354\uC5D0 \uC0C8 \uD30C\uC77C\uB85C \uC800\uC7A5\uB41C\uB2E4. \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8\uC5D0 \uB9CC\uB4E4 \uC218 \uC788\uB294 \uC7A5\uC218\uAC00 \uC815\uD574\uC838 \uC788\uACE0 \uD55C \uBC88\uC5D0 \uD55C \uC7A5\uC529 \uB9CC\uB4E0\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD558\uACE0 \uB2E4\uB978 \uC774\uBBF8\uC9C0 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571 \uC548\uC5D0 \uC774\uBBF8\uC9C0 \uC0DD\uC131 \uAE30\uB2A5\uC744 \uB123\uB294 \uC694\uCCAD\uC740 \uC774 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C build-ai-feature \uC2A4\uD0AC\uC744 \uB530\uB978\uB2E4.",
+  description: "\uC0AC\uC6A9\uC790\uAC00 \uB300\uD654\uC5D0\uC11C \uC774\uBBF8\uC9C0, \uADF8\uB9BC, \uC0AC\uC9C4, \uB85C\uACE0, \uC544\uC774\uCF58, \uC77C\uB7EC\uC2A4\uD2B8, \uD3EC\uC2A4\uD130\uB098 \uC0BD\uD654\uB97C \uB9CC\uB4E4\uC5B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uB3C4\uAD6C\uB85C \uB9CC\uB4E0\uB2E4. \uD074\uB85C\uB4DC\uC5D0\uB294 \uC774\uBBF8\uC9C0 \uC0DD\uC131 \uBAA8\uB378\uC774 \uC5C6\uC73C\uBBC0\uB85C \uC9C1\uC811 \uADF8\uB9AC\uAC70\uB098 SVG, HTML, \uCF54\uB4DC\uB85C \uB300\uC2E0 \uB9CC\uB4E4\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBC29\uC2DD\uC744 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uADF8\uB807\uAC8C \uD55C\uB2E4. \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uD5C8\uBE0C\uC758 \uC571\uC6A9 AI \uC774\uBBF8\uC9C0 \uBAA8\uB378\uC744 \uC11C\uBC84\uAC00 \uACE8\uB77C \uBD80\uB974\uBA70 API \uD0A4\uB294 \uD544\uC694 \uC5C6\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4. \uB9CC\uB4E0 \uC774\uBBF8\uC9C0\uB294 \uACB0\uACFC\uC5D0 \uBC14\uB85C \uBCF4\uC774\uACE0 \uC800\uC7A5 \uD3F4\uB354\uC5D0 \uC0C8 \uD30C\uC77C\uB85C \uC800\uC7A5\uB41C\uB2E4. \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8\uC5D0 \uB9CC\uB4E4 \uC218 \uC788\uB294 \uC7A5\uC218\uAC00 \uC815\uD574\uC838 \uC788\uACE0 \uD55C \uBC88\uC5D0 \uD55C \uC7A5\uC529 \uB9CC\uB4E0\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD558\uACE0 \uB2E4\uB978 \uC774\uBBF8\uC9C0 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571 \uC548\uC5D0 \uC774\uBBF8\uC9C0 \uC0DD\uC131 \uAE30\uB2A5\uC744 \uB123\uB294 \uC694\uCCAD\uC740 \uC774 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C build-ai-feature \uC2A4\uD0AC\uC744 \uB530\uB978\uB2E4." + mediaToolNote(toolSettings?.image, "\uC7A5", "\uC774\uBBF8\uC9C0"),
   inputSchema: {
     prompt: external_exports.string().trim().min(1).max(IMAGE_PROMPT_MAX_LENGTH).describe(`\uB9CC\uB4E4 \uC774\uBBF8\uC9C0 \uC124\uBA85(\uCD5C\uB300 ${IMAGE_PROMPT_MAX_LENGTH}\uC790). \uC0AC\uC6A9\uC790 \uC694\uCCAD\uC758 \uB300\uC0C1, \uBD84\uC704\uAE30, \uC0C9, \uAD6C\uB3C4, \uC774\uBBF8\uC9C0 \uC548 \uAE00\uC790\uB97C \uBE60\uC9D0\uC5C6\uC774 \uAD6C\uCCB4\uC801\uC73C\uB85C \uC801\uB294\uB2E4`),
     size: external_exports.enum(IMAGE_SIZES).optional().describe("\uAC00\uB85Cx\uC138\uB85C \uD53D\uC140. \uC815\uC0AC\uAC01\uD615 1024x1024(\uAE30\uBCF8), \uAC00\uB85C\uD615 1536x1024, \uC138\uB85C\uD615 1024x1536. \uC0AC\uC6A9\uC790\uAC00 \uBE44\uC728\uC744 \uB9D0\uD588\uC744 \uB54C\uB9CC \uACE0\uB978\uB2E4"),
@@ -38789,7 +38994,7 @@ server.registerTool("generate_image", {
   if (result.status === 0 && typeof result.body === "string" && /timeout|timed out/i.test(result.body))
     return errorResult("\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4: \uC774\uBBF8\uC9C0\uAC00 3\uBD84 \uC548\uC5D0 \uB9CC\uB4E4\uC5B4\uC9C0\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694.\n\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4.");
   if (result.status === 0 || result.status === 401) return failure("\uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uB2E4", result);
-  if (!result.ok) return errorResult(imageFailureText(result.status, result.body));
+  if (!result.ok) return errorResult(mediaFailureText("image", result.status, result.body));
   const parsed = GeneratedImage.safeParse(result.body);
   if (!parsed.success) return errorResult("\uC774\uBBF8\uC9C0 \uC751\uB2F5 \uD615\uC2DD\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uD50C\uB7EC\uADF8\uC778\uC744 \uCD5C\uC2E0 \uBC84\uC804\uC73C\uB85C \uAC31\uC2E0\uD588\uB294\uC9C0 manage-apps-plugin \uC9C0\uCE68\uC73C\uB85C \uD655\uC778\uD55C\uB2E4.");
   const image = parsed.data;
@@ -38808,12 +39013,118 @@ server.registerTool("generate_image", {
         \uBAA8\uB378: image.model,
         \uD06C\uAE30: image.size,
         \uC624\uB298_\uB0A8\uC740_\uC7A5\uC218: image.remainingToday,
+        ...image.dailyLimit === void 0 ? {} : { \uD558\uB8E8_\uD55C\uB3C4: image.dailyLimit },
+        ...image.resetsAt === void 0 ? {} : { \uD55C\uB3C4_\uCD08\uAE30\uD654_\uC2DC\uAC01: `${koreanTime(image.resetsAt)}(\uD55C\uAD6D \uC2DC\uAC04)` },
         \uC548\uB0B4: "\uC800\uC7A5 \uACBD\uB85C\uC640 \uC624\uB298 \uB0A8\uC740 \uC7A5\uC218\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4. \uB2E4\uC2DC \uB9CC\uB4E4\uBA74 \uD558\uB8E8 \uC7A5\uC218\uAC00 \uD55C \uC7A5\uC529 \uBE60\uC9C4\uB2E4."
       }, null, 2) }
     ]
   };
 });
-server.registerTool(
+groupServer("mcp-video").registerTool("generate_video", {
+  title: "\uC601\uC0C1 \uB9CC\uB4E4\uAE30",
+  description: "\uC0AC\uC6A9\uC790\uAC00 \uB300\uD654\uC5D0\uC11C \uC601\uC0C1, \uB3D9\uC601\uC0C1, \uC9E7\uC740 \uD074\uB9BD, \uBAA8\uC158 \uC601\uC0C1\uC744 \uB9CC\uB4E4\uC5B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uB3C4\uAD6C\uB85C \uC811\uC218\uD55C\uB2E4. \uD074\uB85C\uB4DC\uC5D0\uB294 \uC601\uC0C1 \uC0DD\uC131 \uBAA8\uB378\uC774 \uC5C6\uC73C\uBBC0\uB85C \uCF54\uB4DC\uB098 \uC560\uB2C8\uBA54\uC774\uC158 HTML\uB85C \uB300\uC2E0 \uB9CC\uB4E4\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBC29\uC2DD\uC744 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uADF8\uB807\uAC8C \uD55C\uB2E4. \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uD5C8\uBE0C\uC758 \uC571\uC6A9 AI \uC601\uC0C1 \uBAA8\uB378\uC744 \uC11C\uBC84\uAC00 \uACE8\uB77C \uBD80\uB974\uBA70 API \uD0A4\uB294 \uD544\uC694 \uC5C6\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4. \uC601\uC0C1\uC740 \uB9CC\uB4DC\uB294 \uB370 \uBA87 \uBD84\uC774 \uAC78\uB824\uC11C \uC774 \uB3C4\uAD6C\uB294 \uC791\uC5C5\uB9CC \uC811\uC218\uD558\uACE0 \uAE30\uB2E4\uB9AC\uC9C0 \uC54A\uB294\uB2E4. \uACB0\uACFC\uC758 \uC791\uC5C5 ID\uC640 \uC548\uB0B4\uC5D0 \uB530\uB77C \uC601\uC0C1\uC774 \uC644\uC131\uB420 \uB54C\uAE4C\uC9C0 video_status\uB85C \uD655\uC778\uD55C\uB2E4(\uC644\uC131\uB418\uBA74 video_status\uAC00 \uC791\uC5C5 \uD3F4\uB354 videos\uC5D0 \uC800\uC7A5\uD55C\uB2E4). \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8\uC5D0 \uB9CC\uB4E4 \uC218 \uC788\uB294 \uAC1C\uC218\uAC00 \uC815\uD574\uC838 \uC788\uACE0 \uD55C \uBC88\uC5D0 \uD55C \uAC1C\uC529 \uB9CC\uB4E0\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD558\uACE0 \uB2E4\uB978 \uC601\uC0C1 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571 \uC548\uC5D0 \uC601\uC0C1 \uC0DD\uC131 \uAE30\uB2A5\uC744 \uB123\uB294 \uC694\uCCAD\uC740 \uC774 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C build-ai-feature \uC2A4\uD0AC\uC744 \uB530\uB978\uB2E4." + mediaToolNote(toolSettings?.video, "\uAC1C", "\uC601\uC0C1"),
+  inputSchema: {
+    prompt: external_exports.string().trim().min(1).max(VIDEO_PROMPT_MAX_LENGTH).describe(`\uB9CC\uB4E4 \uC601\uC0C1 \uC124\uBA85(\uCD5C\uB300 ${VIDEO_PROMPT_MAX_LENGTH}\uC790). \uC0AC\uC6A9\uC790 \uC694\uCCAD\uC758 \uB300\uC0C1, \uC6C0\uC9C1\uC784, \uCE74\uBA54\uB77C, \uBD84\uC704\uAE30, \uC0C9\uC744 \uBE60\uC9D0\uC5C6\uC774 \uAD6C\uCCB4\uC801\uC73C\uB85C \uC801\uB294\uB2E4`),
+    durationSeconds: external_exports.number().int().min(VIDEO_DURATION_MIN).max(VIDEO_DURATION_MAX).optional().describe(`\uC601\uC0C1 \uAE38\uC774(\uCD08, ${VIDEO_DURATION_MIN}\uC5D0\uC11C ${VIDEO_DURATION_MAX}). \uC0AC\uC6A9\uC790\uAC00 \uAE38\uC774\uB97C \uB9D0\uD588\uC744 \uB54C\uB9CC \uB123\uB294\uB2E4. \uC0DD\uB7B5\uD558\uBA74 \uC11C\uBC84\uAC00 \uC815\uD55C \uAE30\uBCF8 \uAE38\uC774\uB85C \uB9CC\uB4E0\uB2E4`),
+    resolution: external_exports.enum(VIDEO_RESOLUTIONS).optional().describe("\uD574\uC0C1\uB3C4. 480p\uAC00 \uAE30\uBCF8\uC774\uACE0 \uB354 \uC120\uBA85\uD558\uAC8C \uC6D0\uD560 \uB54C\uB9CC 720p\uB97C \uACE0\uB978\uB2E4"),
+    aspectRatio: external_exports.enum(VIDEO_ASPECT_RATIOS).optional().describe("\uD654\uBA74 \uBE44\uC728. \uAC00\uB85C\uD615 16:9(\uAE30\uBCF8), \uC138\uB85C\uD615 9:16, \uC815\uC0AC\uAC01\uD615 1:1. \uC0AC\uC6A9\uC790\uAC00 \uBE44\uC728\uC744 \uB9D0\uD588\uC744 \uB54C\uB9CC \uACE0\uB978\uB2E4")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
+}, async ({ prompt, durationSeconds, resolution, aspectRatio }) => {
+  const result = await callApi("/v1/videos/generations", {
+    method: "POST",
+    signal: AbortSignal.timeout(6e4),
+    redirect: "error",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prompt, ...durationSeconds === void 0 ? {} : { durationSeconds }, ...resolution === void 0 ? {} : { resolution }, ...aspectRatio === void 0 ? {} : { aspectRatio } })
+  });
+  if (result.status === 0 && typeof result.body === "string" && /timeout|timed out/i.test(result.body))
+    return errorResult("\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4: \uC601\uC0C1 \uB9CC\uB4E4\uAE30 \uC694\uCCAD\uC774 \uC811\uC218\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694. \uC811\uC218\uB410\uB294\uC9C0 \uD655\uC2E4\uD558\uC9C0 \uC54A\uC73C\uBBC0\uB85C \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4.");
+  if (result.status === 0 || result.status === 401) return failure("\uC601\uC0C1\uC744 \uC811\uC218\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
+  if (!result.ok) return errorResult(mediaFailureText("video", result.status, result.body));
+  const parsed = AcceptedVideo.safeParse(result.body);
+  if (!parsed.success) return errorResult("\uC601\uC0C1 \uC811\uC218 \uC751\uB2F5 \uD615\uC2DD\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uD50C\uB7EC\uADF8\uC778\uC744 \uCD5C\uC2E0 \uBC84\uC804\uC73C\uB85C \uAC31\uC2E0\uD588\uB294\uC9C0 manage-apps-plugin \uC9C0\uCE68\uC73C\uB85C \uD655\uC778\uD55C\uB2E4.");
+  const job = parsed.data;
+  return textResult({
+    \uC811\uC218\uB428: true,
+    \uC791\uC5C5_ID: job.id,
+    \uBAA8\uB378: job.model,
+    \uAE38\uC774_\uCD08: job.durationSeconds,
+    \uD574\uC0C1\uB3C4: job.resolution,
+    \uD654\uBA74_\uBE44\uC728: job.aspectRatio,
+    ...videoLimitFacts(job),
+    \uB2E4\uC2DC_\uD655\uC778\uD560_\uCD08: job.pollAfterSeconds,
+    \uC548\uB0B4: `\uC601\uC0C1\uC740 \uC811\uC218\uB9CC \uB410\uACE0 \uC544\uC9C1 \uD30C\uC77C\uC774 \uC5C6\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC791\uC5C5 ID, \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uC640 \uD55C\uB3C4\uAC00 \uB2E4\uC2DC \uCC44\uC6CC\uC9C0\uB294 \uC2DC\uAC01\uC744 \uC54C\uB9AC\uACE0 \uBA87 \uBD84 \uAC78\uB9B0\uB2E4\uACE0 \uB9D0\uD55C\uB2E4. ${job.pollAfterSeconds}\uCD08\uCBE4 \uB4A4\uC5D0 video_status\uB97C \uC791\uC5C5 ID(${job.id})\uB85C \uBD88\uB7EC \uD655\uC778\uD55C\uB2E4. \uC9E7\uC740 \uAC04\uACA9\uC73C\uB85C \uC5F0\uB2EC\uC544 \uBD80\uB974\uC9C0 \uC54A\uACE0, \uC544\uC9C1 \uB9CC\uB4DC\uB294 \uC911\uC774\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0 \uB4A4 \uAC19\uC740 \uAC04\uACA9\uC73C\uB85C \uB2E4\uC2DC \uD655\uC778\uD55C\uB2E4. ${VIDEO_JOB_TIMEOUT_MINUTES}\uBD84 \uC548\uC5D0 \uB05D\uB098\uC9C0 \uC54A\uC73C\uBA74 \uC11C\uBC84\uAC00 \uC2E4\uD328\uB85C \uCC98\uB9AC\uD558\uACE0 \uC624\uB298 \uAC1C\uC218\uB97C \uB3CC\uB824\uC900\uB2E4. \uC0C8 \uC601\uC0C1\uC744 \uB610 \uC811\uC218\uD558\uC9C0 \uC54A\uB294\uB2E4.`
+  });
+});
+groupServer("mcp-video").registerTool("video_status", {
+  title: "\uC601\uC0C1 \uB9CC\uB4E4\uAE30 \uC0C1\uD0DC \uD655\uC778",
+  description: "generate_video\uB85C \uC811\uC218\uD55C \uC601\uC0C1 \uC791\uC5C5\uC758 \uC0C1\uD0DC\uB97C \uD55C \uBC88 \uD655\uC778\uD55C\uB2E4. \uB9CC\uB4DC\uB294 \uC911\uC774\uBA74 \uC9C0\uB09C \uC2DC\uAC04\uACFC \uB2E4\uC2DC \uD655\uC778\uD560 \uC2DC\uAC04\uC744 \uC54C\uB824 \uC8FC\uACE0, \uC2E4\uD328\uD588\uC73C\uBA74 \uC774\uC720\uB97C \uC54C\uB824 \uC8FC\uBA70, \uC644\uC131\uB410\uC73C\uBA74 \uC601\uC0C1 \uD30C\uC77C\uC744 \uC791\uC5C5 \uD3F4\uB354 videos\uC5D0 \uC0C8 \uD30C\uC77C\uB85C \uC800\uC7A5\uD558\uACE0 \uACBD\uB85C\uC640 \uD06C\uAE30\uB97C \uC54C\uB824 \uC900\uB2E4. \uC774\uBBF8 \uC800\uC7A5\uD55C \uC791\uC5C5\uC740 \uB2E4\uC2DC \uBC1B\uC9C0 \uC54A\uB294\uB2E4. \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC73C\uBA74(\uB2E4\uC6B4\uB85C\uB4DC \uC8FC\uC18C \uB9CC\uB8CC \uB4F1) \uC774 \uB3C4\uAD6C\uB97C \uB2E4\uC2DC \uBD80\uB974\uBA74 \uC0C8 \uC8FC\uC18C\uB85C \uB2E4\uC2DC \uBC1B\uB294\uB2E4. \uC774 \uB3C4\uAD6C\uB294 \uAE30\uB2E4\uB9AC\uC9C0 \uC54A\uC73C\uBBC0\uB85C \uACB0\uACFC\uC758 \uC548\uB0B4\uC5D0 \uB530\uB77C \uAC04\uACA9\uC744 \uB450\uACE0 \uBD80\uB978\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4.",
+  inputSchema: {
+    id: external_exports.uuid().describe("generate_video \uACB0\uACFC\uC758 \uC791\uC5C5 ID"),
+    directory: external_exports.string().min(1).optional().describe("\uC601\uC0C1\uC744 \uC800\uC7A5\uD560 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C. \uC0AC\uC6A9\uC790\uAC00 \uD3F4\uB354\uB97C \uB9D0\uD558\uC9C0 \uC54A\uC558\uC73C\uBA74 \uD604\uC7AC \uC791\uC5C5 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C \uB4A4\uC5D0 videos\uB97C \uBD99\uC5EC \uB123\uB294\uB2E4. \uC0DD\uB7B5\uD558\uBA74 MCP\uB97C \uC2E4\uD589\uD55C \uD3F4\uB354 \uC544\uB798 videos\uC5D0 \uC800\uC7A5\uD55C\uB2E4. \uD3F4\uB354\uAC00 \uC5C6\uC73C\uBA74 \uB9CC\uB4E0\uB2E4")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+}, async ({ id, directory }) => {
+  const result = await callApi(`/v1/videos/generations/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(6e4), redirect: "error", cache: "no-store" });
+  if (result.status === 0 || result.status === 401) return failure("\uC601\uC0C1 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
+  if (!result.ok) return errorResult(mediaFailureText("video", result.status, result.body));
+  const parsed = VideoStatusResult.safeParse(result.body);
+  if (!parsed.success) return errorResult("\uC601\uC0C1 \uC0C1\uD0DC \uC751\uB2F5 \uD615\uC2DD\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uD50C\uB7EC\uADF8\uC778\uC744 \uCD5C\uC2E0 \uBC84\uC804\uC73C\uB85C \uAC31\uC2E0\uD588\uB294\uC9C0 manage-apps-plugin \uC9C0\uCE68\uC73C\uB85C \uD655\uC778\uD55C\uB2E4.");
+  const job = parsed.data;
+  const common = { \uC791\uC5C5_ID: job.id, \uBAA8\uB378: job.model, \uC9C0\uB09C_\uC2DC\uAC04: elapsedText(job.elapsedSeconds), ...videoLimitFacts(job) };
+  if (job.status === "failed") {
+    return errorResult(JSON.stringify({
+      ...common,
+      \uC0C1\uD0DC: "\uC2E4\uD328",
+      \uC2E4\uD328_\uC774\uC720: job.failure ?? "\uC601\uC0C1\uC744 \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC5B4\uC694.",
+      \uC548\uB0B4: "\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC2E4\uD328 \uC774\uC720\uC640 \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uB97C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4. \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uB9CC\uB4E4\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 generate_video\uB85C \uC0C8\uB85C \uC811\uC218\uD55C\uB2E4."
+    }, null, 2));
+  }
+  if (job.status !== "succeeded" || job.download === null) {
+    const preparing = job.status === "succeeded";
+    return textResult({
+      ...common,
+      \uC0C1\uD0DC: preparing ? "\uD30C\uC77C \uC900\uBE44 \uC911" : job.status === "queued" ? "\uB300\uAE30 \uC911" : "\uB9CC\uB4DC\uB294 \uC911",
+      \uB2E4\uC2DC_\uD655\uC778\uD560_\uCD08: job.pollAfterSeconds,
+      \uC548\uB0B4: `\uC544\uC9C1 \uC601\uC0C1 \uD30C\uC77C\uC774 \uC5C6\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC9C0\uAE08 ${preparing ? "\uC601\uC0C1 \uD30C\uC77C\uC744 \uC900\uBE44\uD558\uB294 \uC911" : "\uB9CC\uB4DC\uB294 \uC911"}\uC774\uACE0 ${elapsedText(job.elapsedSeconds)} \uC9C0\uB0AC\uB2E4\uACE0 \uC54C\uB9B0\uB2E4. ${job.pollAfterSeconds}\uCD08\uCBE4 \uB4A4\uC5D0 video_status\uB97C \uAC19\uC740 \uC791\uC5C5 ID\uB85C \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uC9E7\uC740 \uAC04\uACA9\uC73C\uB85C \uC5F0\uB2EC\uC544 \uBD80\uB974\uC9C0 \uC54A\uB294\uB2E4. ${VIDEO_JOB_TIMEOUT_MINUTES}\uBD84 \uC548\uC5D0 \uB05D\uB098\uC9C0 \uC54A\uC73C\uBA74 \uC11C\uBC84\uAC00 \uC2E4\uD328\uB85C \uCC98\uB9AC\uD55C\uB2E4.`
+    });
+  }
+  const { download } = job;
+  const target = videoDirectory(directory);
+  try {
+    const saved = await saveVideo(target, videoFileStem(job.id, job.createdAt), videoExtension(download.contentType), download.sizeBytes, async () => {
+      const protocol = new URL(download.url).protocol;
+      if (protocol !== "https:" && protocol !== "http:") throw new VideoDownloadError("\uC601\uC0C1 \uB2E4\uC6B4\uB85C\uB4DC \uC8FC\uC18C \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+      const response = await fetch(download.url, { signal: AbortSignal.timeout(3e5), redirect: "follow", cache: "no-store" });
+      if (!response.ok || response.body === null) {
+        await response.body?.cancel().catch(() => void 0);
+        throw new VideoDownloadError(`\uB2E4\uC6B4\uB85C\uB4DC \uC8FC\uC18C\uAC00 \uC751\uB2F5\uD558\uC9C0 \uC54A\uC558\uB2E4(\uC0C1\uD0DC ${response.status}). \uC8FC\uC18C\uAC00 \uB9CC\uB8CC\uB410\uC744 \uC218 \uC788\uB2E4`);
+      }
+      return response.body;
+    });
+    return textResult({
+      ...common,
+      \uC0C1\uD0DC: "\uC644\uC131",
+      \uC800\uC7A5\uD55C_\uD30C\uC77C: saved.file,
+      \uD06C\uAE30_\uBC14\uC774\uD2B8: saved.bytes,
+      ...saved.reused ? { \uC774\uBBF8_\uC800\uC7A5\uD568: "\uC774\uBBF8 \uAC19\uC740 \uD06C\uAE30\uC758 \uD30C\uC77C\uC774 \uC788\uC5B4 \uB2E4\uC2DC \uBC1B\uC9C0 \uC54A\uC558\uB2E4" } : {},
+      \uAE38\uC774_\uCD08: job.durationSeconds,
+      \uD574\uC0C1\uB3C4: job.resolution,
+      \uD654\uBA74_\uBE44\uC728: job.aspectRatio,
+      \uC548\uB0B4: "\uC800\uC7A5 \uACBD\uB85C\uC640 \uD30C\uC77C \uD06C\uAE30, \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4. \uC0C8 \uC601\uC0C1\uC744 \uB9CC\uB4E4\uBA74 \uD558\uB8E8 \uAC1C\uC218\uAC00 \uD558\uB098\uC529 \uBE60\uC9C4\uB2E4."
+    });
+  } catch (error51) {
+    const reason = error51 instanceof Error ? error51.message : String(error51);
+    return errorResult(JSON.stringify({
+      ...common,
+      \uC0C1\uD0DC: "\uC644\uC131\uB428, \uC800\uC7A5\uD558\uC9C0 \uBABB\uD568",
+      \uC800\uC7A5_\uC2E4\uD328: `${target}\uC5D0 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uB2E4: ${reason}`,
+      \uC548\uB0B4: "\uC601\uC0C1\uC740 \uC644\uC131\uB3FC \uC11C\uBC84\uC5D0 \uC788\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uB2E4\uACE0 \uC54C\uB9AC\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 video_status\uB97C \uAC19\uC740 \uC791\uC5C5 ID\uB85C \uB2E4\uC2DC \uBD80\uB978\uB2E4(\uC0C8 \uB2E4\uC6B4\uB85C\uB4DC \uC8FC\uC18C\uB85C \uB2E4\uC2DC \uBC1B\uB294\uB2E4). \uB2E4\uB978 \uD3F4\uB354\uB97C \uC6D0\uD558\uBA74 directory\uB97C \uBC14\uAFD4 \uBD80\uB978\uB2E4. \uC0C8\uB85C \uC811\uC218\uD558\uC9C0 \uC54A\uC73C\uBBC0\uB85C \uC624\uB298 \uAC1C\uC218\uB294 \uB354 \uBE60\uC9C0\uC9C0 \uC54A\uB294\uB2E4."
+    }, null, 2));
+  }
+});
+groupServer("base").registerTool(
   "start_apps_login",
   {
     title: "Apps \uAE30\uAE30 \uB85C\uADF8\uC778 \uC2DC\uC791",
@@ -38841,7 +39152,7 @@ server.registerTool(
     }
   }
 );
-server.registerTool(
+groupServer("base").registerTool(
   "complete_apps_login",
   {
     title: "Apps \uAE30\uAE30 \uB85C\uADF8\uC778 \uC644\uB8CC",
@@ -38862,7 +39173,7 @@ server.registerTool(
     }
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "validate_project",
   {
     title: "\uD504\uB85C\uC81D\uD2B8 \uBC30\uD3EC \uC804 \uAC80\uC99D",
@@ -38950,7 +39261,7 @@ server.registerTool(
     return validatedProjectResult("tarball", result.body);
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "deploy_project",
   {
     title: "\uD504\uB85C\uC81D\uD2B8 \uBC30\uD3EC",
@@ -39107,7 +39418,7 @@ server.registerTool(
         `\uB85C\uCEEC \uD658\uACBD \uC124\uC815\uC744 \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
       );
     }
-    const deploymentName = toDeploymentName(name ?? path11.basename(projectPath));
+    const deploymentName = toDeploymentName(name ?? path12.basename(projectPath));
     let movedFrom;
     if (newApp !== true) {
       try {
@@ -39213,7 +39524,7 @@ server.registerTool(
     });
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "preview_sqlite_transition",
   {
     title: "SQLite \uC774\uC804 \uBBF8\uB9AC\uBCF4\uAE30",
@@ -39248,7 +39559,7 @@ server.registerTool(
     }
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "migrate_sqlite_data",
   {
     title: "\uC2B9\uC778\uB41C SQLite \uB370\uC774\uD130 \uC774\uC804",
@@ -39293,7 +39604,7 @@ server.registerTool(
     }
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "preview_local_files_transition",
   {
     title: "\uB85C\uCEEC \uD30C\uC77C \uC774\uC804 \uBBF8\uB9AC\uBCF4\uAE30",
@@ -39330,7 +39641,7 @@ server.registerTool(
     }
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "migrate_local_files",
   {
     title: "\uC2B9\uC778\uB41C \uB85C\uCEEC \uD30C\uC77C \uC774\uC804",
@@ -39375,7 +39686,7 @@ server.registerTool(
     }
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "deployment_status",
   {
     title: "\uBC30\uD3EC \uC0C1\uD0DC \uC870\uD68C",
@@ -39401,7 +39712,7 @@ server.registerTool(
     return textResult(result.body);
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "stop_deployment",
   {
     title: "\uBC30\uD3EC \uC911\uC9C0",
@@ -39430,7 +39741,7 @@ server.registerTool(
     });
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "move_deployment",
   {
     title: "\uC571 \uACF5\uAC04 \uC774\uB3D9",
@@ -39456,7 +39767,7 @@ server.registerTool(
     });
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "delete_deployment",
   {
     title: "\uBC30\uD3EC \uC0AD\uC81C \uD655\uC778 \uBC0F \uC2E4\uD589",
@@ -39514,7 +39825,7 @@ var GalleryDraftAnswer = external_exports.discriminatedUnion("status", [
     message: external_exports.string()
   })
 ]);
-server.registerTool(
+groupServer("mcp-gallery").registerTool(
   "prepare_gallery_submission",
   {
     title: "\uAC24\uB7EC\uB9AC \uC81C\uCD9C \uBBF8\uB9AC\uBCF4\uAE30",
@@ -39588,7 +39899,7 @@ ${String(result.body["message"] ?? "")}
     });
   }
 );
-server.registerTool(
+groupServer("mcp-gallery").registerTool(
   "submit_gallery_submission",
   {
     title: "\uC2B9\uC778\uD55C \uAC24\uB7EC\uB9AC \uC81C\uCD9C \uD655\uC815",
@@ -39626,7 +39937,7 @@ function personalQuery(values) {
   return text === "" ? "" : `?${text}`;
 }
 var DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1e3;
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "list_my_file_educations",
   {
     title: "\uD30C\uC77C\uC744 \uC77D\uC744 \uAD50\uC721 \uBAA9\uB85D",
@@ -39645,7 +39956,7 @@ server.registerTool(
     });
   }
 );
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "list_my_files",
   {
     title: "\uD30C\uC77C \uBAA9\uB85D",
@@ -39684,7 +39995,7 @@ server.registerTool(
     });
   }
 );
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "read_my_file",
   {
     title: "\uD30C\uC77C \uC77D\uAE30",
@@ -39707,7 +40018,7 @@ server.registerTool(
     return contentBlocks(parsed.data.content, { \uAD50\uC721: educationFact(parsed.data.education), \uD30C\uC77C: itemFact(parsed.data.item) });
   }
 );
-server.registerTool(
+groupServer("mcp-google").registerTool(
   "edit_my_google_file",
   {
     title: "\uB0B4 Google \uBB38\uC11C, \uC2A4\uD504\uB808\uB4DC\uC2DC\uD2B8, \uD504\uB808\uC820\uD14C\uC774\uC158 \uACE0\uCE58\uAE30",
@@ -39748,7 +40059,7 @@ server.registerTool(
     return textResult(googleEditFact(parsed.data));
   }
 );
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "download_my_file",
   {
     title: "\uD30C\uC77C \uC6D0\uBCF8 \uB0B4\uB824\uBC1B\uAE30",
@@ -39790,7 +40101,7 @@ server.registerTool(
     }
   }
 );
-server.registerTool(
+groupServer("base").registerTool(
   "open_link",
   {
     title: "\uB9C1\uD06C \uC5F4\uAE30",
@@ -39807,7 +40118,7 @@ server.registerTool(
     return textResult({ \uC5F4\uC5C8\uB2E4: true, \uC8FC\uC18C: parsed.href });
   }
 );
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "list_my_submissions",
   {
     title: "\uB0B4 \uC81C\uCD9C\uBB3C \uBAA9\uB85D",
@@ -39849,7 +40160,7 @@ server.registerTool(
     });
   }
 );
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "read_my_submission_file",
   {
     title: "\uB0B4 \uC81C\uCD9C\uBB3C \uCCA8\uBD80 \uC77D\uAE30",
@@ -39875,7 +40186,7 @@ server.registerTool(
     return contentBlocks(content, { \uAD50\uC721: educationFact(education), \uC81C\uCD9C\uBB3C: { id: submission.id, \uC81C\uBAA9: submission.title, \uBAA8\uB4C8: submission.moduleKey }, \uCCA8\uBD80: attachmentFact(attachment) });
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "deployment_config",
   {
     title: "\uBC30\uD3EC \uC124\uC815 \uC870\uD68C",
@@ -39901,7 +40212,7 @@ server.registerTool(
     return textResult(result.body);
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "set_deployment_config",
   {
     title: "\uBC30\uD3EC \uC124\uC815 \uBCC0\uACBD",
@@ -39945,7 +40256,7 @@ server.registerTool(
     });
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "deployment_logs",
   {
     title: "\uBC30\uD3EC \uB85C\uADF8 \uC870\uD68C",
@@ -39990,7 +40301,7 @@ server.registerTool(
     return textResult(result.body);
   }
 );
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "checkout_app_source",
   {
     title: "\uCD5C\uC2E0 \uC571 \uC18C\uC2A4 \uAC00\uC838\uC624\uAE30",
@@ -39999,7 +40310,7 @@ server.registerTool(
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
   },
   async ({ deployment, directory, commit: reference, workspace }) => {
-    if (!path11.isAbsolute(directory)) return errorResult("\uC0C8 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD55C\uB2E4");
+    if (!path12.isAbsolute(directory)) return errorResult("\uC0C8 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD55C\uB2E4");
     const result = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}/source${reference ? `?commit=${reference}` : ""}`, {}, workspace);
     if (!result.ok) return failure("\uCD5C\uC2E0 \uC18C\uC2A4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uB2E4", result);
     try {
@@ -40011,7 +40322,7 @@ server.registerTool(
     }
   }
 );
-server.registerTool(
+groupServer("base").registerTool(
   "list_educations",
   {
     title: "\uB0B4 \uAD50\uC721",
@@ -40024,7 +40335,7 @@ server.registerTool(
     return result.ok ? textResult(result.body) : failure("\uAD50\uC721\uC744 \uC870\uD68C\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
   }
 );
-server.registerTool(
+groupServer("base").registerTool(
   "list_deployment_organizations",
   {
     title: "\uBC30\uD3EC \uAC00\uB2A5\uD55C \uAD50\uC721 \uC18C\uC18D (\uD638\uD658)",
@@ -40038,7 +40349,7 @@ server.registerTool(
     return textResult(result.body);
   }
 );
-server.registerTool(
+groupServer("base").registerTool(
   "list_deployments",
   {
     title: "\uBC30\uD3EC \uBAA9\uB85D",
@@ -40057,7 +40368,7 @@ server.registerTool(
     return textResult(result.body);
   }
 );
-server.registerTool(
+groupServer("base").registerTool(
   "apps_plugin_status",
   {
     title: "Apps \uD50C\uB7EC\uADF8\uC778 \uC0C1\uD0DC",
@@ -40093,7 +40404,7 @@ function teamDeployOffNotice(value) {
     ...relay === void 0 ? [] : [`\uC11C\uBC84 \uC548\uB0B4: ${relay}`]
   ].join(" ");
 }
-server.registerTool(
+groupServer("base").registerTool(
   "apps_whoami",
   {
     title: "Apps \uC5F0\uACB0 \uD655\uC778",
