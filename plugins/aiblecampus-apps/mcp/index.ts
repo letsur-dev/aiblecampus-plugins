@@ -5,7 +5,8 @@ import { DeletionConfirmations } from "./delete-confirmation.ts";
 import { checkPublicAccess } from "./public-access.ts";
 import { AiSetupError, configureAiGateway, verifyAiGateway } from "./ai-gateway.ts";
 import { GeneratedImage, IMAGE_PROMPT_MAX_LENGTH, IMAGE_SIZES, imageDirectory, saveImage } from "./generate-image.ts";
-import { AcceptedVideo, VIDEO_ASPECT_RATIOS, VIDEO_DURATION_MAX, VIDEO_DURATION_MIN, VIDEO_JOB_TIMEOUT_MINUTES, VIDEO_PROMPT_MAX_LENGTH, VIDEO_RESOLUTIONS, VideoDownloadError, VideoStatusResult, elapsedText, saveVideo, videoDirectory, videoExtension, videoFileStem, videoLimitFacts } from "./generate-video.ts";
+import { AcceptedVideo, VIDEO_ASPECT_RATIOS, VIDEO_DURATION_MAX, VIDEO_DURATION_MIN, VIDEO_JOB_TIMEOUT_MINUTES, VIDEO_PROMPT_MAX_LENGTH, VIDEO_RESOLUTIONS, VIDEO_WAIT_MAX_SECONDS, VideoDownloadError, VideoStatusResult, elapsedText, saveVideo, videoDirectory, videoExtension, videoFileStem, videoLimitFacts } from "./generate-video.ts";
+import { fileLink, LINK_NOTE } from "./file-link.ts";
 import { koreanTime, mediaFailureText } from "./media-failure.ts";
 import { type ToolGroup, mediaToolNote, toolGroupEnabled, toolsConfig, toolsInstructions } from "./tools-config.ts";
 import { checkoutSnapshot, readSourceBase, readSourceState, saveSourceBase, type SourceState } from "./source-checkout.ts";
@@ -37,7 +38,7 @@ import { deploymentAttempt } from "./deployment-attempts.ts";
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.48.0";
+export const PLUGIN_VERSION = "0.48.1";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -572,7 +573,8 @@ groupServer("mcp-image").registerTool("generate_image", {
   const target = imageDirectory(directory);
   let saved: Record<string, string>;
   try {
-    saved = { 저장한_파일: await saveImage(target, prompt, image) };
+    const file = await saveImage(target, prompt, image);
+    saved = { 저장한_파일: file, 파일_링크: fileLink(file) };
   } catch (error) {
     saved = { 저장_실패: `${target}에 저장하지 못했다: ${error instanceof Error ? error.message : String(error)}. 이미지는 위에 보인다. 사용자가 원하면 쓸 수 있는 폴더로 다시 만든다(하루 장수가 한 장 더 빠진다)` };
   }
@@ -582,14 +584,14 @@ groupServer("mcp-image").registerTool("generate_image", {
       { type: "text" as const, text: JSON.stringify({ ...saved, 모델: image.model, 크기: image.size, 오늘_남은_장수: image.remainingToday,
         ...(image.dailyLimit === undefined ? {} : { 하루_한도: image.dailyLimit }),
         ...(image.resetsAt === undefined ? {} : { 한도_초기화_시각: `${koreanTime(image.resetsAt)}(한국 시간)` }),
-        안내: "저장 경로와 오늘 남은 장수를 사용자에게 알린다. 다시 만들면 하루 장수가 한 장씩 빠진다." }, null, 2) },
+        안내: `${LINK_NOTE} 오늘 남은 장수도 사용자에게 알린다. 다시 만들면 하루 장수가 한 장씩 빠진다.` }, null, 2) },
     ],
   };
 });
 
 groupServer("mcp-video").registerTool("generate_video", {
   title: "영상 만들기",
-  description: "사용자가 대화에서 영상, 동영상, 짧은 클립, 모션 영상을 만들어 달라고 하면 이 도구로 접수한다. 클로드에는 영상 생성 모델이 없으므로 코드나 애니메이션 HTML로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 영상 모델을 서버가 골라 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 영상은 만드는 데 몇 분이 걸려서 이 도구는 작업만 접수하고 기다리지 않는다. 결과의 작업 ID와 안내에 따라 영상이 완성될 때까지 video_status로 확인한다(완성되면 video_status가 작업 폴더 videos에 저장한다). 사람마다 하루에 만들 수 있는 개수가 정해져 있고 한 번에 한 개씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 영상 서비스나 API 키로 우회하지 않는다. 앱 안에 영상 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다." + mediaToolNote(toolSettings?.video, "개", "영상"),
+  description: `사용자가 대화에서 영상, 동영상, 짧은 클립, 모션 영상을 만들어 달라고 하면 이 도구로 접수한다. 클로드에는 영상 생성 모델이 없으므로 코드나 애니메이션 HTML로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 영상 모델을 서버가 골라 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 영상은 만드는 데 몇 분이 걸려서 이 도구는 작업만 접수하고 기다리지 않는다. 접수하면 곧바로 video_status를 작업 ID로 부른다. video_status가 한 번에 최대 ${VIDEO_WAIT_MAX_SECONDS}초까지 서버에서 완성을 기다려 주고 완성되면 바로 작업 폴더 videos에 저장하며, 아직이면 같은 도구를 바로 다시 부르라고 알려 준다. Bash sleep이나 쉘 대기, 직접 시간 간격 두기는 쓰지 않는다. 사람마다 하루에 만들 수 있는 개수가 정해져 있고 한 번에 한 개씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 영상 서비스나 API 키로 우회하지 않는다. 앱 안에 영상 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다.` + mediaToolNote(toolSettings?.video, "개", "영상"),
   inputSchema: {
     prompt: z.string().trim().min(1).max(VIDEO_PROMPT_MAX_LENGTH).describe(`만들 영상 설명(최대 ${VIDEO_PROMPT_MAX_LENGTH}자). 사용자 요청의 대상, 움직임, 카메라, 분위기, 색을 빠짐없이 구체적으로 적는다`),
     durationSeconds: z.number().int().min(VIDEO_DURATION_MIN).max(VIDEO_DURATION_MAX).optional().describe(`영상 길이(초, ${VIDEO_DURATION_MIN}에서 ${VIDEO_DURATION_MAX}). 사용자가 길이를 말했을 때만 넣는다. 생략하면 서버가 정한 기본 길이로 만든다`),
@@ -618,21 +620,22 @@ groupServer("mcp-video").registerTool("generate_video", {
     해상도: job.resolution,
     화면_비율: job.aspectRatio,
     ...videoLimitFacts(job),
-    다시_확인할_초: job.pollAfterSeconds,
-    안내: `영상은 접수만 됐고 아직 파일이 없다. 사용자에게 작업 ID, 오늘 남은 개수와 한도가 다시 채워지는 시각을 알리고 몇 분 걸린다고 말한다. ${job.pollAfterSeconds}초쯤 뒤에 video_status를 작업 ID(${job.id})로 불러 확인한다. 짧은 간격으로 연달아 부르지 않고, 아직 만드는 중이면 사용자에게 알린 뒤 같은 간격으로 다시 확인한다. ${VIDEO_JOB_TIMEOUT_MINUTES}분 안에 끝나지 않으면 서버가 실패로 처리하고 오늘 개수를 돌려준다. 새 영상을 또 접수하지 않는다.`,
+    안내: `영상은 접수만 됐고 아직 파일이 없다. 사용자에게 작업 ID, 오늘 남은 개수와 한도가 다시 채워지는 시각을 알리고 몇 분 걸린다고 말한 뒤, 기다리지 말고 지금 바로 video_status를 작업 ID(${job.id})로 부른다. video_status가 한 번에 최대 ${VIDEO_WAIT_MAX_SECONDS}초 서버에서 기다리다 완성되면 바로 저장하고, 아직이면 같은 도구를 바로 다시 부르라고 알려 준다. Bash sleep, 쉘 대기, 시간 간격 두기는 쓰지 않는다. ${VIDEO_JOB_TIMEOUT_MINUTES}분 안에 끝나지 않으면 서버가 실패로 처리하고 오늘 개수를 돌려준다. 새 영상을 또 접수하지 않는다.`,
   });
 });
 
 groupServer("mcp-video").registerTool("video_status", {
-  title: "영상 만들기 상태 확인",
-  description: "generate_video로 접수한 영상 작업의 상태를 한 번 확인한다. 만드는 중이면 지난 시간과 다시 확인할 시간을 알려 주고, 실패했으면 이유를 알려 주며, 완성됐으면 영상 파일을 작업 폴더 videos에 새 파일로 저장하고 경로와 크기를 알려 준다. 이미 저장한 작업은 다시 받지 않는다. 저장하지 못했으면(다운로드 주소 만료 등) 이 도구를 다시 부르면 새 주소로 다시 받는다. 이 도구는 기다리지 않으므로 결과의 안내에 따라 간격을 두고 부른다. 오류가 나면 결과 문구를 사용자에게 그대로 전한다.",
+  title: "영상 완성 기다리기·상태 확인",
+  description: `generate_video로 접수한 영상이 완성될 때까지 서버에서 최대 ${VIDEO_WAIT_MAX_SECONDS}초 기다렸다 결과를 돌려준다. 접수한 뒤에는 곧바로 이 도구를 부르고, Bash sleep이나 쉘 대기, 직접 시간 간격 두기는 쓰지 않는다. 완성되면 즉시 영상 파일을 작업 폴더 videos에 새 파일로 저장하고 파일 링크와 크기를 알려 주고, 실패했으면 즉시 이유를 알려 준다. 기다려도 아직 만드는 중이면 그렇다고 알려 주므로 결과의 안내대로 같은 도구를 바로 다시 부른다(여러 번 부를 수 있다). 이미 저장한 작업은 다시 받지 않는다. 저장하지 못했으면(다운로드 주소 만료 등) 이 도구를 다시 부르면 새 주소로 다시 받는다. 오류가 나면 결과 문구를 사용자에게 그대로 전한다.`,
   inputSchema: {
     id: z.uuid().describe("generate_video 결과의 작업 ID"),
+    waitSeconds: z.number().int().min(0).max(VIDEO_WAIT_MAX_SECONDS).optional().describe(`아직 만드는 중일 때 서버에서 기다릴 최대 초(0에서 ${VIDEO_WAIT_MAX_SECONDS}). 생략하면 ${VIDEO_WAIT_MAX_SECONDS}초다. 보통 생략하고, 기다리지 않고 지금 상태만 보고 싶을 때만 0으로 한다`),
     directory: z.string().min(1).optional().describe("영상을 저장할 폴더의 절대 경로. 사용자가 폴더를 말하지 않았으면 현재 작업 폴더의 절대 경로 뒤에 videos를 붙여 넣는다. 생략하면 MCP를 실행한 폴더 아래 videos에 저장한다. 폴더가 없으면 만든다"),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-}, async ({ id, directory }) => {
-  const result = await callApi(`/v1/videos/generations/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(60_000), redirect: "error", cache: "no-store" });
+}, async ({ id, waitSeconds, directory }) => {
+  const wait = waitSeconds ?? VIDEO_WAIT_MAX_SECONDS;
+  const result = await callApi(`/v1/videos/generations/${encodeURIComponent(id)}?wait=${wait}`, { signal: AbortSignal.timeout((wait + 15) * 1000), redirect: "error", cache: "no-store" });
   if (result.status === 0 || result.status === 401) return failure("영상 상태를 확인하지 못했다", result);
   if (!result.ok) return errorResult(mediaFailureText("video", result.status, result.body));
   const parsed = VideoStatusResult.safeParse(result.body);
@@ -647,13 +650,21 @@ groupServer("mcp-video").registerTool("video_status", {
       안내: "사용자에게 실패 이유와 오늘 남은 개수를 그대로 전한다. 자동으로 다시 만들지 않는다. 사용자가 원하면 generate_video로 새로 접수한다.",
     }, null, 2));
   }
+  if (job.status === "succeeded" && job.download === null && job.failure !== null) {
+    return errorResult(JSON.stringify({
+      ...common,
+      상태: "완성됐지만 파일을 줄 수 없음",
+      이유: job.failure,
+      안내: "사용자에게 이유를 그대로 전한다. 이유가 '다시 확인하세요'라면 video_status를 한 번 더 부르고, 보관 기간이 지났다면 사용자가 원할 때만 generate_video로 새로 만든다(오늘 개수가 빠진다).",
+    }, null, 2));
+  }
   if (job.status !== "succeeded" || job.download === null) {
     const preparing = job.status === "succeeded";
     return textResult({
       ...common,
       상태: preparing ? "파일 준비 중" : job.status === "queued" ? "대기 중" : "만드는 중",
-      다시_확인할_초: job.pollAfterSeconds,
-      안내: `아직 영상 파일이 없다. 사용자에게 지금 ${preparing ? "영상 파일을 준비하는 중" : "만드는 중"}이고 ${elapsedText(job.elapsedSeconds)} 지났다고 알린다. ${job.pollAfterSeconds}초쯤 뒤에 video_status를 같은 작업 ID로 다시 부른다. 짧은 간격으로 연달아 부르지 않는다. ${VIDEO_JOB_TIMEOUT_MINUTES}분 안에 끝나지 않으면 서버가 실패로 처리한다.`,
+      이번_호출에서_기다린_초: wait,
+      안내: `${wait}초 기다렸지만 아직 영상 파일이 없다(지금 ${preparing ? "영상 파일을 준비하는 중" : "만드는 중"}이고 ${elapsedText(job.elapsedSeconds)} 지났다). 사용자에게 한 줄로 진행 중이라고 알리고, 기다리지 말고 지금 바로 video_status를 같은 작업 ID(${job.id})로 다시 부른다. 이 도구가 서버에서 기다려 주므로 Bash sleep, 쉘 대기, 시간 간격 두기는 쓰지 않는다. ${VIDEO_JOB_TIMEOUT_MINUTES}분 안에 끝나지 않으면 서버가 실패로 처리한다.`,
     });
   }
   const { download } = job;
@@ -674,12 +685,13 @@ groupServer("mcp-video").registerTool("video_status", {
       ...common,
       상태: "완성",
       저장한_파일: saved.file,
+      파일_링크: fileLink(saved.file),
       크기_바이트: saved.bytes,
       ...(saved.reused ? { 이미_저장함: "이미 같은 크기의 파일이 있어 다시 받지 않았다" } : {}),
       길이_초: job.durationSeconds,
       해상도: job.resolution,
       화면_비율: job.aspectRatio,
-      안내: "저장 경로와 파일 크기, 오늘 남은 개수를 사용자에게 알린다. 새 영상을 만들면 하루 개수가 하나씩 빠진다.",
+      안내: `${LINK_NOTE} 파일 크기와 오늘 남은 개수도 사용자에게 알린다. 새 영상을 만들면 하루 개수가 하나씩 빠진다.`,
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);

@@ -3654,8 +3654,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path13) {
-      let input = path13;
+    function removeDotSegments(path14) {
+      let input = path14;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -4064,8 +4064,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path13 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path13 && path13 !== "/" ? path13 : void 0;
+        const path14 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path14 && path14 !== "/" ? path14 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -8360,10 +8360,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path13) {
-  if (!path13)
+function getElementAtPath(obj, path14) {
+  if (!path14)
     return obj;
-  return path13.reduce((acc, key) => acc?.[key], obj);
+  return path14.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8772,11 +8772,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path13, issues) {
+function prefixIssues(path14, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path13);
+    iss.path.unshift(path14);
     return iss;
   });
 }
@@ -8923,16 +8923,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path13 = []) => {
+  const processError = (error52, path14 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path13, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else {
-        const fullpath = [...path13, ...issue2.path];
+        const fullpath = [...path14, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8959,17 +8959,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path13 = []) => {
+  const processError = (error52, path14 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path13, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else {
-        const fullpath = [...path13, ...issue2.path];
+        const fullpath = [...path14, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -9001,8 +9001,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path13 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path13) {
+  const path14 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path14) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -21694,13 +21694,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path13 = ref.slice(1).split("/").filter(Boolean);
-  if (path13.length === 0) {
+  const path14 = ref.slice(1).split("/").filter(Boolean);
+  if (path14.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path13[0] === defsKey) {
-    const key = path13[1];
+  if (path14[0] === defsKey) {
+    const key = path14[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -26040,6 +26040,7 @@ var VIDEO_DURATION_MAX = 15;
 var VIDEO_RESOLUTIONS = ["480p", "720p"];
 var VIDEO_ASPECT_RATIOS = ["16:9", "9:16", "1:1"];
 var VIDEO_JOB_TIMEOUT_MINUTES = 20;
+var VIDEO_WAIT_MAX_SECONDS = 40;
 var VIDEO_DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024;
 var Iso = external_exports.iso.datetime({ offset: true });
 var AcceptedVideo = external_exports.looseObject({
@@ -26051,8 +26052,7 @@ var AcceptedVideo = external_exports.looseObject({
   aspectRatio: external_exports.enum(VIDEO_ASPECT_RATIOS),
   remainingToday: external_exports.number().int().min(0),
   dailyLimit: external_exports.number().int().min(0),
-  resetsAt: Iso,
-  pollAfterSeconds: external_exports.number().int().min(1)
+  resetsAt: Iso
 });
 var VideoStatusResult = external_exports.looseObject({
   id: external_exports.uuid(),
@@ -26068,8 +26068,7 @@ var VideoStatusResult = external_exports.looseObject({
   download: external_exports.looseObject({ url: external_exports.url(), expiresAt: Iso.nullable(), contentType: external_exports.string().min(1), sizeBytes: external_exports.number().int().min(0).nullable() }).nullable(),
   remainingToday: external_exports.number().int().min(0),
   dailyLimit: external_exports.number().int().min(0),
-  resetsAt: Iso,
-  pollAfterSeconds: external_exports.number().int().min(1)
+  resetsAt: Iso
 });
 function videoDirectory(directory, cwd = process.cwd()) {
   return directory === void 0 ? path7.join(cwd, "videos") : path7.resolve(cwd, directory);
@@ -26136,6 +26135,18 @@ function videoLimitFacts(job) {
   return { \uC624\uB298_\uB0A8\uC740_\uAC1C\uC218: job.remainingToday, \uD558\uB8E8_\uD55C\uB3C4: job.dailyLimit, \uD55C\uB3C4_\uCD08\uAE30\uD654_\uC2DC\uAC01: `${koreanTime(job.resetsAt)}(\uD55C\uAD6D \uC2DC\uAC04)` };
 }
 
+// mcp/file-link.ts
+import path8 from "node:path";
+import { pathToFileURL } from "node:url";
+function fileUrl(file2) {
+  return pathToFileURL(path8.resolve(file2)).href.replace(/\(/g, "%28").replace(/\)/g, "%29");
+}
+function fileLink(file2) {
+  const name = path8.basename(file2).replace(/([\\[\]])/g, "\\$1");
+  return `[${name}](${fileUrl(file2)})`;
+}
+var LINK_NOTE = "\uB2F5\uBCC0\uC5D0\uB294 \uACB0\uACFC\uC758 \uD30C\uC77C_\uB9C1\uD06C(\uB9C8\uD06C\uB2E4\uC6B4 \uB9C1\uD06C)\uB97C \uAE00\uC790 \uD558\uB098 \uBC14\uAFB8\uC9C0 \uC54A\uACE0 \uADF8\uB300\uB85C \uBD99\uC5EC \uBCF4\uC5EC \uC900\uB2E4. \uCF54\uB4DC \uAE00\uC528(\uBC31\uD2F1)\uB85C \uAC10\uC2F8\uAC70\uB098 \uC774\uB984\uC744 \uC904\uC774\uAC70\uB098(\u2026) \uACBD\uB85C\uB97C \uB530\uB85C \uD480\uC5B4 \uC4F0\uC9C0 \uC54A\uB294\uB2E4.";
+
 // mcp/tools-config.ts
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -26190,13 +26201,13 @@ function toolsInstructions(config2) {
 
 // mcp/source-checkout.ts
 import { mkdir as mkdir6, readFile as readFile4, writeFile as writeFile2 } from "node:fs/promises";
-import path8 from "node:path";
+import path9 from "node:path";
 var State2 = external_exports.object({ api: external_exports.string(), deployment: external_exports.string(), workspace: external_exports.string().nullable(), commit: external_exports.string().regex(/^[a-f0-9]{40}$/) });
 var Snapshot = external_exports.object({ commit: external_exports.string().regex(/^[a-f0-9]{40}$/), files: external_exports.array(external_exports.object({ path: external_exports.string(), content: external_exports.string(), executable: external_exports.boolean() })).max(5e3) });
 async function readSourceState(root) {
   let text;
   try {
-    text = await readFile4(path8.join(root, ".apps-source.json"), "utf8");
+    text = await readFile4(path9.join(root, ".apps-source.json"), "utf8");
   } catch (error51) {
     if (error51.code === "ENOENT") return void 0;
     throw error51;
@@ -26217,22 +26228,22 @@ async function readSourceBase(root, api, deployment, workspace, newApp = false) 
 }
 async function saveSourceBase(root, api, deployment, workspace, commit) {
   const state = State2.parse({ api, deployment, workspace: workspace ?? null, commit });
-  await writeFile2(path8.join(root, ".apps-source.json"), JSON.stringify(state, null, 2) + "\n", { mode: 384 });
+  await writeFile2(path9.join(root, ".apps-source.json"), JSON.stringify(state, null, 2) + "\n", { mode: 384 });
 }
 async function checkoutSnapshot(root, raw, api, deployment, workspace) {
   const snapshot = Snapshot.parse(raw);
   let bytes = 0;
   const seen = /* @__PURE__ */ new Set();
   for (const file2 of snapshot.files) {
-    if (!file2.path || file2.path.includes("\\") || file2.path.includes(":") || path8.posix.isAbsolute(file2.path) || file2.path.includes("\0") || file2.path.split("/").some((part) => !part || part === "." || part === ".." || part === ".git" || part === ".apps-source.json") || seen.has(file2.path)) throw new Error("\uC18C\uC2A4 \uD30C\uC77C \uACBD\uB85C\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
+    if (!file2.path || file2.path.includes("\\") || file2.path.includes(":") || path9.posix.isAbsolute(file2.path) || file2.path.includes("\0") || file2.path.split("/").some((part) => !part || part === "." || part === ".." || part === ".git" || part === ".apps-source.json") || seen.has(file2.path)) throw new Error("\uC18C\uC2A4 \uD30C\uC77C \uACBD\uB85C\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
     seen.add(file2.path);
     bytes += Buffer.byteLength(file2.content, "base64");
     if (bytes > 64 * 1024 * 1024) throw new Error("\uC18C\uC2A4 \uD06C\uAE30 \uC0C1\uD55C\uC744 \uCD08\uACFC\uD588\uB2E4");
   }
   await mkdir6(root, { recursive: false, mode: 448 });
   for (const file2 of snapshot.files) {
-    const target = path8.join(root, file2.path);
-    await mkdir6(path8.dirname(target), { recursive: true });
+    const target = path9.join(root, file2.path);
+    await mkdir6(path9.dirname(target), { recursive: true });
     await writeFile2(target, Buffer.from(file2.content, "base64"), { flag: "wx", mode: file2.executable ? 448 : 384 });
   }
   await saveSourceBase(root, api, deployment, workspace, snapshot.commit);
@@ -26670,8 +26681,8 @@ function getErrorMap2() {
 
 // ../../node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path13, errorMaps, issueData } = params;
-  const fullPath = [...path13, ...issueData.path || []];
+  const { data, path: path14, errorMaps, issueData } = params;
+  const fullPath = [...path14, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -26786,11 +26797,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path13, key) {
+  constructor(parent, value, path14, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path13;
+    this._path = path14;
     this._key = key;
   }
   get path() {
@@ -30318,11 +30329,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path13) {
-  if (path13.length === 0) {
+function getDotPath(path14) {
+  if (path14.length === 0) {
     return "object root";
   }
-  return path13.reduce((acc, seg, index) => {
+  return path14.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -35949,12 +35960,12 @@ var StdioServerTransport = class {
 // mcp/index.ts
 import { createHash as createHash4 } from "node:crypto";
 import { existsSync } from "node:fs";
-import path12 from "node:path";
+import path13 from "node:path";
 
 // mcp/device-auth.ts
 import { mkdir as mkdir7, readFile as readFile5, rename as rename3, writeFile as writeFile3 } from "node:fs/promises";
 import { homedir as homedir2, hostname as hostname3 } from "node:os";
-import path9 from "node:path";
+import path10 from "node:path";
 
 // ../../node_modules/.pnpm/oauth4webapi@3.8.8/node_modules/oauth4webapi/build/index.js
 var USER_AGENT;
@@ -38014,9 +38025,9 @@ var DEFAULT_RESOURCE = "urn:aiblecampus:apps";
 var refreshes = /* @__PURE__ */ new Map();
 function stateFile() {
   const configured = appsEnv("CREDENTIAL_FILE");
-  if (configured) return path9.resolve(configured);
-  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path9.join(homedir2(), ".config");
-  return path9.join(configRoot, "aiblecampus-apps", "device.json");
+  if (configured) return path10.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path10.join(homedir2(), ".config");
+  return path10.join(configRoot, "aiblecampus-apps", "device.json");
 }
 function emptyState(apiBase2) {
   return { version: 1, apiBase: apiBase2, issuer: identityBase(apiBase2), credential: null, pending: null };
@@ -38051,7 +38062,7 @@ async function readState(apiBase2) {
 }
 async function writeState(state) {
   const file2 = stateFile();
-  await mkdir7(path9.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir7(path10.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.tmp`;
   await writeFile3(temporary, `${JSON.stringify(state, null, 2)}
 `, { mode: 384 });
@@ -38269,7 +38280,7 @@ async function completeDeviceLogin(apiBase2) {
 import { createHash as createHash3 } from "node:crypto";
 import { mkdir as mkdir8, readFile as readFile6, readdir, stat as stat3 } from "node:fs/promises";
 import { backup, DatabaseSync } from "node:sqlite";
-import path10 from "node:path";
+import path11 from "node:path";
 var SAFE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 var MAX_TABLES = 100;
 var MAX_ROWS = 1e5;
@@ -38299,7 +38310,7 @@ function snapshotValue(value) {
   throw new Error(`\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 SQLite \uAC12 \uD615\uC2DD\uC774\uB2E4: ${typeof value}`);
 }
 async function snapshotSqlite(databasePath) {
-  const absolute = path10.resolve(databasePath);
+  const absolute = path11.resolve(databasePath);
   const source = await readFile6(absolute);
   const database = new DatabaseSync(absolute, { readOnly: true });
   try {
@@ -38359,9 +38370,9 @@ async function snapshotSqlite(databasePath) {
   }
 }
 function withinProject(projectRoot, candidate) {
-  const root = path10.resolve(projectRoot);
-  const absolute = path10.resolve(candidate);
-  if (absolute !== root && !absolute.startsWith(`${root}${path10.sep}`)) {
+  const root = path11.resolve(projectRoot);
+  const absolute = path11.resolve(candidate);
+  if (absolute !== root && !absolute.startsWith(`${root}${path11.sep}`)) {
     throw new Error("\uC774\uC804 \uB300\uC0C1\uC740 \uD504\uB85C\uC81D\uD2B8 \uD3F4\uB354 \uC548\uC5D0 \uC788\uC5B4\uC57C \uD55C\uB2E4");
   }
   return absolute;
@@ -38372,11 +38383,11 @@ function backupName(label, extension) {
 }
 async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   const source = withinProject(projectRoot, databasePath);
-  const backupRoot = path10.join(path10.resolve(projectRoot), ".apps-backups");
+  const backupRoot = path11.join(path11.resolve(projectRoot), ".apps-backups");
   await mkdir8(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path10.join(
+  const backupPath = path11.join(
     backupRoot,
-    backupName(path10.basename(source), ".sqlite")
+    backupName(path11.basename(source), ".sqlite")
   );
   const database = new DatabaseSync(source, { readOnly: true });
   try {
@@ -38387,7 +38398,7 @@ async function backupAndSnapshotSqlite(projectRoot, databasePath) {
   return { backupPath, snapshot: await snapshotSqlite(backupPath) };
 }
 function contentType(file2) {
-  const extension = path10.extname(file2).toLowerCase();
+  const extension = path11.extname(file2).toLowerCase();
   if (extension === ".json") return "application/json";
   if (extension === ".html") return "text/html; charset=utf-8";
   if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
@@ -38404,23 +38415,23 @@ async function collectFiles(root, current, files) {
     if (files.length >= MAX_FILES) {
       throw new Error(`\uD30C\uC77C\uC740 ${MAX_FILES}\uAC1C\uAE4C\uC9C0 \uC790\uB3D9 \uC774\uC804\uD560 \uC218 \uC788\uB2E4`);
     }
-    const absolute = path10.join(current, entry.name);
+    const absolute = path11.join(current, entry.name);
     if (entry.isSymbolicLink()) {
       throw new Error(`\uC2EC\uBCFC\uB9AD \uB9C1\uD06C\uB294 \uC790\uB3D9 \uC774\uC804\uD558\uC9C0 \uC54A\uB294\uB2E4: ${absolute}`);
     }
     if (entry.isDirectory()) await collectFiles(root, absolute, files);
-    else if (entry.isFile()) files.push(path10.relative(root, absolute));
+    else if (entry.isFile()) files.push(path11.relative(root, absolute));
   }
 }
 async function snapshotFiles(sourceDirectory) {
-  const root = path10.resolve(sourceDirectory);
+  const root = path11.resolve(sourceDirectory);
   const files = [];
   await collectFiles(root, root, files);
   files.sort();
   const objects = [];
   let totalBytes = 0;
   for (const key of files) {
-    const absolute = path10.join(root, key);
+    const absolute = path11.join(root, key);
     const info = await stat3(absolute);
     totalBytes += info.size;
     if (totalBytes > MAX_TOTAL_BYTES) {
@@ -38428,7 +38439,7 @@ async function snapshotFiles(sourceDirectory) {
     }
     const content = await readFile6(absolute);
     objects.push({
-      key: key.split(path10.sep).join("/"),
+      key: key.split(path11.sep).join("/"),
       contentType: contentType(key),
       size: content.byteLength,
       sha256: sha2562(content),
@@ -38450,11 +38461,11 @@ async function snapshotFiles(sourceDirectory) {
 }
 async function backupAndSnapshotFiles(projectRoot, sourceDirectory) {
   const source = withinProject(projectRoot, sourceDirectory);
-  const backupRoot = path10.join(path10.resolve(projectRoot), ".apps-backups");
+  const backupRoot = path11.join(path11.resolve(projectRoot), ".apps-backups");
   await mkdir8(backupRoot, { recursive: true, mode: 448 });
-  const backupPath = path10.join(
+  const backupPath = path11.join(
     backupRoot,
-    backupName(path10.basename(source), ".tar.gz")
+    backupName(path11.basename(source), ".tar.gz")
   );
   await Qn(
     { cwd: source, file: backupPath, gzip: true, portable: true },
@@ -38517,13 +38528,13 @@ async function openVerificationUrl(url2) {
 import { randomUUID as randomUUID4 } from "node:crypto";
 import { mkdir as mkdir9, readFile as readFile7, rename as rename4, writeFile as writeFile4 } from "node:fs/promises";
 import { homedir as homedir3 } from "node:os";
-import path11 from "node:path";
+import path12 from "node:path";
 var DEFAULT_TTL_MS = 30 * 60 * 1e3;
 function defaultAttemptFile() {
   const configured = appsEnv("DEPLOYMENT_ATTEMPT_FILE");
-  if (configured) return path11.resolve(configured);
-  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path11.join(homedir3(), ".config");
-  return path11.join(
+  if (configured) return path12.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path12.join(homedir3(), ".config");
+  return path12.join(
     configRoot,
     "aiblecampus-apps",
     "deployment-attempts.json"
@@ -38564,7 +38575,7 @@ async function readState2(file2) {
   }
 }
 async function writeState2(file2, state) {
-  await mkdir9(path11.dirname(file2), { recursive: true, mode: 448 });
+  await mkdir9(path12.dirname(file2), { recursive: true, mode: 448 });
   const temporary = `${file2}.${process.pid}.${randomUUID4()}.tmp`;
   await writeFile4(temporary, `${JSON.stringify(state, null, 2)}
 `, {
@@ -38641,7 +38652,7 @@ function failureFacts(prefix, result, note) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.48.0";
+var PLUGIN_VERSION = "0.48.1";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || hubCredential()?.apiBase || "https://api.aible-campus.com";
@@ -39001,7 +39012,8 @@ groupServer("mcp-image").registerTool("generate_image", {
   const target = imageDirectory(directory);
   let saved;
   try {
-    saved = { \uC800\uC7A5\uD55C_\uD30C\uC77C: await saveImage(target, prompt, image) };
+    const file2 = await saveImage(target, prompt, image);
+    saved = { \uC800\uC7A5\uD55C_\uD30C\uC77C: file2, \uD30C\uC77C_\uB9C1\uD06C: fileLink(file2) };
   } catch (error51) {
     saved = { \uC800\uC7A5_\uC2E4\uD328: `${target}\uC5D0 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}. \uC774\uBBF8\uC9C0\uB294 \uC704\uC5D0 \uBCF4\uC778\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uC4F8 \uC218 \uC788\uB294 \uD3F4\uB354\uB85C \uB2E4\uC2DC \uB9CC\uB4E0\uB2E4(\uD558\uB8E8 \uC7A5\uC218\uAC00 \uD55C \uC7A5 \uB354 \uBE60\uC9C4\uB2E4)` };
   }
@@ -39015,14 +39027,14 @@ groupServer("mcp-image").registerTool("generate_image", {
         \uC624\uB298_\uB0A8\uC740_\uC7A5\uC218: image.remainingToday,
         ...image.dailyLimit === void 0 ? {} : { \uD558\uB8E8_\uD55C\uB3C4: image.dailyLimit },
         ...image.resetsAt === void 0 ? {} : { \uD55C\uB3C4_\uCD08\uAE30\uD654_\uC2DC\uAC01: `${koreanTime(image.resetsAt)}(\uD55C\uAD6D \uC2DC\uAC04)` },
-        \uC548\uB0B4: "\uC800\uC7A5 \uACBD\uB85C\uC640 \uC624\uB298 \uB0A8\uC740 \uC7A5\uC218\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4. \uB2E4\uC2DC \uB9CC\uB4E4\uBA74 \uD558\uB8E8 \uC7A5\uC218\uAC00 \uD55C \uC7A5\uC529 \uBE60\uC9C4\uB2E4."
+        \uC548\uB0B4: `${LINK_NOTE} \uC624\uB298 \uB0A8\uC740 \uC7A5\uC218\uB3C4 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4. \uB2E4\uC2DC \uB9CC\uB4E4\uBA74 \uD558\uB8E8 \uC7A5\uC218\uAC00 \uD55C \uC7A5\uC529 \uBE60\uC9C4\uB2E4.`
       }, null, 2) }
     ]
   };
 });
 groupServer("mcp-video").registerTool("generate_video", {
   title: "\uC601\uC0C1 \uB9CC\uB4E4\uAE30",
-  description: "\uC0AC\uC6A9\uC790\uAC00 \uB300\uD654\uC5D0\uC11C \uC601\uC0C1, \uB3D9\uC601\uC0C1, \uC9E7\uC740 \uD074\uB9BD, \uBAA8\uC158 \uC601\uC0C1\uC744 \uB9CC\uB4E4\uC5B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uB3C4\uAD6C\uB85C \uC811\uC218\uD55C\uB2E4. \uD074\uB85C\uB4DC\uC5D0\uB294 \uC601\uC0C1 \uC0DD\uC131 \uBAA8\uB378\uC774 \uC5C6\uC73C\uBBC0\uB85C \uCF54\uB4DC\uB098 \uC560\uB2C8\uBA54\uC774\uC158 HTML\uB85C \uB300\uC2E0 \uB9CC\uB4E4\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBC29\uC2DD\uC744 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uADF8\uB807\uAC8C \uD55C\uB2E4. \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uD5C8\uBE0C\uC758 \uC571\uC6A9 AI \uC601\uC0C1 \uBAA8\uB378\uC744 \uC11C\uBC84\uAC00 \uACE8\uB77C \uBD80\uB974\uBA70 API \uD0A4\uB294 \uD544\uC694 \uC5C6\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4. \uC601\uC0C1\uC740 \uB9CC\uB4DC\uB294 \uB370 \uBA87 \uBD84\uC774 \uAC78\uB824\uC11C \uC774 \uB3C4\uAD6C\uB294 \uC791\uC5C5\uB9CC \uC811\uC218\uD558\uACE0 \uAE30\uB2E4\uB9AC\uC9C0 \uC54A\uB294\uB2E4. \uACB0\uACFC\uC758 \uC791\uC5C5 ID\uC640 \uC548\uB0B4\uC5D0 \uB530\uB77C \uC601\uC0C1\uC774 \uC644\uC131\uB420 \uB54C\uAE4C\uC9C0 video_status\uB85C \uD655\uC778\uD55C\uB2E4(\uC644\uC131\uB418\uBA74 video_status\uAC00 \uC791\uC5C5 \uD3F4\uB354 videos\uC5D0 \uC800\uC7A5\uD55C\uB2E4). \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8\uC5D0 \uB9CC\uB4E4 \uC218 \uC788\uB294 \uAC1C\uC218\uAC00 \uC815\uD574\uC838 \uC788\uACE0 \uD55C \uBC88\uC5D0 \uD55C \uAC1C\uC529 \uB9CC\uB4E0\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD558\uACE0 \uB2E4\uB978 \uC601\uC0C1 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571 \uC548\uC5D0 \uC601\uC0C1 \uC0DD\uC131 \uAE30\uB2A5\uC744 \uB123\uB294 \uC694\uCCAD\uC740 \uC774 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C build-ai-feature \uC2A4\uD0AC\uC744 \uB530\uB978\uB2E4." + mediaToolNote(toolSettings?.video, "\uAC1C", "\uC601\uC0C1"),
+  description: `\uC0AC\uC6A9\uC790\uAC00 \uB300\uD654\uC5D0\uC11C \uC601\uC0C1, \uB3D9\uC601\uC0C1, \uC9E7\uC740 \uD074\uB9BD, \uBAA8\uC158 \uC601\uC0C1\uC744 \uB9CC\uB4E4\uC5B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uB3C4\uAD6C\uB85C \uC811\uC218\uD55C\uB2E4. \uD074\uB85C\uB4DC\uC5D0\uB294 \uC601\uC0C1 \uC0DD\uC131 \uBAA8\uB378\uC774 \uC5C6\uC73C\uBBC0\uB85C \uCF54\uB4DC\uB098 \uC560\uB2C8\uBA54\uC774\uC158 HTML\uB85C \uB300\uC2E0 \uB9CC\uB4E4\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBC29\uC2DD\uC744 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uADF8\uB807\uAC8C \uD55C\uB2E4. \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uD5C8\uBE0C\uC758 \uC571\uC6A9 AI \uC601\uC0C1 \uBAA8\uB378\uC744 \uC11C\uBC84\uAC00 \uACE8\uB77C \uBD80\uB974\uBA70 API \uD0A4\uB294 \uD544\uC694 \uC5C6\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4. \uC601\uC0C1\uC740 \uB9CC\uB4DC\uB294 \uB370 \uBA87 \uBD84\uC774 \uAC78\uB824\uC11C \uC774 \uB3C4\uAD6C\uB294 \uC791\uC5C5\uB9CC \uC811\uC218\uD558\uACE0 \uAE30\uB2E4\uB9AC\uC9C0 \uC54A\uB294\uB2E4. \uC811\uC218\uD558\uBA74 \uACE7\uBC14\uB85C video_status\uB97C \uC791\uC5C5 ID\uB85C \uBD80\uB978\uB2E4. video_status\uAC00 \uD55C \uBC88\uC5D0 \uCD5C\uB300 ${VIDEO_WAIT_MAX_SECONDS}\uCD08\uAE4C\uC9C0 \uC11C\uBC84\uC5D0\uC11C \uC644\uC131\uC744 \uAE30\uB2E4\uB824 \uC8FC\uACE0 \uC644\uC131\uB418\uBA74 \uBC14\uB85C \uC791\uC5C5 \uD3F4\uB354 videos\uC5D0 \uC800\uC7A5\uD558\uBA70, \uC544\uC9C1\uC774\uBA74 \uAC19\uC740 \uB3C4\uAD6C\uB97C \uBC14\uB85C \uB2E4\uC2DC \uBD80\uB974\uB77C\uACE0 \uC54C\uB824 \uC900\uB2E4. Bash sleep\uC774\uB098 \uC258 \uB300\uAE30, \uC9C1\uC811 \uC2DC\uAC04 \uAC04\uACA9 \uB450\uAE30\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8\uC5D0 \uB9CC\uB4E4 \uC218 \uC788\uB294 \uAC1C\uC218\uAC00 \uC815\uD574\uC838 \uC788\uACE0 \uD55C \uBC88\uC5D0 \uD55C \uAC1C\uC529 \uB9CC\uB4E0\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD558\uACE0 \uB2E4\uB978 \uC601\uC0C1 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571 \uC548\uC5D0 \uC601\uC0C1 \uC0DD\uC131 \uAE30\uB2A5\uC744 \uB123\uB294 \uC694\uCCAD\uC740 \uC774 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C build-ai-feature \uC2A4\uD0AC\uC744 \uB530\uB978\uB2E4.` + mediaToolNote(toolSettings?.video, "\uAC1C", "\uC601\uC0C1"),
   inputSchema: {
     prompt: external_exports.string().trim().min(1).max(VIDEO_PROMPT_MAX_LENGTH).describe(`\uB9CC\uB4E4 \uC601\uC0C1 \uC124\uBA85(\uCD5C\uB300 ${VIDEO_PROMPT_MAX_LENGTH}\uC790). \uC0AC\uC6A9\uC790 \uC694\uCCAD\uC758 \uB300\uC0C1, \uC6C0\uC9C1\uC784, \uCE74\uBA54\uB77C, \uBD84\uC704\uAE30, \uC0C9\uC744 \uBE60\uC9D0\uC5C6\uC774 \uAD6C\uCCB4\uC801\uC73C\uB85C \uC801\uB294\uB2E4`),
     durationSeconds: external_exports.number().int().min(VIDEO_DURATION_MIN).max(VIDEO_DURATION_MAX).optional().describe(`\uC601\uC0C1 \uAE38\uC774(\uCD08, ${VIDEO_DURATION_MIN}\uC5D0\uC11C ${VIDEO_DURATION_MAX}). \uC0AC\uC6A9\uC790\uAC00 \uAE38\uC774\uB97C \uB9D0\uD588\uC744 \uB54C\uB9CC \uB123\uB294\uB2E4. \uC0DD\uB7B5\uD558\uBA74 \uC11C\uBC84\uAC00 \uC815\uD55C \uAE30\uBCF8 \uAE38\uC774\uB85C \uB9CC\uB4E0\uB2E4`),
@@ -39053,20 +39065,21 @@ groupServer("mcp-video").registerTool("generate_video", {
     \uD574\uC0C1\uB3C4: job.resolution,
     \uD654\uBA74_\uBE44\uC728: job.aspectRatio,
     ...videoLimitFacts(job),
-    \uB2E4\uC2DC_\uD655\uC778\uD560_\uCD08: job.pollAfterSeconds,
-    \uC548\uB0B4: `\uC601\uC0C1\uC740 \uC811\uC218\uB9CC \uB410\uACE0 \uC544\uC9C1 \uD30C\uC77C\uC774 \uC5C6\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC791\uC5C5 ID, \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uC640 \uD55C\uB3C4\uAC00 \uB2E4\uC2DC \uCC44\uC6CC\uC9C0\uB294 \uC2DC\uAC01\uC744 \uC54C\uB9AC\uACE0 \uBA87 \uBD84 \uAC78\uB9B0\uB2E4\uACE0 \uB9D0\uD55C\uB2E4. ${job.pollAfterSeconds}\uCD08\uCBE4 \uB4A4\uC5D0 video_status\uB97C \uC791\uC5C5 ID(${job.id})\uB85C \uBD88\uB7EC \uD655\uC778\uD55C\uB2E4. \uC9E7\uC740 \uAC04\uACA9\uC73C\uB85C \uC5F0\uB2EC\uC544 \uBD80\uB974\uC9C0 \uC54A\uACE0, \uC544\uC9C1 \uB9CC\uB4DC\uB294 \uC911\uC774\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0 \uB4A4 \uAC19\uC740 \uAC04\uACA9\uC73C\uB85C \uB2E4\uC2DC \uD655\uC778\uD55C\uB2E4. ${VIDEO_JOB_TIMEOUT_MINUTES}\uBD84 \uC548\uC5D0 \uB05D\uB098\uC9C0 \uC54A\uC73C\uBA74 \uC11C\uBC84\uAC00 \uC2E4\uD328\uB85C \uCC98\uB9AC\uD558\uACE0 \uC624\uB298 \uAC1C\uC218\uB97C \uB3CC\uB824\uC900\uB2E4. \uC0C8 \uC601\uC0C1\uC744 \uB610 \uC811\uC218\uD558\uC9C0 \uC54A\uB294\uB2E4.`
+    \uC548\uB0B4: `\uC601\uC0C1\uC740 \uC811\uC218\uB9CC \uB410\uACE0 \uC544\uC9C1 \uD30C\uC77C\uC774 \uC5C6\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC791\uC5C5 ID, \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uC640 \uD55C\uB3C4\uAC00 \uB2E4\uC2DC \uCC44\uC6CC\uC9C0\uB294 \uC2DC\uAC01\uC744 \uC54C\uB9AC\uACE0 \uBA87 \uBD84 \uAC78\uB9B0\uB2E4\uACE0 \uB9D0\uD55C \uB4A4, \uAE30\uB2E4\uB9AC\uC9C0 \uB9D0\uACE0 \uC9C0\uAE08 \uBC14\uB85C video_status\uB97C \uC791\uC5C5 ID(${job.id})\uB85C \uBD80\uB978\uB2E4. video_status\uAC00 \uD55C \uBC88\uC5D0 \uCD5C\uB300 ${VIDEO_WAIT_MAX_SECONDS}\uCD08 \uC11C\uBC84\uC5D0\uC11C \uAE30\uB2E4\uB9AC\uB2E4 \uC644\uC131\uB418\uBA74 \uBC14\uB85C \uC800\uC7A5\uD558\uACE0, \uC544\uC9C1\uC774\uBA74 \uAC19\uC740 \uB3C4\uAD6C\uB97C \uBC14\uB85C \uB2E4\uC2DC \uBD80\uB974\uB77C\uACE0 \uC54C\uB824 \uC900\uB2E4. Bash sleep, \uC258 \uB300\uAE30, \uC2DC\uAC04 \uAC04\uACA9 \uB450\uAE30\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. ${VIDEO_JOB_TIMEOUT_MINUTES}\uBD84 \uC548\uC5D0 \uB05D\uB098\uC9C0 \uC54A\uC73C\uBA74 \uC11C\uBC84\uAC00 \uC2E4\uD328\uB85C \uCC98\uB9AC\uD558\uACE0 \uC624\uB298 \uAC1C\uC218\uB97C \uB3CC\uB824\uC900\uB2E4. \uC0C8 \uC601\uC0C1\uC744 \uB610 \uC811\uC218\uD558\uC9C0 \uC54A\uB294\uB2E4.`
   });
 });
 groupServer("mcp-video").registerTool("video_status", {
-  title: "\uC601\uC0C1 \uB9CC\uB4E4\uAE30 \uC0C1\uD0DC \uD655\uC778",
-  description: "generate_video\uB85C \uC811\uC218\uD55C \uC601\uC0C1 \uC791\uC5C5\uC758 \uC0C1\uD0DC\uB97C \uD55C \uBC88 \uD655\uC778\uD55C\uB2E4. \uB9CC\uB4DC\uB294 \uC911\uC774\uBA74 \uC9C0\uB09C \uC2DC\uAC04\uACFC \uB2E4\uC2DC \uD655\uC778\uD560 \uC2DC\uAC04\uC744 \uC54C\uB824 \uC8FC\uACE0, \uC2E4\uD328\uD588\uC73C\uBA74 \uC774\uC720\uB97C \uC54C\uB824 \uC8FC\uBA70, \uC644\uC131\uB410\uC73C\uBA74 \uC601\uC0C1 \uD30C\uC77C\uC744 \uC791\uC5C5 \uD3F4\uB354 videos\uC5D0 \uC0C8 \uD30C\uC77C\uB85C \uC800\uC7A5\uD558\uACE0 \uACBD\uB85C\uC640 \uD06C\uAE30\uB97C \uC54C\uB824 \uC900\uB2E4. \uC774\uBBF8 \uC800\uC7A5\uD55C \uC791\uC5C5\uC740 \uB2E4\uC2DC \uBC1B\uC9C0 \uC54A\uB294\uB2E4. \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC73C\uBA74(\uB2E4\uC6B4\uB85C\uB4DC \uC8FC\uC18C \uB9CC\uB8CC \uB4F1) \uC774 \uB3C4\uAD6C\uB97C \uB2E4\uC2DC \uBD80\uB974\uBA74 \uC0C8 \uC8FC\uC18C\uB85C \uB2E4\uC2DC \uBC1B\uB294\uB2E4. \uC774 \uB3C4\uAD6C\uB294 \uAE30\uB2E4\uB9AC\uC9C0 \uC54A\uC73C\uBBC0\uB85C \uACB0\uACFC\uC758 \uC548\uB0B4\uC5D0 \uB530\uB77C \uAC04\uACA9\uC744 \uB450\uACE0 \uBD80\uB978\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4.",
+  title: "\uC601\uC0C1 \uC644\uC131 \uAE30\uB2E4\uB9AC\uAE30\xB7\uC0C1\uD0DC \uD655\uC778",
+  description: `generate_video\uB85C \uC811\uC218\uD55C \uC601\uC0C1\uC774 \uC644\uC131\uB420 \uB54C\uAE4C\uC9C0 \uC11C\uBC84\uC5D0\uC11C \uCD5C\uB300 ${VIDEO_WAIT_MAX_SECONDS}\uCD08 \uAE30\uB2E4\uB838\uB2E4 \uACB0\uACFC\uB97C \uB3CC\uB824\uC900\uB2E4. \uC811\uC218\uD55C \uB4A4\uC5D0\uB294 \uACE7\uBC14\uB85C \uC774 \uB3C4\uAD6C\uB97C \uBD80\uB974\uACE0, Bash sleep\uC774\uB098 \uC258 \uB300\uAE30, \uC9C1\uC811 \uC2DC\uAC04 \uAC04\uACA9 \uB450\uAE30\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uC644\uC131\uB418\uBA74 \uC989\uC2DC \uC601\uC0C1 \uD30C\uC77C\uC744 \uC791\uC5C5 \uD3F4\uB354 videos\uC5D0 \uC0C8 \uD30C\uC77C\uB85C \uC800\uC7A5\uD558\uACE0 \uD30C\uC77C \uB9C1\uD06C\uC640 \uD06C\uAE30\uB97C \uC54C\uB824 \uC8FC\uACE0, \uC2E4\uD328\uD588\uC73C\uBA74 \uC989\uC2DC \uC774\uC720\uB97C \uC54C\uB824 \uC900\uB2E4. \uAE30\uB2E4\uB824\uB3C4 \uC544\uC9C1 \uB9CC\uB4DC\uB294 \uC911\uC774\uBA74 \uADF8\uB807\uB2E4\uACE0 \uC54C\uB824 \uC8FC\uBBC0\uB85C \uACB0\uACFC\uC758 \uC548\uB0B4\uB300\uB85C \uAC19\uC740 \uB3C4\uAD6C\uB97C \uBC14\uB85C \uB2E4\uC2DC \uBD80\uB978\uB2E4(\uC5EC\uB7EC \uBC88 \uBD80\uB97C \uC218 \uC788\uB2E4). \uC774\uBBF8 \uC800\uC7A5\uD55C \uC791\uC5C5\uC740 \uB2E4\uC2DC \uBC1B\uC9C0 \uC54A\uB294\uB2E4. \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC73C\uBA74(\uB2E4\uC6B4\uB85C\uB4DC \uC8FC\uC18C \uB9CC\uB8CC \uB4F1) \uC774 \uB3C4\uAD6C\uB97C \uB2E4\uC2DC \uBD80\uB974\uBA74 \uC0C8 \uC8FC\uC18C\uB85C \uB2E4\uC2DC \uBC1B\uB294\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4.`,
   inputSchema: {
     id: external_exports.uuid().describe("generate_video \uACB0\uACFC\uC758 \uC791\uC5C5 ID"),
+    waitSeconds: external_exports.number().int().min(0).max(VIDEO_WAIT_MAX_SECONDS).optional().describe(`\uC544\uC9C1 \uB9CC\uB4DC\uB294 \uC911\uC77C \uB54C \uC11C\uBC84\uC5D0\uC11C \uAE30\uB2E4\uB9B4 \uCD5C\uB300 \uCD08(0\uC5D0\uC11C ${VIDEO_WAIT_MAX_SECONDS}). \uC0DD\uB7B5\uD558\uBA74 ${VIDEO_WAIT_MAX_SECONDS}\uCD08\uB2E4. \uBCF4\uD1B5 \uC0DD\uB7B5\uD558\uACE0, \uAE30\uB2E4\uB9AC\uC9C0 \uC54A\uACE0 \uC9C0\uAE08 \uC0C1\uD0DC\uB9CC \uBCF4\uACE0 \uC2F6\uC744 \uB54C\uB9CC 0\uC73C\uB85C \uD55C\uB2E4`),
     directory: external_exports.string().min(1).optional().describe("\uC601\uC0C1\uC744 \uC800\uC7A5\uD560 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C. \uC0AC\uC6A9\uC790\uAC00 \uD3F4\uB354\uB97C \uB9D0\uD558\uC9C0 \uC54A\uC558\uC73C\uBA74 \uD604\uC7AC \uC791\uC5C5 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C \uB4A4\uC5D0 videos\uB97C \uBD99\uC5EC \uB123\uB294\uB2E4. \uC0DD\uB7B5\uD558\uBA74 MCP\uB97C \uC2E4\uD589\uD55C \uD3F4\uB354 \uC544\uB798 videos\uC5D0 \uC800\uC7A5\uD55C\uB2E4. \uD3F4\uB354\uAC00 \uC5C6\uC73C\uBA74 \uB9CC\uB4E0\uB2E4")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-}, async ({ id, directory }) => {
-  const result = await callApi(`/v1/videos/generations/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(6e4), redirect: "error", cache: "no-store" });
+}, async ({ id, waitSeconds, directory }) => {
+  const wait2 = waitSeconds ?? VIDEO_WAIT_MAX_SECONDS;
+  const result = await callApi(`/v1/videos/generations/${encodeURIComponent(id)}?wait=${wait2}`, { signal: AbortSignal.timeout((wait2 + 15) * 1e3), redirect: "error", cache: "no-store" });
   if (result.status === 0 || result.status === 401) return failure("\uC601\uC0C1 \uC0C1\uD0DC\uB97C \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
   if (!result.ok) return errorResult(mediaFailureText("video", result.status, result.body));
   const parsed = VideoStatusResult.safeParse(result.body);
@@ -39081,13 +39094,21 @@ groupServer("mcp-video").registerTool("video_status", {
       \uC548\uB0B4: "\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC2E4\uD328 \uC774\uC720\uC640 \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uB97C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4. \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uB9CC\uB4E4\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 generate_video\uB85C \uC0C8\uB85C \uC811\uC218\uD55C\uB2E4."
     }, null, 2));
   }
+  if (job.status === "succeeded" && job.download === null && job.failure !== null) {
+    return errorResult(JSON.stringify({
+      ...common,
+      \uC0C1\uD0DC: "\uC644\uC131\uB410\uC9C0\uB9CC \uD30C\uC77C\uC744 \uC904 \uC218 \uC5C6\uC74C",
+      \uC774\uC720: job.failure,
+      \uC548\uB0B4: "\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC774\uC720\uB97C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4. \uC774\uC720\uAC00 '\uB2E4\uC2DC \uD655\uC778\uD558\uC138\uC694'\uB77C\uBA74 video_status\uB97C \uD55C \uBC88 \uB354 \uBD80\uB974\uACE0, \uBCF4\uAD00 \uAE30\uAC04\uC774 \uC9C0\uB0AC\uB2E4\uBA74 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD560 \uB54C\uB9CC generate_video\uB85C \uC0C8\uB85C \uB9CC\uB4E0\uB2E4(\uC624\uB298 \uAC1C\uC218\uAC00 \uBE60\uC9C4\uB2E4)."
+    }, null, 2));
+  }
   if (job.status !== "succeeded" || job.download === null) {
     const preparing = job.status === "succeeded";
     return textResult({
       ...common,
       \uC0C1\uD0DC: preparing ? "\uD30C\uC77C \uC900\uBE44 \uC911" : job.status === "queued" ? "\uB300\uAE30 \uC911" : "\uB9CC\uB4DC\uB294 \uC911",
-      \uB2E4\uC2DC_\uD655\uC778\uD560_\uCD08: job.pollAfterSeconds,
-      \uC548\uB0B4: `\uC544\uC9C1 \uC601\uC0C1 \uD30C\uC77C\uC774 \uC5C6\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC9C0\uAE08 ${preparing ? "\uC601\uC0C1 \uD30C\uC77C\uC744 \uC900\uBE44\uD558\uB294 \uC911" : "\uB9CC\uB4DC\uB294 \uC911"}\uC774\uACE0 ${elapsedText(job.elapsedSeconds)} \uC9C0\uB0AC\uB2E4\uACE0 \uC54C\uB9B0\uB2E4. ${job.pollAfterSeconds}\uCD08\uCBE4 \uB4A4\uC5D0 video_status\uB97C \uAC19\uC740 \uC791\uC5C5 ID\uB85C \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uC9E7\uC740 \uAC04\uACA9\uC73C\uB85C \uC5F0\uB2EC\uC544 \uBD80\uB974\uC9C0 \uC54A\uB294\uB2E4. ${VIDEO_JOB_TIMEOUT_MINUTES}\uBD84 \uC548\uC5D0 \uB05D\uB098\uC9C0 \uC54A\uC73C\uBA74 \uC11C\uBC84\uAC00 \uC2E4\uD328\uB85C \uCC98\uB9AC\uD55C\uB2E4.`
+      \uC774\uBC88_\uD638\uCD9C\uC5D0\uC11C_\uAE30\uB2E4\uB9B0_\uCD08: wait2,
+      \uC548\uB0B4: `${wait2}\uCD08 \uAE30\uB2E4\uB838\uC9C0\uB9CC \uC544\uC9C1 \uC601\uC0C1 \uD30C\uC77C\uC774 \uC5C6\uB2E4(\uC9C0\uAE08 ${preparing ? "\uC601\uC0C1 \uD30C\uC77C\uC744 \uC900\uBE44\uD558\uB294 \uC911" : "\uB9CC\uB4DC\uB294 \uC911"}\uC774\uACE0 ${elapsedText(job.elapsedSeconds)} \uC9C0\uB0AC\uB2E4). \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD55C \uC904\uB85C \uC9C4\uD589 \uC911\uC774\uB77C\uACE0 \uC54C\uB9AC\uACE0, \uAE30\uB2E4\uB9AC\uC9C0 \uB9D0\uACE0 \uC9C0\uAE08 \uBC14\uB85C video_status\uB97C \uAC19\uC740 \uC791\uC5C5 ID(${job.id})\uB85C \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uC774 \uB3C4\uAD6C\uAC00 \uC11C\uBC84\uC5D0\uC11C \uAE30\uB2E4\uB824 \uC8FC\uBBC0\uB85C Bash sleep, \uC258 \uB300\uAE30, \uC2DC\uAC04 \uAC04\uACA9 \uB450\uAE30\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. ${VIDEO_JOB_TIMEOUT_MINUTES}\uBD84 \uC548\uC5D0 \uB05D\uB098\uC9C0 \uC54A\uC73C\uBA74 \uC11C\uBC84\uAC00 \uC2E4\uD328\uB85C \uCC98\uB9AC\uD55C\uB2E4.`
     });
   }
   const { download } = job;
@@ -39107,12 +39128,13 @@ groupServer("mcp-video").registerTool("video_status", {
       ...common,
       \uC0C1\uD0DC: "\uC644\uC131",
       \uC800\uC7A5\uD55C_\uD30C\uC77C: saved.file,
+      \uD30C\uC77C_\uB9C1\uD06C: fileLink(saved.file),
       \uD06C\uAE30_\uBC14\uC774\uD2B8: saved.bytes,
       ...saved.reused ? { \uC774\uBBF8_\uC800\uC7A5\uD568: "\uC774\uBBF8 \uAC19\uC740 \uD06C\uAE30\uC758 \uD30C\uC77C\uC774 \uC788\uC5B4 \uB2E4\uC2DC \uBC1B\uC9C0 \uC54A\uC558\uB2E4" } : {},
       \uAE38\uC774_\uCD08: job.durationSeconds,
       \uD574\uC0C1\uB3C4: job.resolution,
       \uD654\uBA74_\uBE44\uC728: job.aspectRatio,
-      \uC548\uB0B4: "\uC800\uC7A5 \uACBD\uB85C\uC640 \uD30C\uC77C \uD06C\uAE30, \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4. \uC0C8 \uC601\uC0C1\uC744 \uB9CC\uB4E4\uBA74 \uD558\uB8E8 \uAC1C\uC218\uAC00 \uD558\uB098\uC529 \uBE60\uC9C4\uB2E4."
+      \uC548\uB0B4: `${LINK_NOTE} \uD30C\uC77C \uD06C\uAE30\uC640 \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uB3C4 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4. \uC0C8 \uC601\uC0C1\uC744 \uB9CC\uB4E4\uBA74 \uD558\uB8E8 \uAC1C\uC218\uAC00 \uD558\uB098\uC529 \uBE60\uC9C4\uB2E4.`
     });
   } catch (error51) {
     const reason = error51 instanceof Error ? error51.message : String(error51);
@@ -39418,7 +39440,7 @@ groupServer("mcp-apps").registerTool(
         `\uB85C\uCEEC \uD658\uACBD \uC124\uC815\uC744 \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
       );
     }
-    const deploymentName = toDeploymentName(name ?? path12.basename(projectPath));
+    const deploymentName = toDeploymentName(name ?? path13.basename(projectPath));
     let movedFrom;
     if (newApp !== true) {
       try {
@@ -40310,7 +40332,7 @@ groupServer("mcp-apps").registerTool(
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
   },
   async ({ deployment, directory, commit: reference, workspace }) => {
-    if (!path12.isAbsolute(directory)) return errorResult("\uC0C8 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD55C\uB2E4");
+    if (!path13.isAbsolute(directory)) return errorResult("\uC0C8 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD55C\uB2E4");
     const result = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}/source${reference ? `?commit=${reference}` : ""}`, {}, workspace);
     if (!result.ok) return failure("\uCD5C\uC2E0 \uC18C\uC2A4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uB2E4", result);
     try {
