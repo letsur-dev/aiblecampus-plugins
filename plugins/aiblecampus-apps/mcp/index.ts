@@ -34,7 +34,7 @@ import { deploymentAttempt } from "./deployment-attempts.ts";
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.46.1";
+export const PLUGIN_VERSION = "0.47.0";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -1383,7 +1383,7 @@ server.registerTool(
     inputSchema: {
       deployment: z.string().min(1).describe("제출할 앱 이름 또는 ID"),
       workspace: WorkspaceInputSchema,
-      board: z.string().trim().min(1).max(24).optional().describe("낼 보드의 key. 직전 결과가 board-required였고 사용자가 보드를 고른 뒤에만 넣는다. 처음에는 생략한다"),
+      board: z.string().trim().min(1).max(24).optional().describe("낼 보드(모듈)의 key. 열린 보드가 하나뿐이어도 대신 고르지 않는다. 처음에는 생략해 board-required 결과의 보드 목록을 받고, 사용자가 그 목록에서 고른 뒤(또는 사용자가 요청에서 보드 이름을 분명히 말했으면 그 보드의 key)에만 넣는다"),
       title: z.string().trim().min(1).max(120).optional().describe("제출물 제목(120자 이하). 보통 앱 이름이나 앱이 하는 일을 짧게 적는다. 보드가 제목을 받지 않으면 생략한다(서버가 정한다). 제목을 받는 보드에서 비면 서버가 거절한다"),
       summary: z.string().max(GALLERY_SUMMARY_MAX).optional().describe(`갤러리 카드에 보이는 한 줄 소개(${GALLERY_SUMMARY_MAX}자 이하). 앱이 누구의 어떤 일을 돕는지 적는다. 선택이며 보드가 설명을 받지 않으면 서버가 무시한다`),
       sections: z.object(GALLERY_SECTION_INPUT).optional().describe("섹션별 마크다운 본문. 아는 칸만 채우고 모르는 칸은 비운다. 선택이며 보드가 설명을 받지 않으면 서버가 무시한다"),
@@ -1418,7 +1418,7 @@ server.registerTool(
         상태: "보드 선택 필요",
         메시지: answer.data.message,
         보드: answer.data.boards.map((option) => ({ key: option.key, 이름: option.name, 마감: option.closesAt, 방식: option.mode === "update" ? "바꾸기" : "새 제출" })),
-        instructions: "보드 목록(이름, 마감, 새 제출/바꾸기)을 사용자에게 보여 주고 어느 보드에 낼지 묻고 응답을 끝낸다. 대신 고르지 않는다. 사용자가 고르면 같은 내용과 고른 보드의 key를 board로 넣어 prepare_gallery_submission을 다시 호출한다. 갤러리에는 아직 아무것도 올리지 않았다.",
+        instructions: "보드 목록(이름, 마감, 새 제출/바꾸기)을 사용자에게 보여 주고 \"어느 보드(모듈)에 낼까요?\"라고 묻고 응답을 끝낸다. 보드가 하나뿐이어도 대신 고르지 않고 사용자가 확인하게 한다. 사용자가 고르면 같은 내용과 고른 보드의 key를 board로 넣어 prepare_gallery_submission을 다시 호출한다. 갤러리에는 아직 아무것도 올리지 않았다.",
       });
     }
     const draft = answer.data;
@@ -1497,7 +1497,7 @@ server.registerTool(
   {
     title: "파일을 읽을 교육 목록",
     description:
-      "사용자 본인이 참가자로 속한 교육 목록(id, 이름, 종료 여부, 종료 시각)을 조회한다. 종료된 교육도 포함한다. list_my_files, read_my_file, list_my_submissions, read_my_submission_file은 교육 id를 반드시 받으므로, 어느 교육인지 모르면 이 목록을 사용자에게 보여 주고 사용자가 고른 교육의 id를 쓴다. 대신 고르지 않는다. 교육 사이를 합친 파일 목록은 없다. 이 교육의 개인 파일, 교육 공통 파일, 연결 폴더는 list_my_files의 location으로 고른다. 운영 역할로만 속한 교육은 나오지 않고 운영진 계정은 거절된다.",
+      "사용자 본인이 참가자로 속한 교육 목록(id, 이름, 종료 여부, 종료 시각)을 조회한다. 종료된 교육도 포함한다. list_my_files, read_my_file, list_my_submissions, read_my_submission_file은 교육 id를 반드시 받으므로, 이 목록에 진행 중(종료되지 않은) 교육이 하나뿐이면 그 교육의 id를 자동으로 쓴다. 진행 중 교육이 여럿이거나 없으면 이 목록을 사용자에게 보여 주고 사용자가 고른 교육의 id를 쓴다. 여럿일 때 대신 고르지 않는다. 교육 사이를 합친 파일 목록은 없다. 이 교육의 개인 파일, 교육 공통 파일, 연결 폴더는 list_my_files의 location으로 고른다. 운영 역할로만 속한 교육은 나오지 않고 운영진 계정은 거절된다.",
     inputSchema: {},
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },
@@ -1508,7 +1508,7 @@ server.registerTool(
     if (!parsed.success) return errorResult("내 교육 응답을 읽지 못했다. 플러그인을 최신 버전으로 갱신한 뒤 다시 한다.");
     return textResult({
       교육: parsed.data.educations.map(educationFact),
-      instructions: parsed.data.educations.length === 0 ? "본인이 참가자로 속한 교육이 없어 읽을 파일이 없다." : "교육 이름과 종료 여부를 사용자에게 보여 주고 어느 교육인지 묻는다. 고른 교육의 id를 educationId로 넣어 list_my_files나 list_my_submissions를 부른다.",
+      instructions: parsed.data.educations.length === 0 ? "본인이 참가자로 속한 교육이 없어 읽을 파일이 없다." : "진행 중(종료되지 않은) 교육이 하나뿐이면 묻지 않고 그 교육의 id를 educationId로 넣어 list_my_files나 list_my_submissions를 부른다. 진행 중 교육이 여럿이면 교육 이름과 종료 여부를 사용자에게 보여 주고 어느 교육인지 묻는다(대신 고르지 않는다). 고른 교육의 id를 educationId로 넣는다.",
     });
   },
 );
@@ -1518,9 +1518,9 @@ server.registerTool(
   {
     title: "파일 목록",
     description:
-      "사용자 본인의 허브 \"파일\"(교육마다 따로 있는 개인 파일함, 교육 공통 파일, 교육에 연결된 폴더)에서 폴더 하나의 항목이나 검색 결과를 조회한다. 교육 공통 파일도 포함한다(위치 location=education, 읽기 전용). 참가자 화면 \"파일\" 탭에 보이는 위치는 모두 읽을 수 있고, 결과의 locations가 이 교육에서 읽을 수 있는 위치 전체다. 연결 폴더는 그 위치 id를 location에 넣어 들어간다. location을 생략하면 개인 파일이다. 교육 공통 파일과 연결 폴더는 그 교육 참가자 본인만 읽는다. 교육 id(educationId)는 필수이며 먼저 list_my_file_educations로 교육을 보여 주고 사용자가 고른 교육의 id를 쓴다. 교육을 대신 고르지 않는다. 본인이 올린 파일, 휴대전화로 보낸 사진, Google 문서 링크, 일반 링크가 폴더 구조로 있다. 링크(Google 링크와 일반 링크)는 항목마다 주소(주소)가 결과에 나온다. 본인 것만 보이며 다른 참가자, 조원, 운영진 보기는 없다. 교육이 끝났어도 본인 파일은 읽는다. 처음에는 parentId 없이 부르면 최상위 폴더가 나온다. 결과의 폴더는 id를 parentId로 넣어 들어가고, 파일과 Google 링크는 read_my_file로 읽는다. read_my_file이 읽지 못하는 형식의 파일이나 사용자가 파일 자체를 원하면 download_my_file로 원본을 사용자 PC에 저장한다. search를 주면 교육 전체에서 이름으로 찾는다. 제출 첨부에는 이 결과의 id를 prepare_gallery_submission의 personalItemIds에 넣는다. 운영진 계정은 거절된다.",
+      "사용자 본인의 허브 \"파일\"(교육마다 따로 있는 개인 파일함, 교육 공통 파일, 교육에 연결된 폴더)에서 폴더 하나의 항목이나 검색 결과를 조회한다. 교육 공통 파일도 포함한다(위치 location=education, 읽기 전용). 참가자 화면 \"파일\" 탭에 보이는 위치는 모두 읽을 수 있고, 결과의 locations가 이 교육에서 읽을 수 있는 위치 전체다. 연결 폴더는 그 위치 id를 location에 넣어 들어간다. location을 생략하면 개인 파일이다. 교육 공통 파일과 연결 폴더는 그 교육 참가자 본인만 읽는다. 교육 id(educationId)는 필수이며 먼저 list_my_file_educations로 진행 중 교육을 확인한다. 진행 중 교육이 하나뿐이면 그 교육의 id를 자동으로 쓰고, 여럿이면 교육을 보여 주고 사용자가 고른 교육의 id를 쓴다. 교육을 대신 고르지 않는다. 본인이 올린 파일, 휴대전화로 보낸 사진, Google 문서 링크, 일반 링크가 폴더 구조로 있다. 링크(Google 링크와 일반 링크)는 항목마다 주소(주소)가 결과에 나온다. 본인 것만 보이며 다른 참가자, 조원, 운영진 보기는 없다. 교육이 끝났어도 본인 파일은 읽는다. 처음에는 parentId 없이 부르면 최상위 폴더가 나온다. 결과의 폴더는 id를 parentId로 넣어 들어가고, 파일과 Google 링크는 read_my_file로 읽는다. read_my_file이 읽지 못하는 형식의 파일이나 사용자가 파일 자체를 원하면 download_my_file로 원본을 사용자 PC에 저장한다. search를 주면 교육 전체에서 이름으로 찾는다. 제출 첨부에는 이 결과의 id를 prepare_gallery_submission의 personalItemIds에 넣는다. 운영진 계정은 거절된다.",
     inputSchema: {
-      educationId: PersonalEducationInput.describe("파일을 볼 교육의 id. 필수다. 모르면 list_my_file_educations로 교육을 보여 주고 사용자가 고른 교육의 id를 넣는다. 교육 사이를 합친 목록은 없다"),
+      educationId: PersonalEducationInput.describe("파일을 볼 교육의 id. 필수다. 모르면 list_my_file_educations로 확인한다. 진행 중 교육이 하나뿐이면 그 id를 자동으로 넣고 여럿이면 교육을 보여 주고 사용자가 고른 교육의 id를 넣는다. 교육 사이를 합친 목록은 없다"),
       location: z.string().min(1).max(64).optional().describe("파일 위치. 생략하면 \"personal\"(본인 개인 파일). \"education\"은 교육 공통 파일(읽기 전용), 연결 폴더는 결과 locations의 id(또는 항목의 연결폴더_location). 폴더 안으로 들어갈 때도 같은 location을 넣는다"),
       parentId: z.string().min(1).max(1024).optional().describe("들어갈 폴더의 id. 생략하면 그 위치의 최상위. search를 주면 무시한다"),
       search: z.string().trim().min(1).max(100).optional().describe("이름에서 찾을 말. 교육의 모든 폴더에서 찾는다"),
@@ -1689,7 +1689,7 @@ server.registerTool(
   {
     title: "내 제출물 목록",
     description:
-      "사용자 본인이 개인 명의로 낸 갤러리 제출물을 교육 안에서 조회한다. 교육 id(educationId)는 필수이며 먼저 list_my_file_educations로 교육을 보여 주고 사용자가 고른 교육의 id를 쓴다. 제목, 설명, 본문(길면 잘림), 낸 시각, 첨부 파일과 Google 링크(fileId, 형식, 크기, sha256)가 있다. 파일에서 가리켜 첨부한 항목은 항상 현재 항목이다. 조 명의 제출물, 다른 참가자의 제출물, 공개 보드에서 보이는 남의 자료는 나오지 않는다. 교육이 끝났어도 본인 제출물은 읽는다. 첨부 내용은 read_my_submission_file로 읽는다. 운영진 계정은 거절된다.",
+      "사용자 본인이 개인 명의로 낸 갤러리 제출물을 교육 안에서 조회한다. 교육 id(educationId)는 필수이며 먼저 list_my_file_educations로 진행 중 교육을 확인한다. 진행 중 교육이 하나뿐이면 그 교육의 id를 자동으로 쓰고, 여럿이면 교육을 보여 주고 사용자가 고른 교육의 id를 쓴다. 제목, 설명, 본문(길면 잘림), 낸 시각, 첨부 파일과 Google 링크(fileId, 형식, 크기, sha256)가 있다. 파일에서 가리켜 첨부한 항목은 항상 현재 항목이다. 조 명의 제출물, 다른 참가자의 제출물, 공개 보드에서 보이는 남의 자료는 나오지 않는다. 교육이 끝났어도 본인 제출물은 읽는다. 첨부 내용은 read_my_submission_file로 읽는다. 운영진 계정은 거절된다.",
     inputSchema: {
       educationId: PersonalEducationInput.describe("제출물이 있는 교육의 id. 필수다. 모르면 list_my_file_educations로 교육을 보여 주고 사용자가 고른 교육의 id를 넣는다"),
       moduleKey: z.string().trim().min(1).max(24).optional().describe("한 모듈(보드)의 제출물만 볼 때 그 key"),
