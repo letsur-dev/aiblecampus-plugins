@@ -1,8 +1,9 @@
 /**
- * 클로드에서 영상 생성(0.48.0, 2026-10-29). MCP 도구 `generate_video`(접수)와 `video_status`(상태 조회, 완료 시 내려받기)가 쓴다.
+ * 클로드에서 영상 생성(0.48.0, 2026-10-29). MCP 도구 `generate_video`(접수)와 `video_status`(완성 기다리기, 완료 시 내려받기)가 쓴다.
  *
- * - platform `POST /v1/videos/generations`가 작업을 접수(202)하고, `GET /v1/videos/generations/:id`가 상태를 읽는다. 서버가 앱용 AI 공용 키로
- *   게이트웨이를 부르며 키는 플러그인에 오지 않는다. 영상은 몇 분 걸리므로 generate_video는 기다리지 않고, 클로드가 video_status로 확인한다
+ * - platform `POST /v1/videos/generations`가 작업을 접수(202)하고, `GET /v1/videos/generations/:id?wait=<초>`가 서버에서 완성될 때까지 기다렸다(최대 VIDEO_WAIT_MAX_SECONDS)
+ *   상태를 읽는다(0.48.1). 서버가 앱용 AI 공용 키로 게이트웨이를 부르며 키는 플러그인에 오지 않는다. 영상은 몇 분 걸리므로 generate_video는 기다리지 않고,
+ *   클로드가 video_status를 바로 부르면 서버가 기다려 주며 아직이면 같은 도구를 바로 다시 부른다(sleep으로 간격을 두지 않는다)
  * - 완료되면 서버가 게이트웨이가 서명한 다운로드 주소를 준다. 인증 헤더 없이 받아 작업 폴더 `videos/`에 새 파일로 저장한다
  *   (이미지와 같은 규칙: 있는 파일은 덮어쓰지 않고 번호를 붙인다). 주소가 만료돼 받지 못하면 video_status를 다시 불러 새 주소를 받는다
  * - 길이, 해상도, 화면 비율 한도는 서버 계약(`@aiblecampus/contracts/platform-api/videos`)을 옮겼다. 공개 저장소에서 따로 빌드하므로
@@ -22,6 +23,8 @@ export const VIDEO_RESOLUTIONS = ["480p", "720p"] as const;
 export const VIDEO_ASPECT_RATIOS = ["16:9", "9:16", "1:1"] as const;
 /** 접수한 작업이 이 시간(분) 안에 끝나지 않으면 서버가 실패(timeout)로 확정한다 */
 export const VIDEO_JOB_TIMEOUT_MINUTES = 20;
+/** video_status가 서버에서 기다리는 최대 초(0.48.1). 데스크톱의 MCP 도구 호출이 약 60초에 끊긴다는 보고가 있어 내려받을 시간을 남긴다. 서버 계약과 같다 */
+export const VIDEO_WAIT_MAX_SECONDS = 40;
 /** 받는 파일 크기 상한(바이트). 수업용 짧은 영상에는 충분하고, 잘못된 주소가 큰 파일을 보내도 디스크를 채우지 않는다 */
 const VIDEO_DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024;
 
@@ -38,7 +41,6 @@ export const AcceptedVideo = z.looseObject({
   remainingToday: z.number().int().min(0),
   dailyLimit: z.number().int().min(0),
   resetsAt: Iso,
-  pollAfterSeconds: z.number().int().min(1),
 });
 export type AcceptedVideo = z.infer<typeof AcceptedVideo>;
 
@@ -60,7 +62,6 @@ export const VideoStatusResult = z.looseObject({
   remainingToday: z.number().int().min(0),
   dailyLimit: z.number().int().min(0),
   resetsAt: Iso,
-  pollAfterSeconds: z.number().int().min(1),
 });
 export type VideoStatusResult = z.infer<typeof VideoStatusResult>;
 
