@@ -1,6 +1,6 @@
 {
   "name": "aiblecampus-apps-plugin",
-  "version": "0.48.1",
+  "version": "0.49.0",
   "private": true,
   "type": "module",
   "description": "에이블캠퍼스 Apps 플러그인의 MCP 서버. dist/mcp.js는 npm ci && npm run build로 다시 만든다",
