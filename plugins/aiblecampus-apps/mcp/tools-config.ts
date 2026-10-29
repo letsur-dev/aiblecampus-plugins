@@ -15,8 +15,8 @@ export const PLUGIN_TOOLS_FILE = "aiblecampus-tools.json";
 
 export const TOOL_GROUP_IDS = ["mcp-image", "mcp-video", "mcp-apps", "mcp-files", "mcp-google", "mcp-gallery"] as const;
 export type ToolGroupId = (typeof TOOL_GROUP_IDS)[number];
-/** 도구가 속한 묶음. `base`는 묶음이 하나라도 켜지면 함께 있는 기반 도구다 */
-export type ToolGroup = ToolGroupId | "base";
+/** 도구가 속한 묶음. `base`는 묶음이 하나라도 켜지면 함께 있는 기반 도구, `media-submit`은 구성 요소가 아닌 미디어 제출 도구 묶음(이미지·영상 생성 묶음과 갤러리 기능이 있을 때)이다 */
+export type ToolGroup = ToolGroupId | "base" | "media-submit";
 
 const MediaSummary = z.strictObject({
   enabled: z.boolean(),
@@ -29,6 +29,8 @@ const ToolsConfigSchema = z.strictObject({
   groups: z.array(z.enum(TOOL_GROUP_IDS)).max(TOOL_GROUP_IDS.length),
   image: MediaSummary,
   video: MediaSummary,
+  /** 미디어 제출 도구(list_my_media, prepare_media_submission, submit_media_submission)를 등록하는가(0.49.0). 구성 요소가 아닌 파생 묶음이라 groups에 없다 */
+  mediaSubmit: z.boolean(),
 });
 export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
 export type MediaSummary = z.infer<typeof MediaSummary>;
@@ -61,9 +63,10 @@ export function toolsConfig(file?: string): ToolsConfig | null {
   return found;
 }
 
-/** 이 묶음의 도구를 등록하는가. 설정이 없으면 모두 등록하고, 있으면 켜진 묶음과(묶음이 하나라도 켜졌을 때의) 기반 도구만 등록한다 */
+/** 이 묶음의 도구를 등록하는가. 설정이 없으면 모두 등록하고, 있으면 켜진 묶음과(묶음이 하나라도 켜졌을 때의) 기반 도구만 등록한다. 미디어 제출(media-submit)은 구성 요소가 아니라 설정의 `mediaSubmit`이 정한다 */
 export function toolGroupEnabled(config: ToolsConfig | null, group: ToolGroup): boolean {
   if (config === null) return true;
+  if (group === "media-submit") return config.mediaSubmit;
   return group === "base" ? config.groups.length > 0 : config.groups.includes(group);
 }
 
@@ -85,5 +88,9 @@ export function toolsInstructions(config: ToolsConfig | null): string | null {
       ? `${label} 생성: 쓸 수 있다. 사람마다 하루 ${summary.dailyLimit}${unit}까지, 모델은 ${summary.model ?? "서버가 고른 모델"}이다.`
       : `${label} 생성: 이 교육에서는 쓰지 않는다. 요청받으면 도구를 찾거나 다른 서비스로 우회하지 않고 사용자에게 "이 교육에서는 ${label} 생성을 쓰지 않아요"라고 알린다.`;
   const only = config.image.enabled && !config.video.enabled ? ' 사용자에게는 "이 교육에서는 영상 생성을 쓰지 않아요, 이미지 생성만 가능해요"처럼 알린다.' : "";
-  return [line(config.image, "이미지", "장"), line(config.video, "영상", "개")].join("\n") + only;
+  const lines = [line(config.image, "이미지", "장"), line(config.video, "영상", "개") + only];
+  if (config.mediaSubmit) {
+    lines.push("미디어 제출: 만든 이미지와 영상은 list_my_media로 보고, 사용자가 미디어 모듈에 내 달라고 하면 prepare_media_submission으로 미리보기를 만들어 보여 준 뒤 사용자가 다음 메시지에서 승인하면 submit_media_submission으로 제출한다. 모듈은 늘 사용자가 고른다.");
+  }
+  return lines.join("\n");
 }

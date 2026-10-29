@@ -26147,6 +26147,103 @@ function fileLink(file2) {
 }
 var LINK_NOTE = "\uB2F5\uBCC0\uC5D0\uB294 \uACB0\uACFC\uC758 \uD30C\uC77C_\uB9C1\uD06C(\uB9C8\uD06C\uB2E4\uC6B4 \uB9C1\uD06C)\uB97C \uAE00\uC790 \uD558\uB098 \uBC14\uAFB8\uC9C0 \uC54A\uACE0 \uADF8\uB300\uB85C \uBD99\uC5EC \uBCF4\uC5EC \uC900\uB2E4. \uCF54\uB4DC \uAE00\uC528(\uBC31\uD2F1)\uB85C \uAC10\uC2F8\uAC70\uB098 \uC774\uB984\uC744 \uC904\uC774\uAC70\uB098(\u2026) \uACBD\uB85C\uB97C \uB530\uB85C \uD480\uC5B4 \uC4F0\uC9C0 \uC54A\uB294\uB2E4.";
 
+// mcp/media-submit.ts
+var MEDIA_SUBMIT_TITLE_MAX = 120;
+var MEDIA_SUBMIT_SUMMARY_MAX = 120;
+var MEDIA_SUBMIT_MAX_LIMIT = 30;
+var MEDIA_CLAUDE_LIMIT_DEFAULT = 20;
+var MEDIA_CLAUDE_LIMIT_MAX = 50;
+var MEDIA_KINDS = ["image", "video"];
+var MEDIA_MODULE_UNITS = ["any", "person", "team"];
+var uuid5 = external_exports.string().uuid();
+var KIND_LABEL = { image: "\uC774\uBBF8\uC9C0", video: "\uC601\uC0C1" };
+var UNIT_LABEL = { any: "\uAC1C\uC778 \uB610\uB294 \uC870", person: "\uAC1C\uC778", team: "\uC870" };
+var Education = external_exports.looseObject({ id: uuid5, name: external_exports.string(), ended: external_exports.boolean(), endedAt: external_exports.string().nullable().optional() });
+var MediaItem = external_exports.looseObject({
+  id: uuid5,
+  kind: external_exports.enum(MEDIA_KINDS),
+  prompt: external_exports.string(),
+  model: external_exports.string(),
+  createdAt: external_exports.string(),
+  size: external_exports.string().nullable(),
+  durationSeconds: external_exports.number().int().nullable(),
+  resolution: external_exports.string().nullable(),
+  aspectRatio: external_exports.string().nullable(),
+  width: external_exports.number().int().nullable(),
+  height: external_exports.number().int().nullable(),
+  bytes: external_exports.number().nullable(),
+  submissions: external_exports.array(external_exports.looseObject({ submissionId: uuid5, moduleId: uuid5, moduleName: external_exports.string() }))
+});
+var MediaList = external_exports.looseObject({ education: Education, items: external_exports.array(MediaItem), nextCursor: external_exports.string().nullable() });
+var MediaEducations = external_exports.looseObject({ educations: external_exports.array(Education), guide: external_exports.string().optional() });
+function mediaEducationFact(education) {
+  return { id: education.id, \uC774\uB984: education.name, \uC885\uB8CC\uB428: education.ended };
+}
+var ModuleOption = external_exports.looseObject({
+  key: external_exports.string(),
+  name: external_exports.string(),
+  unit: external_exports.enum(MEDIA_MODULE_UNITS),
+  mediaMin: external_exports.number().int().min(1),
+  mediaMax: external_exports.number().int().min(1),
+  closesAt: external_exports.string()
+});
+var MediaDraftAnswer = external_exports.discriminatedUnion("status", [
+  external_exports.looseObject({ status: external_exports.literal("module-required"), message: external_exports.string(), modules: external_exports.array(ModuleOption) }),
+  external_exports.looseObject({ status: external_exports.literal("team-required"), message: external_exports.string(), module: ModuleOption, teams: external_exports.array(external_exports.looseObject({ id: uuid5, name: external_exports.string() })) }),
+  external_exports.looseObject({
+    status: external_exports.literal("draft"),
+    draftId: external_exports.string().min(40),
+    expiresAt: external_exports.string(),
+    module: ModuleOption,
+    owner: external_exports.looseObject({ kind: external_exports.enum(["person", "team"]), name: external_exports.string() }),
+    title: external_exports.string(),
+    summary: external_exports.string(),
+    media: external_exports.array(external_exports.looseObject({ id: uuid5, kind: external_exports.enum(MEDIA_KINDS), position: external_exports.number().int(), representative: external_exports.boolean(), prompt: external_exports.string(), model: external_exports.string(), ownerName: external_exports.string().nullable() })),
+    message: external_exports.string()
+  })
+]);
+var MediaSubmitted = external_exports.looseObject({
+  submitted: external_exports.literal(true),
+  alreadySubmitted: external_exports.boolean(),
+  submissionId: uuid5,
+  module: external_exports.looseObject({ key: external_exports.string(), name: external_exports.string() }),
+  title: external_exports.string(),
+  mediaCount: external_exports.number().int(),
+  url: external_exports.string(),
+  message: external_exports.string()
+});
+function mediaQuery(values) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) if (value !== void 0) query.set(key, String(value));
+  const text = query.toString();
+  return text === "" ? "" : `?${text}`;
+}
+function mediaItemFact(item) {
+  const format = item.kind === "image" ? { \uD06C\uAE30: item.size ?? (item.width !== null && item.height !== null ? `${item.width}x${item.height}` : null) } : { \uAE38\uC774_\uCD08: item.durationSeconds, \uD574\uC0C1\uB3C4: item.resolution, \uD654\uBA74_\uBE44\uC728: item.aspectRatio };
+  return {
+    id: item.id,
+    \uC885\uB958: KIND_LABEL[item.kind],
+    \uD504\uB86C\uD504\uD2B8: item.prompt,
+    \uBAA8\uB378: item.model,
+    \uB9CC\uB4E0_\uC2DC\uAC01: koreanTime(item.createdAt),
+    ...format,
+    ...item.bytes === null ? {} : { \uD30C\uC77C_\uD06C\uAE30_\uBC14\uC774\uD2B8: item.bytes },
+    \uC81C\uCD9C\uD55C_\uBAA8\uB4C8: item.submissions.map((submission) => submission.moduleName)
+  };
+}
+function moduleOptionFact(option) {
+  return { key: option.key, \uC774\uB984: option.name, \uC81C\uCD9C_\uB2E8\uC704: UNIT_LABEL[option.unit], \uCD5C\uC18C: option.mediaMin, \uCD5C\uB300: option.mediaMax, \uB9C8\uAC10: koreanTime(option.closesAt) };
+}
+var MODULE_ASK_INSTRUCTIONS = '\uBAA8\uB4C8 \uBAA9\uB85D(\uC774\uB984, \uAC1C\uC218 \uBC94\uC704, \uC81C\uCD9C \uB2E8\uC704, \uB9C8\uAC10)\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 "\uC5B4\uB290 \uBAA8\uB4C8\uC5D0 \uB0BC\uAE4C\uC694?"\uB77C\uACE0 \uBB3B\uACE0 \uC751\uB2F5\uC744 \uB05D\uB0B8\uB2E4. \uBAA8\uB4C8\uC774 \uD558\uB098\uBFD0\uC774\uC5B4\uB3C4 \uB300\uC2E0 \uACE0\uB974\uC9C0 \uC54A\uACE0 \uC0AC\uC6A9\uC790\uAC00 \uD655\uC778\uD558\uAC8C \uD55C\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB974\uBA74 \uAC19\uC740 \uB0B4\uC6A9\uACFC \uACE0\uB978 \uBAA8\uB4C8\uC758 key\uB97C moduleKey\uB85C \uB123\uC5B4 prepare_media_submission\uC744 \uB2E4\uC2DC \uD638\uCD9C\uD55C\uB2E4. \uC544\uBB34\uAC83\uB3C4 \uC81C\uCD9C\uD558\uC9C0 \uC54A\uC558\uB2E4.';
+var TEAM_ASK_INSTRUCTIONS = '\uC870 \uBAA9\uB85D(\uC774\uB984)\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 "\uC5B4\uB290 \uC870 \uBA85\uC758\uB85C \uB0BC\uAE4C\uC694?"\uB77C\uACE0 \uBB3B\uACE0 \uC751\uB2F5\uC744 \uB05D\uB0B8\uB2E4. \uB300\uC2E0 \uACE0\uB974\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB974\uBA74 \uAC19\uC740 \uB0B4\uC6A9\uC5D0 \uADF8 \uC870\uC758 id\uB97C owner\uB85C \uB123\uC5B4 prepare_media_submission\uC744 \uB2E4\uC2DC \uD638\uCD9C\uD55C\uB2E4. \uC544\uBB34\uAC83\uB3C4 \uC81C\uCD9C\uD558\uC9C0 \uC54A\uC558\uB2E4.';
+var DRAFT_INSTRUCTIONS = [
+  "\uBBF8\uB9AC\uBCF4\uAE30(\uBAA8\uB4C8, \uC81C\uCD9C \uBA85\uC758, \uC81C\uBAA9, \uD55C \uC904 \uC18C\uAC1C, \uBBF8\uB514\uC5B4 \uC21C\uC11C\uC640 \uD504\uB86C\uD504\uD2B8, \uB300\uD45C)\uB97C \uACE0\uCCD0 \uC4F0\uC9C0 \uB9D0\uACE0 \uADF8\uB300\uB85C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC900\uB2E4. \uCCAB \uBC88\uC9F8 \uBBF8\uB514\uC5B4\uAC00 \uB300\uD45C\uB2E4",
+  '"\uC774\uB300\uB85C \uBAA8\uB4C8\uC5D0 \uC81C\uCD9C\uD560\uAE4C\uC694?"\uB77C\uACE0 \uBB3B\uACE0 \uC751\uB2F5\uC744 \uB05D\uB0B8\uB2E4',
+  "\uC0AC\uC6A9\uC790\uAC00 \uB2E4\uC74C \uBA54\uC2DC\uC9C0\uC5D0\uC11C \uBD84\uBA85\uD788 \uC2B9\uC778\uD560 \uB54C\uB9CC \uC774 draftId\uC640 approvedByUser: true\uB85C submit_media_submission\uC744 \uD638\uCD9C\uD55C\uB2E4",
+  '\uC774 \uD750\uB984\uC744 \uC2DC\uC791\uD55C "\uC81C\uCD9C\uD574\uC918" \uAC19\uC740 \uC694\uCCAD\uC740 \uBBF8\uB9AC\uBCF4\uAE30 \uC2B9\uC778\uC774 \uC544\uB2C8\uB2E4. \uC2B9\uC778 \uC804\uC5D0\uB294 \uC81C\uCD9C\uD558\uC9C0 \uC54A\uB294\uB2E4',
+  "\uC0AC\uC6A9\uC790\uAC00 \uACE0\uB974\uAC70\uB098 \uC21C\uC11C, \uC81C\uBAA9\uC744 \uACE0\uCCD0 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uACE0\uCE5C \uB0B4\uC6A9\uC73C\uB85C prepare_media_submission\uC744 \uB2E4\uC2DC \uD638\uCD9C\uD574 \uC0C8 \uBBF8\uB9AC\uBCF4\uAE30\uC640 \uC0C8 draftId\uB97C \uBC1B\uB294\uB2E4. \uC774\uC804 draftId\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4"
+];
+
 // mcp/tools-config.ts
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -26161,7 +26258,9 @@ var ToolsConfigSchema = external_exports.strictObject({
   version: external_exports.literal(1),
   groups: external_exports.array(external_exports.enum(TOOL_GROUP_IDS)).max(TOOL_GROUP_IDS.length),
   image: MediaSummary,
-  video: MediaSummary
+  video: MediaSummary,
+  /** 미디어 제출 도구(list_my_media, prepare_media_submission, submit_media_submission)를 등록하는가(0.49.0). 구성 요소가 아닌 파생 묶음이라 groups에 없다 */
+  mediaSubmit: external_exports.boolean()
 });
 function parseToolsConfig(raw) {
   try {
@@ -26185,6 +26284,7 @@ function toolsConfig(file2) {
 }
 function toolGroupEnabled(config2, group) {
   if (config2 === null) return true;
+  if (group === "media-submit") return config2.mediaSubmit;
   return group === "base" ? config2.groups.length > 0 : config2.groups.includes(group);
 }
 function mediaToolNote(summary, unit, label) {
@@ -26196,7 +26296,11 @@ function toolsInstructions(config2) {
   if (config2 === null) return null;
   const line = (summary, label, unit) => summary.enabled ? `${label} \uC0DD\uC131: \uC4F8 \uC218 \uC788\uB2E4. \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8 ${summary.dailyLimit}${unit}\uAE4C\uC9C0, \uBAA8\uB378\uC740 ${summary.model ?? "\uC11C\uBC84\uAC00 \uACE0\uB978 \uBAA8\uB378"}\uC774\uB2E4.` : `${label} \uC0DD\uC131: \uC774 \uAD50\uC721\uC5D0\uC11C\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uC694\uCCAD\uBC1B\uC73C\uBA74 \uB3C4\uAD6C\uB97C \uCC3E\uAC70\uB098 \uB2E4\uB978 \uC11C\uBE44\uC2A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694"\uB77C\uACE0 \uC54C\uB9B0\uB2E4.`;
   const only = config2.image.enabled && !config2.video.enabled ? ' \uC0AC\uC6A9\uC790\uC5D0\uAC8C\uB294 "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 \uC601\uC0C1 \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694, \uC774\uBBF8\uC9C0 \uC0DD\uC131\uB9CC \uAC00\uB2A5\uD574\uC694"\uCC98\uB7FC \uC54C\uB9B0\uB2E4.' : "";
-  return [line(config2.image, "\uC774\uBBF8\uC9C0", "\uC7A5"), line(config2.video, "\uC601\uC0C1", "\uAC1C")].join("\n") + only;
+  const lines = [line(config2.image, "\uC774\uBBF8\uC9C0", "\uC7A5"), line(config2.video, "\uC601\uC0C1", "\uAC1C") + only];
+  if (config2.mediaSubmit) {
+    lines.push("\uBBF8\uB514\uC5B4 \uC81C\uCD9C: \uB9CC\uB4E0 \uC774\uBBF8\uC9C0\uC640 \uC601\uC0C1\uC740 list_my_media\uB85C \uBCF4\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uBBF8\uB514\uC5B4 \uBAA8\uB4C8\uC5D0 \uB0B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 prepare_media_submission\uC73C\uB85C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uB9CC\uB4E4\uC5B4 \uBCF4\uC5EC \uC900 \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uB2E4\uC74C \uBA54\uC2DC\uC9C0\uC5D0\uC11C \uC2B9\uC778\uD558\uBA74 submit_media_submission\uC73C\uB85C \uC81C\uCD9C\uD55C\uB2E4. \uBAA8\uB4C8\uC740 \uB298 \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB978\uB2E4.");
+  }
+  return lines.join("\n");
 }
 
 // mcp/source-checkout.ts
@@ -38652,7 +38756,7 @@ function failureFacts(prefix, result, note) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.48.1";
+var PLUGIN_VERSION = "0.49.0";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || hubCredential()?.apiBase || "https://api.aible-campus.com";
@@ -39948,6 +40052,160 @@ groupServer("mcp-gallery").registerTool(
     return textResult({
       ...typeof result.body === "string" ? { \uC751\uB2F5: result.body } : result.body,
       instructions: "message\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC804\uD558\uACE0 \uD5C8\uBE0C \uC81C\uCD9C\uBB3C \uD398\uC774\uC9C0 url\uC744 \uC54C\uB824 \uC900\uB2E4. \uD30C\uC77C\uACFC \uBC1C\uD45C \uC790\uB8CC\uB294 \uADF8 \uD398\uC774\uC9C0\uC5D0\uC11C \uB354\uD55C\uB2E4\uACE0 \uC548\uB0B4\uD55C\uB2E4."
+    });
+  }
+);
+var MediaEducationInput = external_exports.string().uuid().describe("\uAD50\uC721 id(list_my_media \uACB0\uACFC\uC758 \uAD50\uC721 id). \uBBF8\uB514\uC5B4\uB97C \uC81C\uCD9C\uD560 \uAD50\uC721\uC744 \uC0AC\uC6A9\uC790\uAC00 \uC815\uD55C \uB300\uB85C \uC4F0\uACE0 \uB300\uC2E0 \uACE0\uB974\uC9C0 \uC54A\uB294\uB2E4");
+groupServer("media-submit").registerTool(
+  "list_my_media",
+  {
+    title: "\uB0B4 \uC774\uBBF8\uC9C0\xB7\uC601\uC0C1(\uBBF8\uB514\uC5B4) \uBAA9\uB85D",
+    description: "\uC0AC\uC6A9\uC790 \uBCF8\uC778\uC774 \uC774 \uD50C\uB7EC\uADF8\uC778\uC758 generate_image, generate_video\uB85C \uB9CC\uB4E4\uC5B4 \uD5C8\uBE0C \uBBF8\uB514\uC5B4 \uBCF4\uAD00\uD568\uC5D0 \uC800\uC7A5\uB41C \uC644\uB8CC\uB41C \uC774\uBBF8\uC9C0\xB7\uC601\uC0C1\uC744 \uCD5C\uC2E0\uC21C\uC73C\uB85C \uC870\uD68C\uD55C\uB2E4(id, \uC885\uB958, \uD504\uB86C\uD504\uD2B8, \uBAA8\uB378, \uB9CC\uB4E0 \uC2DC\uAC01, \uC774\uBBF8\uC9C0 \uD06C\uAE30\uB098 \uC601\uC0C1 \uAE38\uC774, \uC774\uBBF8 \uC81C\uCD9C\uD55C \uBAA8\uB4C8). kind\uB85C \uC774\uBBF8\uC9C0\uB098 \uC601\uC0C1\uB9CC \uAC78\uB7EC \uBCFC \uC218 \uC788\uB2E4. \uBCF8\uC778 \uAC83\uB9CC \uBCF4\uC774\uACE0 \uB2E4\uB978 \uCC38\uAC00\uC790, \uC870\uC6D0, \uC6B4\uC601\uC9C4 \uBCF4\uAE30\uB294 \uC5C6\uB2E4. \uD30C\uC77C \uC790\uCCB4\uB098 \uC8FC\uC18C\uB294 \uC8FC\uC9C0 \uC54A\uACE0 \uC81C\uCD9C\uC740 id\uB85C \uD55C\uB2E4. \uAD50\uC721 id(educationId)\uB97C \uC0DD\uB7B5\uD558\uBA74 \uBBF8\uB514\uC5B4\uB97C \uC81C\uCD9C\uD560 \uC218 \uC788\uB294(\uBCF8\uC778\uC774 \uCC38\uAC00\uC790\uC774\uACE0 \uC9C4\uD589 \uC911\uC774\uBA70 \uC774\uBBF8\uC9C0\xB7\uC601\uC0C1 \uC0DD\uC131\uACFC \uAC24\uB7EC\uB9AC\uB97C \uC4F0\uB294) \uAD50\uC721 \uBAA9\uB85D\uC744 \uBC1B\uB294\uB2E4. \uADF8\uB7F0 \uAD50\uC721\uC774 \uD558\uB098\uBFD0\uC774\uBA74 \uBB3B\uC9C0 \uC54A\uACE0 \uADF8 \uAD50\uC721\uC758 \uBBF8\uB514\uC5B4\uB97C \uBC14\uB85C \uBCF4\uC5EC \uC8FC\uACE0, \uC5EC\uB7FF\uC774\uBA74 \uAD50\uC721 \uBAA9\uB85D\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB978 \uAD50\uC721\uC758 id\uB97C educationId\uB85C \uB123\uC5B4 \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uC5EC\uB7FF\uC77C \uB54C \uB300\uC2E0 \uACE0\uB974\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uBBF8\uB514\uC5B4\uB97C \uBAA8\uB4C8\uC5D0 \uC81C\uCD9C\uD574 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uBAA9\uB85D\uC5D0\uC11C \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB978 id\uB85C prepare_media_submission\uC744 \uBD80\uB974\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uB2E4\uC74C \uBA54\uC2DC\uC9C0\uC5D0\uC11C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uC2B9\uC778\uD55C \uB4A4\uC5D0\uB9CC submit_media_submission\uC73C\uB85C \uC81C\uCD9C\uD55C\uB2E4. \uC6B4\uC601\uC9C4 \uACC4\uC815\uC740 \uAC70\uC808\uB41C\uB2E4.",
+    inputSchema: {
+      educationId: external_exports.string().uuid().optional().describe("\uBBF8\uB514\uC5B4\uB97C \uBCFC \uAD50\uC721\uC758 id. \uC0DD\uB7B5\uD558\uBA74 \uC81C\uCD9C\uD560 \uC218 \uC788\uB294 \uAD50\uC721 \uBAA9\uB85D\uC744 \uBC1B\uACE0, \uD558\uB098\uBFD0\uC774\uBA74 \uADF8 \uAD50\uC721\uC758 \uBBF8\uB514\uC5B4\uB97C \uBC14\uB85C \uBC1B\uB294\uB2E4. \uAD50\uC721 \uC0AC\uC774\uB97C \uD569\uCE5C \uBAA9\uB85D\uC740 \uC5C6\uB2E4"),
+      kind: external_exports.enum(MEDIA_KINDS).optional().describe("image(\uC774\uBBF8\uC9C0)\uB098 video(\uC601\uC0C1)\uB9CC \uBCF4\uB824\uBA74 \uB123\uB294\uB2E4. \uC0DD\uB7B5\uD558\uBA74 \uB458 \uB2E4"),
+      limit: external_exports.number().int().min(1).max(MEDIA_CLAUDE_LIMIT_MAX).optional().describe(`\uD55C \uBC88\uC5D0 \uBC1B\uC744 \uAC1C\uC218(\uAE30\uBCF8 ${MEDIA_CLAUDE_LIMIT_DEFAULT}, \uCD5C\uB300 ${MEDIA_CLAUDE_LIMIT_MAX})`),
+      cursor: external_exports.string().min(1).max(200).optional().describe("\uC9C1\uC804 \uACB0\uACFC\uC758 \uB2E4\uC74C_\uCABD_cursor. \uB2E4\uC74C \uCABD\uC744 \uBC1B\uC744 \uB54C\uB9CC \uB123\uB294\uB2E4")
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+  },
+  async ({ educationId, kind, limit, cursor }) => {
+    let education = educationId;
+    if (education === void 0) {
+      const found = await callApi("/v1/media/educations");
+      if (!found.ok) return failure("\uBBF8\uB514\uC5B4\uB97C \uC81C\uCD9C\uD560 \uC218 \uC788\uB294 \uAD50\uC721\uC744 \uC870\uD68C\uD558\uC9C0 \uBABB\uD588\uB2E4", found);
+      const educations = MediaEducations.safeParse(found.body);
+      if (!educations.success) return errorResult("\uAD50\uC721 \uC751\uB2F5\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4. \uD50C\uB7EC\uADF8\uC778\uC744 \uCD5C\uC2E0 \uBC84\uC804\uC73C\uB85C \uAC31\uC2E0\uD55C \uB4A4 \uB2E4\uC2DC \uD55C\uB2E4.");
+      if (educations.data.educations.length === 0) {
+        return textResult({ \uAD50\uC721: [], instructions: "\uBBF8\uB514\uC5B4\uB97C \uC81C\uCD9C\uD560 \uC218 \uC788\uB294 \uAD50\uC721\uC774 \uC5C6\uB2E4. \uBCF8\uC778\uC774 \uCC38\uAC00\uC790\uB85C \uC18D\uD55C \uC9C4\uD589 \uC911\uC778 \uAD50\uC721\uC5D0\uC11C \uC774\uBBF8\uC9C0\xB7\uC601\uC0C1 \uC0DD\uC131\uACFC \uAC24\uB7EC\uB9AC\uB97C \uC4F0\uC9C0 \uC54A\uAC70\uB098 \uCC38\uC5EC \uC911\uC778 \uAD50\uC721\uC774 \uC5C6\uB2E4\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4." });
+      }
+      if (educations.data.educations.length > 1) {
+        return textResult({
+          \uAD50\uC721: educations.data.educations.map(mediaEducationFact),
+          instructions: "\uAD50\uC721 \uBAA9\uB85D\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 \uC5B4\uB290 \uAD50\uC721\uC758 \uBBF8\uB514\uC5B4\uB97C \uBCFC\uC9C0 \uBB3B\uACE0 \uC751\uB2F5\uC744 \uB05D\uB0B8\uB2E4. \uB300\uC2E0 \uACE0\uB974\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB974\uBA74 \uADF8 \uAD50\uC721\uC758 id\uB97C educationId\uB85C \uB123\uC5B4 list_my_media\uB97C \uB2E4\uC2DC \uBD80\uB978\uB2E4."
+        });
+      }
+      education = educations.data.educations[0].id;
+    }
+    const result = await callApi(`/v1/media/educations/${encodeURIComponent(education)}/items${mediaQuery({ kind, limit, cursor })}`);
+    if (!result.ok) return failure("\uB0B4 \uBBF8\uB514\uC5B4\uB97C \uC870\uD68C\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
+    const parsed = MediaList.safeParse(result.body);
+    if (!parsed.success) return errorResult("\uBBF8\uB514\uC5B4 \uC751\uB2F5\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4. \uD50C\uB7EC\uADF8\uC778\uC744 \uCD5C\uC2E0 \uBC84\uC804\uC73C\uB85C \uAC31\uC2E0\uD55C \uB4A4 \uB2E4\uC2DC \uD55C\uB2E4.");
+    const { education: shown, items, nextCursor } = parsed.data;
+    return textResult({
+      \uAD50\uC721: mediaEducationFact(shown),
+      \uBBF8\uB514\uC5B4: items.map(mediaItemFact),
+      \uB2E4\uC74C_\uCABD_cursor: nextCursor,
+      instructions: [
+        items.length === 0 ? "\uC81C\uCD9C\uD560 \uC218 \uC788\uB294 \uBBF8\uB514\uC5B4\uAC00 \uC5C6\uB2E4. \uC774 \uAD50\uC721\uC5D0\uC11C \uC644\uB8CC\uB41C \uC774\uBBF8\uC9C0\uB098 \uC601\uC0C1\uC774 \uC544\uC9C1 \uC5C6\uB2E4\uACE0 \uC54C\uB9AC\uACE0 generate_image\uB098 generate_video\uB85C \uB9CC\uB4E4 \uC218 \uC788\uB2E4\uACE0 \uC548\uB0B4\uD55C\uB2E4" : "\uC0AC\uC6A9\uC790\uAC00 \uC81C\uCD9C\uC744 \uC6D0\uD558\uBA74 \uBBF8\uB514\uC5B4\uB97C \uACE0\uB974\uAC8C \uD55C\uB2E4. \uAC19\uC740 \uBBF8\uB514\uC5B4\uB97C \uC5EC\uB7EC \uBAA8\uB4C8\uC5D0 \uB0BC \uC218 \uC788\uACE0 \uC81C\uCD9C\uD55C_\uBAA8\uB4C8\uC774 \uC774\uBBF8 \uB0B8 \uBAA8\uB4C8\uC774\uB2E4",
+        "\uBBF8\uB514\uC5B4 \uC81C\uCD9C\uC740 prepare_media_submission(educationId, mediaIds, title)\uC73C\uB85C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uB9CC\uB4E4\uC5B4 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uB2E4\uC74C \uBA54\uC2DC\uC9C0\uC5D0\uC11C \uC2B9\uC778\uD558\uBA74 submit_media_submission\uC73C\uB85C \uD55C\uB2E4. \uC81C\uCD9C \uBAA8\uB4C8\uC740 \uB298 \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB978\uB2E4",
+        ...nextCursor === null ? [] : ["\uB2E4\uC74C \uCABD\uC774 \uB354 \uC788\uB2E4. \uD544\uC694\uD560 \uB54C\uB9CC \uB2E4\uC74C_\uCABD_cursor\uB97C cursor\uB85C \uB123\uC5B4 \uB2E4\uC2DC \uBD80\uB978\uB2E4"]
+      ]
+    });
+  }
+);
+groupServer("media-submit").registerTool(
+  "prepare_media_submission",
+  {
+    title: "\uBBF8\uB514\uC5B4 \uC81C\uCD9C \uBBF8\uB9AC\uBCF4\uAE30",
+    description: '\uC0AC\uC6A9\uC790\uAC00 \uB9CC\uB4E0 \uC774\uBBF8\uC9C0\xB7\uC601\uC0C1(list_my_media\uC758 id)\uC744 \uAD50\uC721\uC758 \uBBF8\uB514\uC5B4 \uBAA8\uB4C8\uC5D0 \uC81C\uCD9C\uD574 \uB2EC\uB77C\uACE0 \uD560 \uB54C \uC81C\uCD9C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uB9CC\uB4E0\uB2E4. \uC774 \uD638\uCD9C\uC740 \uC544\uBB34\uAC83\uB3C4 \uC81C\uCD9C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC81C\uBAA9(title)\uC740 \uD544\uC218\uC774\uACE0 \uD55C \uC904 \uC18C\uAC1C(summary)\uB294 \uC120\uD0DD\uC774\uB2E4. \uC81C\uBAA9\uACFC \uC18C\uAC1C\uB294 \uC0AC\uC6A9\uC790\uAC00 \uB9D0\uD55C \uB0B4\uC6A9\uC774\uB098 \uACE0\uB978 \uBBF8\uB514\uC5B4\uC758 \uD504\uB86C\uD504\uD2B8\uB85C \uC9E7\uAC8C \uC4F0\uACE0 \uC0AC\uC2E4\uB9CC \uC4F4\uB2E4. mediaIds\uC758 \uC21C\uC11C\uAC00 \uBCF4\uC774\uB294 \uC21C\uC11C\uC774\uACE0 \uCCAB \uBC88\uC9F8\uAC00 \uB300\uD45C\uB2E4. \uBBF8\uB514\uC5B4 \uAC1C\uC218\uB294 \uBAA8\uB4C8 \uC124\uC815\uC758 \uCD5C\uC18C\uC640 \uCD5C\uB300 \uC548\uC774\uC5B4\uC57C \uD558\uACE0 \uAC19\uC740 \uBBF8\uB514\uC5B4\uB97C \uB450 \uBC88 \uACE0\uB974\uC9C0 \uBABB\uD55C\uB2E4. \uAC1C\uC778 \uBA85\uC758\uB294 \uBCF8\uC778\uC774 \uB9CC\uB4E0 \uC644\uB8CC\uB41C \uBBF8\uB514\uC5B4\uB9CC, \uC870 \uBA85\uC758 \uBAA8\uB4C8\uC740 \uC870\uC6D0\uC774 \uB9CC\uB4E0 \uAC83\uB3C4 \uACE0\uB97C \uC218 \uC788\uB2E4. \uAC19\uC740 \uBBF8\uB514\uC5B4\uB97C \uC5EC\uB7EC \uBAA8\uB4C8\uC5D0 \uB0BC \uC218 \uC788\uB2E4. \uC81C\uCD9C \uBAA8\uB4C8\uC740 \uD56D\uC0C1 \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB978\uB2E4: moduleKey\uB97C \uC0DD\uB7B5\uD558\uAC70\uB098 \uBAA8\uB974\uB294 key\uB97C \uB123\uC73C\uBA74 \uC9C0\uAE08 \uB0BC \uC218 \uC788\uB294 \uBBF8\uB514\uC5B4 \uBAA8\uB4C8 \uBAA9\uB85D(key, \uC774\uB984, \uAC1C\uC218 \uBC94\uC704, \uC81C\uCD9C \uB2E8\uC704, \uB9C8\uAC10)\uB9CC \uB3CC\uB824\uC8FC\uACE0 \uC544\uBB34\uAC83\uB3C4 \uB9CC\uB4E4\uC9C0 \uC54A\uB294\uB2E4. \uC774 \uACBD\uC6B0 \uBAA8\uB4C8\uC774 \uD558\uB098\uBFD0\uC774\uC5B4\uB3C4 \uB300\uC2E0 \uACE0\uB974\uC9C0 \uC54A\uACE0 \uBAA9\uB85D\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 "\uC5B4\uB290 \uBAA8\uB4C8\uC5D0 \uB0BC\uAE4C\uC694?"\uB77C\uACE0 \uBB3C\uC740 \uB4A4 \uC751\uB2F5\uC744 \uB05D\uB0B8\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC694\uCCAD\uC5D0\uC11C \uBAA8\uB4C8 \uC774\uB984\uC744 \uBD84\uBA85\uD788 \uB9D0\uD588\uC73C\uBA74 \uADF8 \uBAA8\uB4C8\uC758 key\uB97C \uC4F4\uB2E4. \uC870 \uBA85\uC758 \uBAA8\uB4C8\uC740 \uC870\uB97C \uC815\uD574\uC57C \uD558\uACE0 owner\uC5D0 \uC870 id\uB97C \uB123\uB294\uB2E4(\uC870\uAC00 \uD558\uB098\uBFD0\uC774\uBA74 \uC11C\uBC84\uAC00 \uADF8 \uC870\uB85C \uD558\uACE0 \uBBF8\uB9AC\uBCF4\uAE30\uC5D0 \uC774\uB984\uC774 \uB098\uC624\uBA70, \uC5EC\uB7FF\uC774\uBA74 \uC870 \uBAA9\uB85D\uC744 \uC8FC\uBBC0\uB85C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uB294\uB2E4). \uAC1C\uC778 \uBA85\uC758\uB294 owner\uB97C \uC0DD\uB7B5\uD558\uAC70\uB098 "person"\uC774\uB2E4. \uACB0\uACFC\uC758 \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uBCF4\uC5EC \uC8FC\uACE0 "\uC774\uB300\uB85C \uC81C\uCD9C\uD560\uAE4C\uC694?"\uB77C\uACE0 \uBB3B\uACE0 \uC751\uB2F5\uC744 \uB05D\uB0B8\uB2E4. \uC81C\uCD9C \uD655\uC815\uC740 \uC0AC\uC6A9\uC790\uAC00 \uB2E4\uC74C \uBA54\uC2DC\uC9C0\uC5D0\uC11C \uBD84\uBA85\uD788 \uC2B9\uC778\uD55C \uB4A4 submit_media_submission\uC73C\uB85C\uB9CC \uD55C\uB2E4. \uC774 \uB3C4\uAD6C\uAC00 \uC4F0\uB294 \uBAA8\uB4C8 \uAC1C\uC218 \uBC94\uC704, \uC18C\uC720, \uAE30\uAC04 \uADDC\uCE59\uC740 \uD5C8\uBE0C \uD654\uBA74 \uC81C\uCD9C\uACFC \uAC19\uB2E4.',
+    inputSchema: {
+      educationId: MediaEducationInput,
+      moduleKey: external_exports.string().trim().min(1).max(24).optional().describe("\uB0BC \uBBF8\uB514\uC5B4 \uBAA8\uB4C8\uC758 key. \uC5F4\uB9B0 \uBAA8\uB4C8\uC774 \uD558\uB098\uBFD0\uC774\uC5B4\uB3C4 \uB300\uC2E0 \uACE0\uB974\uC9C0 \uC54A\uB294\uB2E4. \uCC98\uC74C\uC5D0\uB294 \uC0DD\uB7B5\uD574 \uBAA8\uB4C8 \uBAA9\uB85D\uC744 \uBC1B\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBAA9\uB85D\uC5D0\uC11C \uACE0\uB978 \uB4A4(\uB610\uB294 \uC0AC\uC6A9\uC790\uAC00 \uC694\uCCAD\uC5D0\uC11C \uBAA8\uB4C8 \uC774\uB984\uC744 \uBD84\uBA85\uD788 \uB9D0\uD588\uC73C\uBA74 \uADF8 \uBAA8\uB4C8\uC758 key)\uC5D0\uB9CC \uB123\uB294\uB2E4"),
+      mediaIds: external_exports.array(external_exports.string().uuid()).min(1).max(MEDIA_SUBMIT_MAX_LIMIT).describe(`\uC81C\uCD9C\uD560 \uBBF8\uB514\uC5B4 id(list_my_media \uACB0\uACFC\uC758 id, \uCD5C\uB300 ${MEDIA_SUBMIT_MAX_LIMIT}\uAC1C). \uC21C\uC11C\uB300\uB85C \uBCF4\uC774\uACE0 \uCCAB \uBC88\uC9F8\uAC00 \uB300\uD45C\uB2E4. \uAC19\uC740 id\uB97C \uB450 \uBC88 \uB123\uC9C0 \uC54A\uB294\uB2E4`),
+      title: external_exports.string().trim().min(1).max(MEDIA_SUBMIT_TITLE_MAX).describe(`\uC81C\uCD9C\uBB3C \uC81C\uBAA9(${MEDIA_SUBMIT_TITLE_MAX}\uC790 \uC774\uD558). \uD544\uC218`),
+      summary: external_exports.string().trim().max(MEDIA_SUBMIT_SUMMARY_MAX).optional().describe(`\uAC24\uB7EC\uB9AC \uCE74\uB4DC\uC5D0 \uBCF4\uC774\uB294 \uD55C \uC904 \uC18C\uAC1C(${MEDIA_SUBMIT_SUMMARY_MAX}\uC790 \uC774\uD558). \uC120\uD0DD`),
+      owner: external_exports.string().regex(/^(person|[0-9a-fA-F-]{36})$/).optional().describe('\uC81C\uCD9C \uBA85\uC758. "person"(\uBCF8\uC778) \uB610\uB294 \uC870 id(\uC870 \uBA85\uC758 \uBAA8\uB4C8\uC5D0\uC11C team-required \uACB0\uACFC\uC758 \uC870 \uBAA9\uB85D id). \uC0DD\uB7B5\uD558\uBA74 \uBAA8\uB4C8\uC758 \uC81C\uCD9C \uB2E8\uC704\uAC00 \uC815\uD55C\uB2E4(\uC870\uB9CC \uBC1B\uB294 \uBAA8\uB4C8\uC740 \uC18C\uC18D \uC870\uAC00 \uD558\uB098\uC77C \uB54C \uADF8 \uC870, \uAC1C\uC778\uACFC \uC870\uB97C \uBAA8\uB450 \uBC1B\uB294 \uBAA8\uB4C8\uC740 \uAC1C\uC778)')
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
+  },
+  async ({ educationId, moduleKey, mediaIds, title, summary, owner }) => {
+    const result = await callApi(`/v1/media/educations/${encodeURIComponent(educationId)}/submission-drafts`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...moduleKey === void 0 ? {} : { moduleKey }, mediaIds, title, ...summary === void 0 || summary === "" ? {} : { summary }, ...owner === void 0 ? {} : { owner } })
+    });
+    if (!result.ok) return failure("\uBBF8\uB514\uC5B4 \uC81C\uCD9C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uB2E4", result, "\uC544\uBB34\uAC83\uB3C4 \uC81C\uCD9C\uD558\uC9C0 \uC54A\uC558\uB2E4");
+    const answer = MediaDraftAnswer.safeParse(result.body);
+    if (!answer.success) return errorResult("\uBBF8\uB514\uC5B4 \uC81C\uCD9C \uBBF8\uB9AC\uBCF4\uAE30 \uC751\uB2F5\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4. \uC544\uBB34\uAC83\uB3C4 \uC81C\uCD9C\uD558\uC9C0 \uC54A\uC558\uB2E4. \uD50C\uB7EC\uADF8\uC778\uC744 \uCD5C\uC2E0 \uBC84\uC804\uC73C\uB85C \uAC31\uC2E0\uD55C \uB4A4 \uB2E4\uC2DC \uD55C\uB2E4.");
+    if (answer.data.status === "module-required") {
+      return textResult({
+        \uC0C1\uD0DC: "\uBAA8\uB4C8 \uC120\uD0DD \uD544\uC694",
+        \uBA54\uC2DC\uC9C0: answer.data.message,
+        \uBAA8\uB4C8: answer.data.modules.map(moduleOptionFact),
+        instructions: answer.data.modules.length === 0 ? "\uC9C0\uAE08 \uBBF8\uB514\uC5B4\uB97C \uB0BC \uC218 \uC788\uB294 \uBAA8\uB4C8\uC774 \uC5C6\uB2E4\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9AC\uACE0 \uC751\uB2F5\uC744 \uB05D\uB0B8\uB2E4. \uC544\uBB34\uAC83\uB3C4 \uC81C\uCD9C\uD558\uC9C0 \uC54A\uC558\uB2E4." : MODULE_ASK_INSTRUCTIONS
+      });
+    }
+    if (answer.data.status === "team-required") {
+      return textResult({
+        \uC0C1\uD0DC: "\uC870 \uC120\uD0DD \uD544\uC694",
+        \uBA54\uC2DC\uC9C0: answer.data.message,
+        \uBAA8\uB4C8: moduleOptionFact(answer.data.module),
+        \uC870: answer.data.teams.map((team) => ({ id: team.id, \uC774\uB984: team.name })),
+        instructions: TEAM_ASK_INSTRUCTIONS
+      });
+    }
+    const draft = answer.data;
+    return textResult({
+      \uC0C1\uD0DC: "\uBBF8\uB9AC\uBCF4\uAE30(\uC544\uC9C1 \uC81C\uCD9C\uD558\uC9C0 \uC54A\uC74C)",
+      \uBBF8\uB9AC\uBCF4\uAE30: {
+        \uBAA8\uB4C8: moduleOptionFact(draft.module),
+        \uC81C\uCD9C_\uBA85\uC758: draft.owner.kind === "team" ? `\uC870: ${draft.owner.name}` : `\uAC1C\uC778: ${draft.owner.name}`,
+        \uC81C\uBAA9: draft.title,
+        \uD55C_\uC904_\uC18C\uAC1C: draft.summary,
+        \uBBF8\uB514\uC5B4: draft.media.map((item) => ({
+          \uC21C\uC11C: item.position,
+          ...item.representative ? { \uB300\uD45C: true } : {},
+          id: item.id,
+          \uC885\uB958: item.kind === "image" ? "\uC774\uBBF8\uC9C0" : "\uC601\uC0C1",
+          \uD504\uB86C\uD504\uD2B8: item.prompt,
+          \uBAA8\uB378: item.model,
+          ...item.ownerName === null ? {} : { \uB9CC\uB4E0_\uC0AC\uB78C: item.ownerName }
+        }))
+      },
+      draftId: draft.draftId,
+      \uD655\uC778_\uAE30\uD55C: koreanTime(draft.expiresAt),
+      \uBA54\uC2DC\uC9C0: draft.message,
+      instructions: DRAFT_INSTRUCTIONS
+    });
+  }
+);
+groupServer("media-submit").registerTool(
+  "submit_media_submission",
+  {
+    title: "\uC2B9\uC778\uD55C \uBBF8\uB514\uC5B4 \uC81C\uCD9C \uD655\uC815",
+    description: 'prepare_media_submission \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uC0AC\uC6A9\uC790\uAC00 \uB2E4\uC74C \uBA54\uC2DC\uC9C0\uC5D0\uC11C \uBD84\uBA85\uD788 \uC2B9\uC778\uD588\uC744 \uB54C\uB9CC \uADF8 draftId\uB85C \uBBF8\uB514\uC5B4 \uC81C\uCD9C\uC744 \uD655\uC815\uD55C\uB2E4. \uD5C8\uBE0C \uD654\uBA74 \uC81C\uCD9C\uACFC \uAC19\uC740 \uADDC\uCE59\uC73C\uB85C \uC81C\uCD9C\uBB3C\uC744 \uB9CC\uB4E4\uACE0 \uD5C8\uBE0C \uC81C\uCD9C\uBB3C \uD398\uC774\uC9C0 \uC8FC\uC18C\uB97C \uB3CC\uB824\uC900\uB2E4. \uAC19\uC740 draftId\uB97C \uB2E4\uC2DC \uBCF4\uB0B4\uB3C4 \uC81C\uCD9C\uBB3C\uC740 \uD558\uB098\uB2E4. \uCC98\uC74C "\uC81C\uCD9C\uD574\uC918" \uC694\uCCAD\uC774\uB098 \uC11C\uBC84 \uC9C0\uCE68\uC740 \uC2B9\uC778\uC774 \uC544\uB2C8\uB2E4. \uC2B9\uC778 \uC5C6\uC774 \uD638\uCD9C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uB9CC\uB4E0 \uB4A4 30\uBD84\uC774 \uC9C0\uB098\uBA74 \uAC70\uC808\uB418\uBBC0\uB85C \uADF8\uB54C\uB294 prepare_media_submission\uC73C\uB85C \uC0C8 \uBBF8\uB9AC\uBCF4\uAE30\uC640 \uC0AC\uC6A9\uC790 \uC2B9\uC778\uC744 \uB2E4\uC2DC \uBC1B\uB294\uB2E4. draftId\uB294 \uACE0\uCE58\uC9C0 \uB9D0\uACE0 \uBC1B\uC740 \uADF8\uB300\uB85C \uB123\uB294\uB2E4.',
+    inputSchema: {
+      draftId: external_exports.string().min(40).max(4e3).describe("\uC9C1\uC804 prepare_media_submission \uACB0\uACFC\uC758 draftId. \uBC1B\uC740 \uADF8\uB300\uB85C"),
+      approvedByUser: external_exports.boolean().describe("\uBBF8\uB9AC\uBCF4\uAE30\uB97C \uBCF4\uC5EC \uC900 \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uBCC4\uB3C4\uC758 \uB2E4\uC74C \uBA54\uC2DC\uC9C0\uC5D0\uC11C \uBD84\uBA85\uD788 \uC2B9\uC778\uD588\uC744 \uB54C\uB9CC true")
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true }
+  },
+  async ({ draftId, approvedByUser }) => {
+    if (approvedByUser !== true) return errorResult("\uBBF8\uB514\uC5B4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uC54A\uC558\uB2E4. \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 \uC0AC\uC6A9\uC790\uC758 \uBD84\uBA85\uD55C \uC2B9\uC778\uC744 \uBC1B\uC544\uC57C \uC81C\uCD9C\uD560 \uC218 \uC788\uB2E4.");
+    const result = await callApi("/v1/media/submissions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ draftId, approved: true })
+    });
+    if (!result.ok) {
+      if (result.status === 409 && typeof result.body === "object" && result.body["code"] === "draft-expired") {
+        return failure("\uBBF8\uB9AC\uBCF4\uAE30 \uD655\uC778 \uAE30\uD55C\uC774 \uC9C0\uB098 \uC81C\uCD9C\uD558\uC9C0 \uC54A\uC558\uB2E4", result, "\uB2E4\uC2DC \uB0B4\uB824\uBA74 prepare_media_submission\uC73C\uB85C \uC0C8 \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uB9CC\uB4E4\uACE0 \uC0AC\uC6A9\uC790 \uC2B9\uC778\uC744 \uB2E4\uC2DC \uBC1B\uC544\uC57C \uD55C\uB2E4");
+      }
+      return failure("\uBBF8\uB514\uC5B4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uBABB\uD588\uB2E4", result, "\uC81C\uCD9C\uB418\uC9C0 \uC54A\uC558\uB2E4. \uB2E4\uC2DC \uB0B4\uB824\uBA74 \uC0C8 \uBBF8\uB9AC\uBCF4\uAE30\uC640 \uC0AC\uC6A9\uC790 \uC2B9\uC778\uC774 \uD544\uC694\uD558\uB2E4");
+    }
+    const done = MediaSubmitted.safeParse(result.body);
+    if (!done.success) return errorResult("\uBBF8\uB514\uC5B4 \uC81C\uCD9C \uC751\uB2F5\uC744 \uC77D\uC9C0 \uBABB\uD588\uB2E4. \uC81C\uCD9C\uB410\uB294\uC9C0 \uD5C8\uBE0C \uB0B4 \uC81C\uCD9C\uBB3C\uC5D0\uC11C \uD655\uC778\uD574\uC57C \uD55C\uB2E4. \uD50C\uB7EC\uADF8\uC778\uC744 \uCD5C\uC2E0 \uBC84\uC804\uC73C\uB85C \uAC31\uC2E0\uD55C \uB4A4 \uB2E4\uC2DC \uD55C\uB2E4.");
+    return textResult({
+      \uC81C\uCD9C\uB428: true,
+      ...done.data.alreadySubmitted ? { \uC774\uBBF8_\uC81C\uCD9C\uD55C_\uBBF8\uB9AC\uBCF4\uAE30: true } : {},
+      \uC81C\uCD9C\uBB3C_id: done.data.submissionId,
+      \uBAA8\uB4C8: done.data.module.name,
+      \uC81C\uBAA9: done.data.title,
+      \uBBF8\uB514\uC5B4_\uC218: done.data.mediaCount,
+      \uC81C\uCD9C\uBB3C_\uC8FC\uC18C: done.data.url,
+      \uBA54\uC2DC\uC9C0: done.data.message,
+      instructions: "message\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC804\uD558\uACE0 \uD5C8\uBE0C \uC81C\uCD9C\uBB3C \uD398\uC774\uC9C0 \uC8FC\uC18C\uB97C \uC54C\uB824 \uC900\uB2E4. \uC81C\uCD9C \uAE30\uAC04 \uC548\uC5D0\uB294 \uD5C8\uBE0C \uB0B4 \uC81C\uCD9C\uBB3C\uC5D0\uC11C \uACE0\uCE60 \uC218 \uC788\uB2E4\uACE0 \uC548\uB0B4\uD55C\uB2E4."
     });
   }
 );

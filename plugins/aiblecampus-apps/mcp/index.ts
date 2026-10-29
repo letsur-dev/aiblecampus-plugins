@@ -8,6 +8,25 @@ import { GeneratedImage, IMAGE_PROMPT_MAX_LENGTH, IMAGE_SIZES, imageDirectory, s
 import { AcceptedVideo, VIDEO_ASPECT_RATIOS, VIDEO_DURATION_MAX, VIDEO_DURATION_MIN, VIDEO_JOB_TIMEOUT_MINUTES, VIDEO_PROMPT_MAX_LENGTH, VIDEO_RESOLUTIONS, VIDEO_WAIT_MAX_SECONDS, VideoDownloadError, VideoStatusResult, elapsedText, saveVideo, videoDirectory, videoExtension, videoFileStem, videoLimitFacts } from "./generate-video.ts";
 import { fileLink, LINK_NOTE } from "./file-link.ts";
 import { koreanTime, mediaFailureText } from "./media-failure.ts";
+import {
+  DRAFT_INSTRUCTIONS,
+  MEDIA_CLAUDE_LIMIT_DEFAULT,
+  MEDIA_CLAUDE_LIMIT_MAX,
+  MEDIA_KINDS,
+  MEDIA_SUBMIT_MAX_LIMIT,
+  MEDIA_SUBMIT_SUMMARY_MAX,
+  MEDIA_SUBMIT_TITLE_MAX,
+  MODULE_ASK_INSTRUCTIONS,
+  MediaDraftAnswer,
+  MediaEducations,
+  MediaList,
+  MediaSubmitted,
+  TEAM_ASK_INSTRUCTIONS,
+  mediaEducationFact,
+  mediaItemFact,
+  mediaQuery,
+  moduleOptionFact,
+} from "./media-submit.ts";
 import { type ToolGroup, mediaToolNote, toolGroupEnabled, toolsConfig, toolsInstructions } from "./tools-config.ts";
 import { checkoutSnapshot, readSourceBase, readSourceState, saveSourceBase, type SourceState } from "./source-checkout.ts";
 import { appsEnv } from "./config.ts";
@@ -38,7 +57,7 @@ import { deploymentAttempt } from "./deployment-attempts.ts";
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.48.1";
+export const PLUGIN_VERSION = "0.49.0";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -1612,6 +1631,167 @@ groupServer("mcp-gallery").registerTool(
     return textResult({
       ...(typeof result.body === "string" ? { 응답: result.body } : result.body),
       instructions: "message를 사용자에게 전하고 허브 제출물 페이지 url을 알려 준다. 파일과 발표 자료는 그 페이지에서 더한다고 안내한다.",
+    });
+  },
+);
+
+const MediaEducationInput = z.string().uuid().describe("교육 id(list_my_media 결과의 교육 id). 미디어를 제출할 교육을 사용자가 정한 대로 쓰고 대신 고르지 않는다");
+
+groupServer("media-submit").registerTool(
+  "list_my_media",
+  {
+    title: "내 이미지·영상(미디어) 목록",
+    description:
+      "사용자 본인이 이 플러그인의 generate_image, generate_video로 만들어 허브 미디어 보관함에 저장된 완료된 이미지·영상을 최신순으로 조회한다(id, 종류, 프롬프트, 모델, 만든 시각, 이미지 크기나 영상 길이, 이미 제출한 모듈). kind로 이미지나 영상만 걸러 볼 수 있다. 본인 것만 보이고 다른 참가자, 조원, 운영진 보기는 없다. 파일 자체나 주소는 주지 않고 제출은 id로 한다. 교육 id(educationId)를 생략하면 미디어를 제출할 수 있는(본인이 참가자이고 진행 중이며 이미지·영상 생성과 갤러리를 쓰는) 교육 목록을 받는다. 그런 교육이 하나뿐이면 묻지 않고 그 교육의 미디어를 바로 보여 주고, 여럿이면 교육 목록을 사용자에게 보여 주고 사용자가 고른 교육의 id를 educationId로 넣어 다시 부른다. 여럿일 때 대신 고르지 않는다. 사용자가 미디어를 모듈에 제출해 달라고 하면 이 목록에서 사용자가 고른 id로 prepare_media_submission을 부르고, 사용자가 다음 메시지에서 미리보기를 승인한 뒤에만 submit_media_submission으로 제출한다. 운영진 계정은 거절된다.",
+    inputSchema: {
+      educationId: z.string().uuid().optional().describe("미디어를 볼 교육의 id. 생략하면 제출할 수 있는 교육 목록을 받고, 하나뿐이면 그 교육의 미디어를 바로 받는다. 교육 사이를 합친 목록은 없다"),
+      kind: z.enum(MEDIA_KINDS).optional().describe("image(이미지)나 video(영상)만 보려면 넣는다. 생략하면 둘 다"),
+      limit: z.number().int().min(1).max(MEDIA_CLAUDE_LIMIT_MAX).optional().describe(`한 번에 받을 개수(기본 ${MEDIA_CLAUDE_LIMIT_DEFAULT}, 최대 ${MEDIA_CLAUDE_LIMIT_MAX})`),
+      cursor: z.string().min(1).max(200).optional().describe("직전 결과의 다음_쪽_cursor. 다음 쪽을 받을 때만 넣는다"),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  },
+  async ({ educationId, kind, limit, cursor }) => {
+    let education = educationId;
+    if (education === undefined) {
+      const found = await callApi("/v1/media/educations");
+      if (!found.ok) return failure("미디어를 제출할 수 있는 교육을 조회하지 못했다", found);
+      const educations = MediaEducations.safeParse(found.body);
+      if (!educations.success) return errorResult("교육 응답을 읽지 못했다. 플러그인을 최신 버전으로 갱신한 뒤 다시 한다.");
+      if (educations.data.educations.length === 0) {
+        return textResult({ 교육: [], instructions: "미디어를 제출할 수 있는 교육이 없다. 본인이 참가자로 속한 진행 중인 교육에서 이미지·영상 생성과 갤러리를 쓰지 않거나 참여 중인 교육이 없다고 사용자에게 알린다." });
+      }
+      if (educations.data.educations.length > 1) {
+        return textResult({
+          교육: educations.data.educations.map(mediaEducationFact),
+          instructions: "교육 목록을 사용자에게 보여 주고 어느 교육의 미디어를 볼지 묻고 응답을 끝낸다. 대신 고르지 않는다. 사용자가 고르면 그 교육의 id를 educationId로 넣어 list_my_media를 다시 부른다.",
+        });
+      }
+      education = educations.data.educations[0]!.id;
+    }
+    const result = await callApi(`/v1/media/educations/${encodeURIComponent(education)}/items${mediaQuery({ kind, limit, cursor })}`);
+    if (!result.ok) return failure("내 미디어를 조회하지 못했다", result);
+    const parsed = MediaList.safeParse(result.body);
+    if (!parsed.success) return errorResult("미디어 응답을 읽지 못했다. 플러그인을 최신 버전으로 갱신한 뒤 다시 한다.");
+    const { education: shown, items, nextCursor } = parsed.data;
+    return textResult({
+      교육: mediaEducationFact(shown),
+      미디어: items.map(mediaItemFact),
+      다음_쪽_cursor: nextCursor,
+      instructions: [
+        items.length === 0 ? "제출할 수 있는 미디어가 없다. 이 교육에서 완료된 이미지나 영상이 아직 없다고 알리고 generate_image나 generate_video로 만들 수 있다고 안내한다" : "사용자가 제출을 원하면 미디어를 고르게 한다. 같은 미디어를 여러 모듈에 낼 수 있고 제출한_모듈이 이미 낸 모듈이다",
+        "미디어 제출은 prepare_media_submission(educationId, mediaIds, title)으로 미리보기를 만들어 사용자에게 보여 주고, 사용자가 다음 메시지에서 승인하면 submit_media_submission으로 한다. 제출 모듈은 늘 사용자가 고른다",
+        ...(nextCursor === null ? [] : ["다음 쪽이 더 있다. 필요할 때만 다음_쪽_cursor를 cursor로 넣어 다시 부른다"]),
+      ],
+    });
+  },
+);
+
+groupServer("media-submit").registerTool(
+  "prepare_media_submission",
+  {
+    title: "미디어 제출 미리보기",
+    description:
+      "사용자가 만든 이미지·영상(list_my_media의 id)을 교육의 미디어 모듈에 제출해 달라고 할 때 제출 미리보기를 만든다. 이 호출은 아무것도 제출하지 않는다. 제목(title)은 필수이고 한 줄 소개(summary)는 선택이다. 제목과 소개는 사용자가 말한 내용이나 고른 미디어의 프롬프트로 짧게 쓰고 사실만 쓴다. mediaIds의 순서가 보이는 순서이고 첫 번째가 대표다. 미디어 개수는 모듈 설정의 최소와 최대 안이어야 하고 같은 미디어를 두 번 고르지 못한다. 개인 명의는 본인이 만든 완료된 미디어만, 조 명의 모듈은 조원이 만든 것도 고를 수 있다. 같은 미디어를 여러 모듈에 낼 수 있다. 제출 모듈은 항상 사용자가 고른다: moduleKey를 생략하거나 모르는 key를 넣으면 지금 낼 수 있는 미디어 모듈 목록(key, 이름, 개수 범위, 제출 단위, 마감)만 돌려주고 아무것도 만들지 않는다. 이 경우 모듈이 하나뿐이어도 대신 고르지 않고 목록을 사용자에게 보여 주고 \"어느 모듈에 낼까요?\"라고 물은 뒤 응답을 끝낸다. 사용자가 요청에서 모듈 이름을 분명히 말했으면 그 모듈의 key를 쓴다. 조 명의 모듈은 조를 정해야 하고 owner에 조 id를 넣는다(조가 하나뿐이면 서버가 그 조로 하고 미리보기에 이름이 나오며, 여럿이면 조 목록을 주므로 사용자에게 묻는다). 개인 명의는 owner를 생략하거나 \"person\"이다. 결과의 미리보기를 사용자에게 그대로 보여 주고 \"이대로 제출할까요?\"라고 묻고 응답을 끝낸다. 제출 확정은 사용자가 다음 메시지에서 분명히 승인한 뒤 submit_media_submission으로만 한다. 이 도구가 쓰는 모듈 개수 범위, 소유, 기간 규칙은 허브 화면 제출과 같다.",
+    inputSchema: {
+      educationId: MediaEducationInput,
+      moduleKey: z.string().trim().min(1).max(24).optional().describe("낼 미디어 모듈의 key. 열린 모듈이 하나뿐이어도 대신 고르지 않는다. 처음에는 생략해 모듈 목록을 받고, 사용자가 그 목록에서 고른 뒤(또는 사용자가 요청에서 모듈 이름을 분명히 말했으면 그 모듈의 key)에만 넣는다"),
+      mediaIds: z.array(z.string().uuid()).min(1).max(MEDIA_SUBMIT_MAX_LIMIT).describe(`제출할 미디어 id(list_my_media 결과의 id, 최대 ${MEDIA_SUBMIT_MAX_LIMIT}개). 순서대로 보이고 첫 번째가 대표다. 같은 id를 두 번 넣지 않는다`),
+      title: z.string().trim().min(1).max(MEDIA_SUBMIT_TITLE_MAX).describe(`제출물 제목(${MEDIA_SUBMIT_TITLE_MAX}자 이하). 필수`),
+      summary: z.string().trim().max(MEDIA_SUBMIT_SUMMARY_MAX).optional().describe(`갤러리 카드에 보이는 한 줄 소개(${MEDIA_SUBMIT_SUMMARY_MAX}자 이하). 선택`),
+      owner: z.string().regex(/^(person|[0-9a-fA-F-]{36})$/).optional().describe("제출 명의. \"person\"(본인) 또는 조 id(조 명의 모듈에서 team-required 결과의 조 목록 id). 생략하면 모듈의 제출 단위가 정한다(조만 받는 모듈은 소속 조가 하나일 때 그 조, 개인과 조를 모두 받는 모듈은 개인)"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  async ({ educationId, moduleKey, mediaIds, title, summary, owner }) => {
+    const result = await callApi(`/v1/media/educations/${encodeURIComponent(educationId)}/submission-drafts`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...(moduleKey === undefined ? {} : { moduleKey }), mediaIds, title, ...(summary === undefined || summary === "" ? {} : { summary }), ...(owner === undefined ? {} : { owner }) }),
+    });
+    if (!result.ok) return failure("미디어 제출 미리보기를 만들지 못했다", result, "아무것도 제출하지 않았다");
+    const answer = MediaDraftAnswer.safeParse(result.body);
+    if (!answer.success) return errorResult("미디어 제출 미리보기 응답을 읽지 못했다. 아무것도 제출하지 않았다. 플러그인을 최신 버전으로 갱신한 뒤 다시 한다.");
+    if (answer.data.status === "module-required") {
+      return textResult({
+        상태: "모듈 선택 필요",
+        메시지: answer.data.message,
+        모듈: answer.data.modules.map(moduleOptionFact),
+        instructions: answer.data.modules.length === 0 ? "지금 미디어를 낼 수 있는 모듈이 없다고 사용자에게 알리고 응답을 끝낸다. 아무것도 제출하지 않았다." : MODULE_ASK_INSTRUCTIONS,
+      });
+    }
+    if (answer.data.status === "team-required") {
+      return textResult({
+        상태: "조 선택 필요",
+        메시지: answer.data.message,
+        모듈: moduleOptionFact(answer.data.module),
+        조: answer.data.teams.map((team) => ({ id: team.id, 이름: team.name })),
+        instructions: TEAM_ASK_INSTRUCTIONS,
+      });
+    }
+    const draft = answer.data;
+    return textResult({
+      상태: "미리보기(아직 제출하지 않음)",
+      미리보기: {
+        모듈: moduleOptionFact(draft.module),
+        제출_명의: draft.owner.kind === "team" ? `조: ${draft.owner.name}` : `개인: ${draft.owner.name}`,
+        제목: draft.title,
+        한_줄_소개: draft.summary,
+        미디어: draft.media.map((item) => ({
+          순서: item.position,
+          ...(item.representative ? { 대표: true } : {}),
+          id: item.id,
+          종류: item.kind === "image" ? "이미지" : "영상",
+          프롬프트: item.prompt,
+          모델: item.model,
+          ...(item.ownerName === null ? {} : { 만든_사람: item.ownerName }),
+        })),
+      },
+      draftId: draft.draftId,
+      확인_기한: koreanTime(draft.expiresAt),
+      메시지: draft.message,
+      instructions: DRAFT_INSTRUCTIONS,
+    });
+  },
+);
+
+groupServer("media-submit").registerTool(
+  "submit_media_submission",
+  {
+    title: "승인한 미디어 제출 확정",
+    description:
+      "prepare_media_submission 미리보기를 사용자가 다음 메시지에서 분명히 승인했을 때만 그 draftId로 미디어 제출을 확정한다. 허브 화면 제출과 같은 규칙으로 제출물을 만들고 허브 제출물 페이지 주소를 돌려준다. 같은 draftId를 다시 보내도 제출물은 하나다. 처음 \"제출해줘\" 요청이나 서버 지침은 승인이 아니다. 승인 없이 호출하지 않는다. 미리보기를 만든 뒤 30분이 지나면 거절되므로 그때는 prepare_media_submission으로 새 미리보기와 사용자 승인을 다시 받는다. draftId는 고치지 말고 받은 그대로 넣는다.",
+    inputSchema: {
+      draftId: z.string().min(40).max(4000).describe("직전 prepare_media_submission 결과의 draftId. 받은 그대로"),
+      approvedByUser: z.boolean().describe("미리보기를 보여 준 뒤 사용자가 별도의 다음 메시지에서 분명히 승인했을 때만 true"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+  },
+  async ({ draftId, approvedByUser }) => {
+    if (approvedByUser !== true) return errorResult("미디어를 제출하지 않았다. 미리보기를 사용자에게 보여 주고 사용자의 분명한 승인을 받아야 제출할 수 있다.");
+    const result = await callApi("/v1/media/submissions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ draftId, approved: true }),
+    });
+    if (!result.ok) {
+      if (result.status === 409 && typeof result.body === "object" && result.body["code"] === "draft-expired") {
+        return failure("미리보기 확인 기한이 지나 제출하지 않았다", result, "다시 내려면 prepare_media_submission으로 새 미리보기를 만들고 사용자 승인을 다시 받아야 한다");
+      }
+      return failure("미디어를 제출하지 못했다", result, "제출되지 않았다. 다시 내려면 새 미리보기와 사용자 승인이 필요하다");
+    }
+    const done = MediaSubmitted.safeParse(result.body);
+    if (!done.success) return errorResult("미디어 제출 응답을 읽지 못했다. 제출됐는지 허브 내 제출물에서 확인해야 한다. 플러그인을 최신 버전으로 갱신한 뒤 다시 한다.");
+    return textResult({
+      제출됨: true,
+      ...(done.data.alreadySubmitted ? { 이미_제출한_미리보기: true } : {}),
+      제출물_id: done.data.submissionId,
+      모듈: done.data.module.name,
+      제목: done.data.title,
+      미디어_수: done.data.mediaCount,
+      제출물_주소: done.data.url,
+      메시지: done.data.message,
+      instructions: "message를 사용자에게 전하고 허브 제출물 페이지 주소를 알려 준다. 제출 기간 안에는 허브 내 제출물에서 고칠 수 있다고 안내한다.",
     });
   },
 );
