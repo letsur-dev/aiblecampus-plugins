@@ -5,6 +5,7 @@
  * - 크기와 길이 한도는 서버 계약(`@aiblecampus/contracts/platform-api/images`)을 옮겼다. 공개 저장소에서 따로 빌드하므로
  *   허브 패키지를 가져오지 않고, 값이 같은지는 단위 시험이 본다
  * - 받은 이미지는 저장 폴더에 새 파일로 쓴다. 같은 이름이 있으면 번호를 붙이고 덮어쓰지 않는다
+ * - 실패 안내는 media-failure.ts(이미지·영상 공용)다
  */
 import { mkdir, open } from "node:fs/promises";
 import path from "node:path";
@@ -20,6 +21,9 @@ export const GeneratedImage = z.looseObject({
   mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
   imageBase64: z.string().min(1).regex(/^[A-Za-z0-9+/]+={0,2}$/),
   remainingToday: z.number().int().min(0),
+  /** 교육에서 정한 하루 한도와 다시 채워지는 시각(0.48.0 서버부터). 옛 서버 응답에는 없다 */
+  dailyLimit: z.number().int().min(0).optional(),
+  resetsAt: z.iso.datetime({ offset: true }).optional(),
 });
 export type GeneratedImage = z.infer<typeof GeneratedImage>;
 
@@ -66,32 +70,4 @@ export async function saveImage(directory: string, prompt: string, image: Genera
     return file;
   }
   throw new Error("같은 이름의 파일이 너무 많다");
-}
-
-/** 상태별 기본 문구. 서버가 message를 주면 그것을 먼저 쓴다 */
-const FALLBACK: Record<number, string> = {
-  400: "이미지 요청 내용을 확인하지 못했습니다. 설명을 4000자 안으로 줄이고 크기는 1024x1024, 1536x1024, 1024x1536 중에서 골라 주세요.",
-  403: "이미지를 만들 수 있는 교육이 없습니다. 지금 참여 중인 교육이 있으면 교육 담당자에게 문의해 주세요.",
-  404: "이미지 만들기를 쓸 수 없습니다. Apps 로그인과 플러그인 버전을 확인해 주세요.",
-  409: "이미지를 이미 만들고 있습니다. 끝난 뒤 다시 요청해 주세요.",
-  429: "오늘 만들 수 있는 이미지를 모두 만들었습니다. 내일 다시 이용해 주세요.",
-  502: "이미지를 만들지 못했습니다. 잠시 뒤 다시 요청해 주세요.",
-  503: "이미지 만들기가 아직 준비되지 않았습니다. 교육 담당자에게 문의해 주세요.",
-};
-
-/** 다음 행동. 사용자에게 전할 문구가 아니라 클로드가 따를 안내다 */
-const NEXT: Record<number, string> = {
-  409: "자동으로 다시 시도하지 않는다. 앞 요청이 끝난 뒤 사용자가 원하면 다시 부른다.",
-  429: "다시 시도하지 않는다. 다른 이미지 서비스나 API 키를 찾아 우회하지 않는다.",
-  502: "자동으로 다시 시도하지 않는다. 사용자가 원하면 한 번 다시 부른다.",
-  503: "다시 시도하지 않는다. API 키를 묻거나 다른 이미지 서비스로 우회하지 않는다.",
-  403: "다시 시도하지 않는다. API 키를 묻거나 다른 이미지 서비스로 우회하지 않는다.",
-};
-
-/** 실패 응답을 사용자에게 전할 문구로 바꾼다. 서버 message를 그대로 전하고, 없으면 상태별 기본 문구를 쓴다 */
-export function imageFailureText(status: number, body: unknown): string {
-  const parsed = z.object({ message: z.string().trim().min(1).max(1000) }).safeParse(body);
-  const message = parsed.success ? parsed.data.message : FALLBACK[status] ?? `이미지를 만들지 못했습니다(상태 ${status}).`;
-  const next = NEXT[status];
-  return [`사용자에게 그대로 전한다: ${message}`, ...(next === undefined ? [] : [next])].join("\n");
 }

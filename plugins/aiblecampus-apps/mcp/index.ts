@@ -4,7 +4,10 @@ import { appMeta, GALLERY_SECTION_MAX, GALLERY_SECTIONS, GALLERY_SUMMARY_MAX, ga
 import { DeletionConfirmations } from "./delete-confirmation.ts";
 import { checkPublicAccess } from "./public-access.ts";
 import { AiSetupError, configureAiGateway, verifyAiGateway } from "./ai-gateway.ts";
-import { GeneratedImage, IMAGE_PROMPT_MAX_LENGTH, IMAGE_SIZES, imageDirectory, imageFailureText, saveImage } from "./generate-image.ts";
+import { GeneratedImage, IMAGE_PROMPT_MAX_LENGTH, IMAGE_SIZES, imageDirectory, saveImage } from "./generate-image.ts";
+import { AcceptedVideo, VIDEO_ASPECT_RATIOS, VIDEO_DURATION_MAX, VIDEO_DURATION_MIN, VIDEO_JOB_TIMEOUT_MINUTES, VIDEO_PROMPT_MAX_LENGTH, VIDEO_RESOLUTIONS, VideoDownloadError, VideoStatusResult, elapsedText, saveVideo, videoDirectory, videoExtension, videoFileStem, videoLimitFacts } from "./generate-video.ts";
+import { koreanTime, mediaFailureText } from "./media-failure.ts";
+import { type ToolGroup, mediaToolNote, toolGroupEnabled, toolsConfig, toolsInstructions } from "./tools-config.ts";
 import { checkoutSnapshot, readSourceBase, readSourceState, saveSourceBase, type SourceState } from "./source-checkout.ts";
 import { appsEnv } from "./config.ts";
 import { HUB_CREDENTIAL_RENEW_NOTICE, hubCredential, rejectHubCredential, usableHubCredential } from "./hub-credential.ts";
@@ -34,7 +37,7 @@ import { deploymentAttempt } from "./deployment-attempts.ts";
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.47.0";
+export const PLUGIN_VERSION = "0.48.0";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -462,12 +465,26 @@ async function deploymentFailure(result: ApiResult, deployment: string, workspac
   }, null, 2));
 }
 
-const server = new McpServer({
-  name: "aiblecampus-apps",
-  version: PLUGIN_VERSION,
-});
+/** 도구 설정 파일(aiblecampus-tools.json). 없거나 깨졌으면 null이고 모든 도구를 등록한다 */
+const toolSettings = toolsConfig();
+const instructions = toolsInstructions(toolSettings);
+const server = new McpServer(
+  { name: "aiblecampus-apps", version: PLUGIN_VERSION },
+  instructions === null ? undefined : { instructions },
+);
 
-server.registerTool("get_plugin_skill", {
+/** 꺼진 묶음의 도구를 받는 자리. 등록하지 않으므로 Claude의 도구 목록에 없다 */
+const skippedServer = { registerTool: () => undefined } as unknown as Pick<McpServer, "registerTool">;
+
+/**
+ * 도구를 등록할 서버. 모든 도구는 `groupServer("<묶음>").registerTool(...)`로 등록하고 묶음 표는 서버 계약(`PLUGIN_TOOL_GROUPS`, `PLUGIN_BASE_TOOLS`)과 같다(시험이 대조한다).
+ * 도구 설정 파일이 있으면 켜진 묶음의 도구와 기반 도구(`base`)만 등록하고, 없으면 모두 등록한다(서버가 꺼진 묶음 요청을 403으로 거절한다)
+ */
+function groupServer(group: ToolGroup): Pick<McpServer, "registerTool"> {
+  return toolGroupEnabled(toolSettings, group) ? server : skippedServer;
+}
+
+groupServer("base").registerTool("get_plugin_skill", {
   title: "최신 Apps 스킬 지침 조회",
   description: "Apps 스킬 작업을 시작할 때 현재 게시된 세부 지침을 가져온다. Claude 데스크톱의 Cowork와 Code에서 동일하게 사용한다. 반환된 버전은 이번 작업에 사용하고 새 작업에서는 다시 조회한다. 설치 변경이나 배포는 수행하지 않는다.",
   // 원본 그대로 넣은 스킬(frontend-design, eli5, ask-questions-if-underspecified)은 원격 지침을 받지 않는다(0.39.1). 서버는 옛 플러그인을 위해 계속 받는다
@@ -493,7 +510,7 @@ export const PUBLIC_AI_GATEWAY_UNAVAILABLE =
   "계정이 없으면 로그인을 반복하지 않고 build-ai-feature 스킬의 \"앱용 AI 환경이 없을 때\" 절차로 진행한다: 사용자가 가진 AI 제공자 API 키를 Git에서 제외한 .env.local에 사용자가 직접 넣고 서버에서만 읽는다. " +
   "Claude 구독(Pro, Max) 로그인은 앱 서버가 부를 API 키가 아니다.";
 
-server.registerTool("get_ai_gateway", {
+groupServer("mcp-apps").registerTool("get_ai_gateway", {
   title: "산출물 AI 환경과 모델 확인",
   description: "AI로 요청하고 응답하는 기능, 챗봇, 요약 등 산출물 AI 기능 구현에 사용합니다. 교육 담당자가 허브(hub.aible-campus.com)에서 정한 앱용 AI 환경과 현재 모델 목록을 확인하며 API 키는 반환하지 않습니다. 지원 모델은 이 결과로 안내하고 고정 목록을 약속하지 않는다. 목록에 있어도 모든 API를 지원하지는 않으며 목록 확인은 실제 응답 검증이 아니다. 배포 대상이 없으면 workspace를 생략해 조회해도 되고 이 조회를 배포 대상 선택으로 기록하지 않는다.",
   inputSchema: { workspace: WorkspaceInputSchema },
@@ -508,7 +525,7 @@ server.registerTool("get_ai_gateway", {
   return parsed.success ? textResult(parsed.data) : errorResult("AI 환경 응답 형식을 확인하지 못했습니다.");
 });
 
-server.registerTool("configure_ai_gateway", {
+groupServer("mcp-apps").registerTool("configure_ai_gateway", {
   title: "프로젝트에 산출물 AI 설정 연결",
   description: "AI 기능 구현을 위해 앱용 AI 환경의 최신 키를 MCP 내부에서 받아 프로젝트 .env.apps-ai에 저장합니다. 모델은 get_ai_gateway 결과에서 선택합니다. 키를 응답에 출력하지 않으며 배포하지 않습니다. 사용자에게 API 키나 운영 화면 정보를 받지 않는다. 새로 받은 폴더이거나 운영진이 키를 바꾼 뒤에는 다시 부른다. 결과의 localEnv를 validate_project와 deploy_project에 그대로 넣는다. Claude 데스크톱 자체 게이트웨이 설정은 바꾸지 않는다.",
   inputSchema: { path: z.string().min(1), model: z.string().min(1).max(200), workspace: WorkspaceInputSchema },
@@ -521,7 +538,7 @@ server.registerTool("configure_ai_gateway", {
   } catch (error) { if (error instanceof AiSetupError) return errorResult(error.message); return errorResult("AI 설정을 저장하지 못했습니다. 프로젝트 경로, 기존 .env.apps-ai와 .gitignore의 파일 소유 및 잠금 상태를 확인하십시오. 기존 파일 내용을 대화에 출력하지 마십시오."); }
 });
 
-server.registerTool("verify_ai_gateway", {
+groupServer("mcp-apps").registerTool("verify_ai_gateway", {
   title: "산출물 AI 요청과 응답 검증",
   description: "프로젝트 .env.apps-ai를 내부에서 읽어 짧은 실제 AI 요청을 한 번 보냅니다. 소량의 사용량이 발생합니다. 키와 응답 원문은 출력하지 않습니다. 산출물 서버 통합 검증이나 배포를 대신하지 않습니다.",
   inputSchema: { path: z.string().min(1) },
@@ -531,9 +548,9 @@ server.registerTool("verify_ai_gateway", {
   catch { return errorResult("AI 연결 검증을 완료하지 못했습니다. .env.apps-ai 설정과 네트워크를 확인하십시오. 자동 재시도는 수행하지 않았습니다."); }
 });
 
-server.registerTool("generate_image", {
+groupServer("mcp-image").registerTool("generate_image", {
   title: "이미지 만들기",
-  description: "사용자가 대화에서 이미지, 그림, 사진, 로고, 아이콘, 일러스트, 포스터나 삽화를 만들어 달라고 하면 이 도구로 만든다. 클로드에는 이미지 생성 모델이 없으므로 직접 그리거나 SVG, HTML, 코드로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 이미지 모델을 서버가 골라 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 만든 이미지는 결과에 바로 보이고 저장 폴더에 새 파일로 저장된다. 사람마다 하루에 만들 수 있는 장수가 정해져 있고 한 번에 한 장씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 이미지 서비스나 API 키로 우회하지 않는다. 앱 안에 이미지 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다.",
+  description: "사용자가 대화에서 이미지, 그림, 사진, 로고, 아이콘, 일러스트, 포스터나 삽화를 만들어 달라고 하면 이 도구로 만든다. 클로드에는 이미지 생성 모델이 없으므로 직접 그리거나 SVG, HTML, 코드로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 이미지 모델을 서버가 골라 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 만든 이미지는 결과에 바로 보이고 저장 폴더에 새 파일로 저장된다. 사람마다 하루에 만들 수 있는 장수가 정해져 있고 한 번에 한 장씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 이미지 서비스나 API 키로 우회하지 않는다. 앱 안에 이미지 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다." + mediaToolNote(toolSettings?.image, "장", "이미지"),
   inputSchema: {
     prompt: z.string().trim().min(1).max(IMAGE_PROMPT_MAX_LENGTH).describe(`만들 이미지 설명(최대 ${IMAGE_PROMPT_MAX_LENGTH}자). 사용자 요청의 대상, 분위기, 색, 구도, 이미지 안 글자를 빠짐없이 구체적으로 적는다`),
     size: z.enum(IMAGE_SIZES).optional().describe("가로x세로 픽셀. 정사각형 1024x1024(기본), 가로형 1536x1024, 세로형 1024x1536. 사용자가 비율을 말했을 때만 고른다"),
@@ -548,7 +565,7 @@ server.registerTool("generate_image", {
   if (result.status === 0 && typeof result.body === "string" && /timeout|timed out/i.test(result.body))
     return errorResult("사용자에게 그대로 전한다: 이미지가 3분 안에 만들어지지 않았습니다. 잠시 뒤 다시 요청해 주세요.\n자동으로 다시 시도하지 않는다.");
   if (result.status === 0 || result.status === 401) return failure("이미지를 만들지 못했다", result);
-  if (!result.ok) return errorResult(imageFailureText(result.status, result.body));
+  if (!result.ok) return errorResult(mediaFailureText("image", result.status, result.body));
   const parsed = GeneratedImage.safeParse(result.body);
   if (!parsed.success) return errorResult("이미지 응답 형식을 확인하지 못했다. 플러그인을 최신 버전으로 갱신했는지 manage-apps-plugin 지침으로 확인한다.");
   const image = parsed.data;
@@ -563,12 +580,119 @@ server.registerTool("generate_image", {
     content: [
       { type: "image" as const, data: image.imageBase64, mimeType: image.mimeType },
       { type: "text" as const, text: JSON.stringify({ ...saved, 모델: image.model, 크기: image.size, 오늘_남은_장수: image.remainingToday,
+        ...(image.dailyLimit === undefined ? {} : { 하루_한도: image.dailyLimit }),
+        ...(image.resetsAt === undefined ? {} : { 한도_초기화_시각: `${koreanTime(image.resetsAt)}(한국 시간)` }),
         안내: "저장 경로와 오늘 남은 장수를 사용자에게 알린다. 다시 만들면 하루 장수가 한 장씩 빠진다." }, null, 2) },
     ],
   };
 });
 
-server.registerTool(
+groupServer("mcp-video").registerTool("generate_video", {
+  title: "영상 만들기",
+  description: "사용자가 대화에서 영상, 동영상, 짧은 클립, 모션 영상을 만들어 달라고 하면 이 도구로 접수한다. 클로드에는 영상 생성 모델이 없으므로 코드나 애니메이션 HTML로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 영상 모델을 서버가 골라 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 영상은 만드는 데 몇 분이 걸려서 이 도구는 작업만 접수하고 기다리지 않는다. 결과의 작업 ID와 안내에 따라 영상이 완성될 때까지 video_status로 확인한다(완성되면 video_status가 작업 폴더 videos에 저장한다). 사람마다 하루에 만들 수 있는 개수가 정해져 있고 한 번에 한 개씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 영상 서비스나 API 키로 우회하지 않는다. 앱 안에 영상 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다." + mediaToolNote(toolSettings?.video, "개", "영상"),
+  inputSchema: {
+    prompt: z.string().trim().min(1).max(VIDEO_PROMPT_MAX_LENGTH).describe(`만들 영상 설명(최대 ${VIDEO_PROMPT_MAX_LENGTH}자). 사용자 요청의 대상, 움직임, 카메라, 분위기, 색을 빠짐없이 구체적으로 적는다`),
+    durationSeconds: z.number().int().min(VIDEO_DURATION_MIN).max(VIDEO_DURATION_MAX).optional().describe(`영상 길이(초, ${VIDEO_DURATION_MIN}에서 ${VIDEO_DURATION_MAX}). 사용자가 길이를 말했을 때만 넣는다. 생략하면 서버가 정한 기본 길이로 만든다`),
+    resolution: z.enum(VIDEO_RESOLUTIONS).optional().describe("해상도. 480p가 기본이고 더 선명하게 원할 때만 720p를 고른다"),
+    aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).optional().describe("화면 비율. 가로형 16:9(기본), 세로형 9:16, 정사각형 1:1. 사용자가 비율을 말했을 때만 고른다"),
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+}, async ({ prompt, durationSeconds, resolution, aspectRatio }) => {
+  const result = await callApi("/v1/videos/generations", {
+    method: "POST", signal: AbortSignal.timeout(60_000), redirect: "error",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prompt, ...(durationSeconds === undefined ? {} : { durationSeconds }), ...(resolution === undefined ? {} : { resolution }), ...(aspectRatio === undefined ? {} : { aspectRatio }) }),
+  });
+  if (result.status === 0 && typeof result.body === "string" && /timeout|timed out/i.test(result.body))
+    return errorResult("사용자에게 그대로 전한다: 영상 만들기 요청이 접수되지 않았습니다. 잠시 뒤 다시 요청해 주세요. 접수됐는지 확실하지 않으므로 자동으로 다시 시도하지 않는다.");
+  if (result.status === 0 || result.status === 401) return failure("영상을 접수하지 못했다", result);
+  if (!result.ok) return errorResult(mediaFailureText("video", result.status, result.body));
+  const parsed = AcceptedVideo.safeParse(result.body);
+  if (!parsed.success) return errorResult("영상 접수 응답 형식을 확인하지 못했다. 플러그인을 최신 버전으로 갱신했는지 manage-apps-plugin 지침으로 확인한다.");
+  const job = parsed.data;
+  return textResult({
+    접수됨: true,
+    작업_ID: job.id,
+    모델: job.model,
+    길이_초: job.durationSeconds,
+    해상도: job.resolution,
+    화면_비율: job.aspectRatio,
+    ...videoLimitFacts(job),
+    다시_확인할_초: job.pollAfterSeconds,
+    안내: `영상은 접수만 됐고 아직 파일이 없다. 사용자에게 작업 ID, 오늘 남은 개수와 한도가 다시 채워지는 시각을 알리고 몇 분 걸린다고 말한다. ${job.pollAfterSeconds}초쯤 뒤에 video_status를 작업 ID(${job.id})로 불러 확인한다. 짧은 간격으로 연달아 부르지 않고, 아직 만드는 중이면 사용자에게 알린 뒤 같은 간격으로 다시 확인한다. ${VIDEO_JOB_TIMEOUT_MINUTES}분 안에 끝나지 않으면 서버가 실패로 처리하고 오늘 개수를 돌려준다. 새 영상을 또 접수하지 않는다.`,
+  });
+});
+
+groupServer("mcp-video").registerTool("video_status", {
+  title: "영상 만들기 상태 확인",
+  description: "generate_video로 접수한 영상 작업의 상태를 한 번 확인한다. 만드는 중이면 지난 시간과 다시 확인할 시간을 알려 주고, 실패했으면 이유를 알려 주며, 완성됐으면 영상 파일을 작업 폴더 videos에 새 파일로 저장하고 경로와 크기를 알려 준다. 이미 저장한 작업은 다시 받지 않는다. 저장하지 못했으면(다운로드 주소 만료 등) 이 도구를 다시 부르면 새 주소로 다시 받는다. 이 도구는 기다리지 않으므로 결과의 안내에 따라 간격을 두고 부른다. 오류가 나면 결과 문구를 사용자에게 그대로 전한다.",
+  inputSchema: {
+    id: z.uuid().describe("generate_video 결과의 작업 ID"),
+    directory: z.string().min(1).optional().describe("영상을 저장할 폴더의 절대 경로. 사용자가 폴더를 말하지 않았으면 현재 작업 폴더의 절대 경로 뒤에 videos를 붙여 넣는다. 생략하면 MCP를 실행한 폴더 아래 videos에 저장한다. 폴더가 없으면 만든다"),
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+}, async ({ id, directory }) => {
+  const result = await callApi(`/v1/videos/generations/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(60_000), redirect: "error", cache: "no-store" });
+  if (result.status === 0 || result.status === 401) return failure("영상 상태를 확인하지 못했다", result);
+  if (!result.ok) return errorResult(mediaFailureText("video", result.status, result.body));
+  const parsed = VideoStatusResult.safeParse(result.body);
+  if (!parsed.success) return errorResult("영상 상태 응답 형식을 확인하지 못했다. 플러그인을 최신 버전으로 갱신했는지 manage-apps-plugin 지침으로 확인한다.");
+  const job = parsed.data;
+  const common = { 작업_ID: job.id, 모델: job.model, 지난_시간: elapsedText(job.elapsedSeconds), ...videoLimitFacts(job) };
+  if (job.status === "failed") {
+    return errorResult(JSON.stringify({
+      ...common,
+      상태: "실패",
+      실패_이유: job.failure ?? "영상을 만들지 못했어요.",
+      안내: "사용자에게 실패 이유와 오늘 남은 개수를 그대로 전한다. 자동으로 다시 만들지 않는다. 사용자가 원하면 generate_video로 새로 접수한다.",
+    }, null, 2));
+  }
+  if (job.status !== "succeeded" || job.download === null) {
+    const preparing = job.status === "succeeded";
+    return textResult({
+      ...common,
+      상태: preparing ? "파일 준비 중" : job.status === "queued" ? "대기 중" : "만드는 중",
+      다시_확인할_초: job.pollAfterSeconds,
+      안내: `아직 영상 파일이 없다. 사용자에게 지금 ${preparing ? "영상 파일을 준비하는 중" : "만드는 중"}이고 ${elapsedText(job.elapsedSeconds)} 지났다고 알린다. ${job.pollAfterSeconds}초쯤 뒤에 video_status를 같은 작업 ID로 다시 부른다. 짧은 간격으로 연달아 부르지 않는다. ${VIDEO_JOB_TIMEOUT_MINUTES}분 안에 끝나지 않으면 서버가 실패로 처리한다.`,
+    });
+  }
+  const { download } = job;
+  const target = videoDirectory(directory);
+  try {
+    const saved = await saveVideo(target, videoFileStem(job.id, job.createdAt), videoExtension(download.contentType), download.sizeBytes, async () => {
+      // 서명 주소는 키 없이 받는다. 인증 헤더와 플러그인 버전 헤더를 보내지 않는다
+      const protocol = new URL(download.url).protocol;
+      if (protocol !== "https:" && protocol !== "http:") throw new VideoDownloadError("영상 다운로드 주소 형식이 올바르지 않다");
+      const response = await fetch(download.url, { signal: AbortSignal.timeout(300_000), redirect: "follow", cache: "no-store" });
+      if (!response.ok || response.body === null) {
+        await response.body?.cancel().catch(() => undefined);
+        throw new VideoDownloadError(`다운로드 주소가 응답하지 않았다(상태 ${response.status}). 주소가 만료됐을 수 있다`);
+      }
+      return response.body;
+    });
+    return textResult({
+      ...common,
+      상태: "완성",
+      저장한_파일: saved.file,
+      크기_바이트: saved.bytes,
+      ...(saved.reused ? { 이미_저장함: "이미 같은 크기의 파일이 있어 다시 받지 않았다" } : {}),
+      길이_초: job.durationSeconds,
+      해상도: job.resolution,
+      화면_비율: job.aspectRatio,
+      안내: "저장 경로와 파일 크기, 오늘 남은 개수를 사용자에게 알린다. 새 영상을 만들면 하루 개수가 하나씩 빠진다.",
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return errorResult(JSON.stringify({
+      ...common,
+      상태: "완성됨, 저장하지 못함",
+      저장_실패: `${target}에 저장하지 못했다: ${reason}`,
+      안내: "영상은 완성돼 서버에 있다. 사용자에게 저장하지 못했다고 알리고, 사용자가 원하면 video_status를 같은 작업 ID로 다시 부른다(새 다운로드 주소로 다시 받는다). 다른 폴더를 원하면 directory를 바꿔 부른다. 새로 접수하지 않으므로 오늘 개수는 더 빠지지 않는다.",
+    }, null, 2));
+  }
+});
+
+groupServer("base").registerTool(
   "start_apps_login",
   {
     title: "Apps 기기 로그인 시작",
@@ -599,7 +723,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("base").registerTool(
   "complete_apps_login",
   {
     title: "Apps 기기 로그인 완료",
@@ -621,7 +745,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "validate_project",
   {
     title: "프로젝트 배포 전 검증",
@@ -730,7 +854,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "deploy_project",
   {
     title: "프로젝트 배포",
@@ -1061,7 +1185,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "preview_sqlite_transition",
   {
     title: "SQLite 이전 미리보기",
@@ -1099,7 +1223,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "migrate_sqlite_data",
   {
     title: "승인된 SQLite 데이터 이전",
@@ -1146,7 +1270,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "preview_local_files_transition",
   {
     title: "로컬 파일 이전 미리보기",
@@ -1186,7 +1310,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "migrate_local_files",
   {
     title: "승인된 로컬 파일 이전",
@@ -1233,7 +1357,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "deployment_status",
   {
     title: "배포 상태 조회",
@@ -1261,7 +1385,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "stop_deployment",
   {
     title: "배포 중지",
@@ -1292,7 +1416,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "move_deployment",
   {
     title: "앱 공간 이동",
@@ -1314,7 +1438,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "delete_deployment",
   {
     title: "배포 삭제 확인 및 실행",
@@ -1374,7 +1498,7 @@ const GalleryDraftAnswer = z.discriminatedUnion("status", [
   }),
 ]);
 
-server.registerTool(
+groupServer("mcp-gallery").registerTool(
   "prepare_gallery_submission",
   {
     title: "갤러리 제출 미리보기",
@@ -1448,7 +1572,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-gallery").registerTool(
   "submit_gallery_submission",
   {
     title: "승인한 갤러리 제출 확정",
@@ -1492,7 +1616,7 @@ function personalQuery(values: Record<string, string | number | undefined>): str
 /** 원본 내려받기 전체(요청부터 마지막 바이트까지) 제한 시간. 큰 파일을 스트림으로 받는다 */
 const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
 
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "list_my_file_educations",
   {
     title: "파일을 읽을 교육 목록",
@@ -1513,7 +1637,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "list_my_files",
   {
     title: "파일 목록",
@@ -1554,7 +1678,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "read_my_file",
   {
     title: "파일 읽기",
@@ -1579,7 +1703,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-google").registerTool(
   "edit_my_google_file",
   {
     title: "내 Google 문서, 스프레드시트, 프레젠테이션 고치기",
@@ -1622,7 +1746,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "download_my_file",
   {
     title: "파일 원본 내려받기",
@@ -1665,7 +1789,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("base").registerTool(
   "open_link",
   {
     title: "링크 열기",
@@ -1684,7 +1808,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "list_my_submissions",
   {
     title: "내 제출물 목록",
@@ -1728,7 +1852,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-files").registerTool(
   "read_my_submission_file",
   {
     title: "내 제출물 첨부 읽기",
@@ -1756,7 +1880,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "deployment_config",
   {
     title: "배포 설정 조회",
@@ -1784,7 +1908,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "set_deployment_config",
   {
     title: "배포 설정 변경",
@@ -1836,7 +1960,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "deployment_logs",
   {
     title: "배포 로그 조회",
@@ -1891,7 +2015,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("mcp-apps").registerTool(
   "checkout_app_source",
   {
     title: "최신 앱 소스 가져오기",
@@ -1911,7 +2035,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("base").registerTool(
   "list_educations",
   {
     title: "내 교육",
@@ -1925,7 +2049,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("base").registerTool(
   "list_deployment_organizations",
   {
     title: "배포 가능한 교육 소속 (호환)",
@@ -1940,7 +2064,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("base").registerTool(
   "list_deployments",
   {
     title: "배포 목록",
@@ -1960,7 +2084,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+groupServer("base").registerTool(
   "apps_plugin_status",
   {
     title: "Apps 플러그인 상태",
@@ -2003,7 +2127,7 @@ function teamDeployOffNotice(value: unknown): string | null {
   ].join(" ");
 }
 
-server.registerTool(
+groupServer("base").registerTool(
   "apps_whoami",
   {
     title: "Apps 연결 확인",
