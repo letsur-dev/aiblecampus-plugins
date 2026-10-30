@@ -27,7 +27,7 @@ import {
   mediaQuery,
   moduleOptionFact,
 } from "./media-submit.ts";
-import { type ToolGroup, mediaToolNote, toolGroupEnabled, toolsConfig, toolsInstructions } from "./tools-config.ts";
+import { type ToolGroup, mediaToolNote, parseServerRole, toolGroupEnabled, toolsConfig, toolsInstructions } from "./tools-config.ts";
 import { checkoutSnapshot, readSourceBase, readSourceState, saveSourceBase, type SourceState } from "./source-checkout.ts";
 import { appsEnv } from "./config.ts";
 import { HUB_CREDENTIAL_RENEW_NOTICE, hubCredential, rejectHubCredential, usableHubCredential } from "./hub-credential.ts";
@@ -57,7 +57,7 @@ import { deploymentAttempt } from "./deployment-attempts.ts";
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.49.0";
+export const PLUGIN_VERSION = "0.50.0";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -487,9 +487,11 @@ async function deploymentFailure(result: ApiResult, deployment: string, workspac
 
 /** 도구 설정 파일(aiblecampus-tools.json). 없거나 깨졌으면 null이고 모든 도구를 등록한다 */
 const toolSettings = toolsConfig();
-const instructions = toolsInstructions(toolSettings);
+/** 이 프로세스의 서버 역할(`--server <apps|files|media>`). `.mcp.json`이 서버마다 다른 인자를 준다. 인자가 없으면 null이고 한 서버가 모든 묶음을 등록한다 */
+const serverRole = parseServerRole(process.argv.slice(2));
+const instructions = toolsInstructions(toolSettings, serverRole);
 const server = new McpServer(
-  { name: "aiblecampus-apps", version: PLUGIN_VERSION },
+  { name: serverRole === null ? "aiblecampus" : `aiblecampus:${serverRole}`, version: PLUGIN_VERSION },
   instructions === null ? undefined : { instructions },
 );
 
@@ -498,10 +500,11 @@ const skippedServer = { registerTool: () => undefined } as unknown as Pick<McpSe
 
 /**
  * 도구를 등록할 서버. 모든 도구는 `groupServer("<묶음>").registerTool(...)`로 등록하고 묶음 표는 서버 계약(`PLUGIN_TOOL_GROUPS`, `PLUGIN_BASE_TOOLS`)과 같다(시험이 대조한다).
- * 도구 설정 파일이 있으면 켜진 묶음의 도구와 기반 도구(`base`)만 등록하고, 없으면 모두 등록한다(서버가 꺼진 묶음 요청을 403으로 거절한다)
+ * 도구 설정 파일이 있으면 켜진 묶음의 도구와 기반 도구(`base`)만 등록하고, 없으면 모두 등록한다(서버가 꺼진 묶음 요청을 403으로 거절한다).
+ * 서버 역할이 있으면 그 서버의 묶음만 등록하고 기반 도구는 켜진 첫 서버(apps, files, media 순)만 등록한다
  */
 function groupServer(group: ToolGroup): Pick<McpServer, "registerTool"> {
-  return toolGroupEnabled(toolSettings, group) ? server : skippedServer;
+  return toolGroupEnabled(toolSettings, group, serverRole) ? server : skippedServer;
 }
 
 groupServer("base").registerTool("get_plugin_skill", {
@@ -570,10 +573,10 @@ groupServer("mcp-apps").registerTool("verify_ai_gateway", {
 
 groupServer("mcp-image").registerTool("generate_image", {
   title: "이미지 만들기",
-  description: "사용자가 대화에서 이미지, 그림, 사진, 로고, 아이콘, 일러스트, 포스터나 삽화를 만들어 달라고 하면 이 도구로 만든다. 클로드에는 이미지 생성 모델이 없으므로 직접 그리거나 SVG, HTML, 코드로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 이미지 모델을 서버가 골라 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 만든 이미지는 결과에 바로 보이고 저장 폴더에 새 파일로 저장된다. 사람마다 하루에 만들 수 있는 장수가 정해져 있고 한 번에 한 장씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 이미지 서비스나 API 키로 우회하지 않는다. 앱 안에 이미지 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다." + mediaToolNote(toolSettings?.image, "장", "이미지"),
+  description: "사용자가 대화에서 이미지, 그림, 사진, 로고, 아이콘, 일러스트, 포스터나 삽화를 만들어 달라고 하면 이 도구로 만든다. 클로드에는 이미지 생성 모델이 없으므로 직접 그리거나 SVG, HTML, 코드로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 이미지 모델을 서버가 선택해 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 만든 이미지는 결과에 바로 보이고 저장 폴더에 새 파일로 저장된다. 사람마다 하루에 만들 수 있는 장수가 정해져 있고 한 번에 한 장씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 이미지 서비스나 API 키로 우회하지 않는다. 앱 안에 이미지 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다." + mediaToolNote(toolSettings?.image, "장", "이미지"),
   inputSchema: {
     prompt: z.string().trim().min(1).max(IMAGE_PROMPT_MAX_LENGTH).describe(`만들 이미지 설명(최대 ${IMAGE_PROMPT_MAX_LENGTH}자). 사용자 요청의 대상, 분위기, 색, 구도, 이미지 안 글자를 빠짐없이 구체적으로 적는다`),
-    size: z.enum(IMAGE_SIZES).optional().describe("가로x세로 픽셀. 정사각형 1024x1024(기본), 가로형 1536x1024, 세로형 1024x1536. 사용자가 비율을 말했을 때만 고른다"),
+    size: z.enum(IMAGE_SIZES).optional().describe("가로x세로 픽셀. 정사각형 1024x1024(기본), 가로형 1536x1024, 세로형 1024x1536. 사용자가 비율을 말했을 때만 선택한다"),
     directory: z.string().min(1).optional().describe("이미지를 저장할 폴더의 절대 경로. 사용자가 폴더를 말하지 않았으면 현재 작업 폴더의 절대 경로 뒤에 images를 붙여 넣는다. 생략하면 MCP를 실행한 폴더 아래 images에 저장한다. 폴더가 없으면 만든다"),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -610,12 +613,12 @@ groupServer("mcp-image").registerTool("generate_image", {
 
 groupServer("mcp-video").registerTool("generate_video", {
   title: "영상 만들기",
-  description: `사용자가 대화에서 영상, 동영상, 짧은 클립, 모션 영상을 만들어 달라고 하면 이 도구로 접수한다. 클로드에는 영상 생성 모델이 없으므로 코드나 애니메이션 HTML로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 영상 모델을 서버가 골라 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 영상은 만드는 데 몇 분이 걸려서 이 도구는 작업만 접수하고 기다리지 않는다. 접수하면 곧바로 video_status를 작업 ID로 부른다. video_status가 한 번에 최대 ${VIDEO_WAIT_MAX_SECONDS}초까지 서버에서 완성을 기다려 주고 완성되면 바로 작업 폴더 videos에 저장하며, 아직이면 같은 도구를 바로 다시 부르라고 알려 준다. Bash sleep이나 쉘 대기, 직접 시간 간격 두기는 쓰지 않는다. 사람마다 하루에 만들 수 있는 개수가 정해져 있고 한 번에 한 개씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 영상 서비스나 API 키로 우회하지 않는다. 앱 안에 영상 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다.` + mediaToolNote(toolSettings?.video, "개", "영상"),
+  description: `사용자가 대화에서 영상, 동영상, 짧은 클립, 모션 영상을 만들어 달라고 하면 이 도구로 접수한다. 클로드에는 영상 생성 모델이 없으므로 코드나 애니메이션 HTML로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 영상 모델을 서버가 선택해 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 영상은 만드는 데 몇 분이 걸려서 이 도구는 작업만 접수하고 기다리지 않는다. 접수하면 곧바로 video_status를 작업 ID로 부른다. video_status가 한 번에 최대 ${VIDEO_WAIT_MAX_SECONDS}초까지 서버에서 완성을 기다려 주고 완성되면 바로 작업 폴더 videos에 저장하며, 아직이면 같은 도구를 바로 다시 부르라고 알려 준다. Bash sleep이나 쉘 대기, 직접 시간 간격 두기는 쓰지 않는다. 사람마다 하루에 만들 수 있는 개수가 정해져 있고 한 번에 한 개씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 영상 서비스나 API 키로 우회하지 않는다. 앱 안에 영상 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다.` + mediaToolNote(toolSettings?.video, "개", "영상"),
   inputSchema: {
     prompt: z.string().trim().min(1).max(VIDEO_PROMPT_MAX_LENGTH).describe(`만들 영상 설명(최대 ${VIDEO_PROMPT_MAX_LENGTH}자). 사용자 요청의 대상, 움직임, 카메라, 분위기, 색을 빠짐없이 구체적으로 적는다`),
     durationSeconds: z.number().int().min(VIDEO_DURATION_MIN).max(VIDEO_DURATION_MAX).optional().describe(`영상 길이(초, ${VIDEO_DURATION_MIN}에서 ${VIDEO_DURATION_MAX}). 사용자가 길이를 말했을 때만 넣는다. 생략하면 서버가 정한 기본 길이로 만든다`),
-    resolution: z.enum(VIDEO_RESOLUTIONS).optional().describe("해상도. 480p가 기본이고 더 선명하게 원할 때만 720p를 고른다"),
-    aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).optional().describe("화면 비율. 가로형 16:9(기본), 세로형 9:16, 정사각형 1:1. 사용자가 비율을 말했을 때만 고른다"),
+    resolution: z.enum(VIDEO_RESOLUTIONS).optional().describe("해상도. 480p가 기본이고 더 선명하게 원할 때만 720p를 선택한다"),
+    aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).optional().describe("화면 비율. 가로형 16:9(기본), 세로형 9:16, 정사각형 1:1. 사용자가 비율을 말했을 때만 선택한다"),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
 }, async ({ prompt, durationSeconds, resolution, aspectRatio }) => {
@@ -1635,14 +1638,14 @@ groupServer("mcp-gallery").registerTool(
   },
 );
 
-const MediaEducationInput = z.string().uuid().describe("교육 id(list_my_media 결과의 교육 id). 미디어를 제출할 교육을 사용자가 정한 대로 쓰고 대신 고르지 않는다");
+const MediaEducationInput = z.string().uuid().describe("교육 id(list_my_media 결과의 교육 id). 미디어를 제출할 교육을 사용자가 정한 대로 쓰고 대신 선택하지 않는다");
 
 groupServer("media-submit").registerTool(
   "list_my_media",
   {
     title: "내 이미지·영상(미디어) 목록",
     description:
-      "사용자 본인이 이 플러그인의 generate_image, generate_video로 만들어 허브 미디어 보관함에 저장된 완료된 이미지·영상을 최신순으로 조회한다(id, 종류, 프롬프트, 모델, 만든 시각, 이미지 크기나 영상 길이, 이미 제출한 모듈). kind로 이미지나 영상만 걸러 볼 수 있다. 본인 것만 보이고 다른 참가자, 조원, 운영진 보기는 없다. 파일 자체나 주소는 주지 않고 제출은 id로 한다. 교육 id(educationId)를 생략하면 미디어를 제출할 수 있는(본인이 참가자이고 진행 중이며 이미지·영상 생성과 갤러리를 쓰는) 교육 목록을 받는다. 그런 교육이 하나뿐이면 묻지 않고 그 교육의 미디어를 바로 보여 주고, 여럿이면 교육 목록을 사용자에게 보여 주고 사용자가 고른 교육의 id를 educationId로 넣어 다시 부른다. 여럿일 때 대신 고르지 않는다. 사용자가 미디어를 모듈에 제출해 달라고 하면 이 목록에서 사용자가 고른 id로 prepare_media_submission을 부르고, 사용자가 다음 메시지에서 미리보기를 승인한 뒤에만 submit_media_submission으로 제출한다. 운영진 계정은 거절된다.",
+      "사용자 본인이 이 플러그인의 generate_image, generate_video로 만들어 허브 미디어 보관함에 저장된 완료된 이미지·영상을 최신순으로 조회한다(id, 종류, 프롬프트, 모델, 만든 시각, 이미지 크기나 영상 길이, 이미 제출한 모듈). kind로 이미지나 영상만 걸러 볼 수 있다. 본인 것만 보이고 다른 참가자, 조원, 운영진 보기는 없다. 파일 자체나 주소는 주지 않고 제출은 id로 한다. 교육 id(educationId)를 생략하면 미디어를 제출할 수 있는(본인이 참가자이고 진행 중이며 이미지·영상 생성과 갤러리를 쓰는) 교육 목록을 받는다. 그런 교육이 하나뿐이면 묻지 않고 그 교육의 미디어를 바로 보여 주고, 여럿이면 교육 목록을 사용자에게 보여 주고 사용자가 선택한 교육의 id를 educationId로 넣어 다시 부른다. 여럿일 때 대신 선택하지 않는다. 사용자가 미디어를 모듈에 제출해 달라고 하면 이 목록에서 사용자가 선택한 id로 prepare_media_submission을 부르고, 사용자가 다음 메시지에서 미리보기를 승인한 뒤에만 submit_media_submission으로 제출한다. 운영진 계정은 거절된다.",
     inputSchema: {
       educationId: z.string().uuid().optional().describe("미디어를 볼 교육의 id. 생략하면 제출할 수 있는 교육 목록을 받고, 하나뿐이면 그 교육의 미디어를 바로 받는다. 교육 사이를 합친 목록은 없다"),
       kind: z.enum(MEDIA_KINDS).optional().describe("image(이미지)나 video(영상)만 보려면 넣는다. 생략하면 둘 다"),
@@ -1664,7 +1667,7 @@ groupServer("media-submit").registerTool(
       if (educations.data.educations.length > 1) {
         return textResult({
           교육: educations.data.educations.map(mediaEducationFact),
-          instructions: "교육 목록을 사용자에게 보여 주고 어느 교육의 미디어를 볼지 묻고 응답을 끝낸다. 대신 고르지 않는다. 사용자가 고르면 그 교육의 id를 educationId로 넣어 list_my_media를 다시 부른다.",
+          instructions: "교육 목록을 사용자에게 보여 주고 어느 교육의 미디어를 볼지 묻고 응답을 끝낸다. 대신 선택하지 않는다. 사용자가 선택하면 그 교육의 id를 educationId로 넣어 list_my_media를 다시 부른다.",
         });
       }
       education = educations.data.educations[0]!.id;
@@ -1679,8 +1682,8 @@ groupServer("media-submit").registerTool(
       미디어: items.map(mediaItemFact),
       다음_쪽_cursor: nextCursor,
       instructions: [
-        items.length === 0 ? "제출할 수 있는 미디어가 없다. 이 교육에서 완료된 이미지나 영상이 아직 없다고 알리고 generate_image나 generate_video로 만들 수 있다고 안내한다" : "사용자가 제출을 원하면 미디어를 고르게 한다. 같은 미디어를 여러 모듈에 낼 수 있고 제출한_모듈이 이미 낸 모듈이다",
-        "미디어 제출은 prepare_media_submission(educationId, mediaIds, title)으로 미리보기를 만들어 사용자에게 보여 주고, 사용자가 다음 메시지에서 승인하면 submit_media_submission으로 한다. 제출 모듈은 늘 사용자가 고른다",
+        items.length === 0 ? "제출할 수 있는 미디어가 없다. 이 교육에서 완료된 이미지나 영상이 아직 없다고 알리고 generate_image나 generate_video로 만들 수 있다고 안내한다" : "사용자가 제출을 원하면 미디어를 선택하게 한다. 같은 미디어를 여러 모듈에 낼 수 있고 제출한_모듈이 이미 낸 모듈이다",
+        "미디어 제출은 prepare_media_submission(educationId, mediaIds, title)으로 미리보기를 만들어 사용자에게 보여 주고, 사용자가 다음 메시지에서 승인하면 submit_media_submission으로 한다. 제출 모듈은 늘 사용자가 선택한다",
         ...(nextCursor === null ? [] : ["다음 쪽이 더 있다. 필요할 때만 다음_쪽_cursor를 cursor로 넣어 다시 부른다"]),
       ],
     });
@@ -1692,10 +1695,10 @@ groupServer("media-submit").registerTool(
   {
     title: "미디어 제출 미리보기",
     description:
-      "사용자가 만든 이미지·영상(list_my_media의 id)을 교육의 미디어 모듈에 제출해 달라고 할 때 제출 미리보기를 만든다. 이 호출은 아무것도 제출하지 않는다. 제목(title)은 필수이고 한 줄 소개(summary)는 선택이다. 제목과 소개는 사용자가 말한 내용이나 고른 미디어의 프롬프트로 짧게 쓰고 사실만 쓴다. mediaIds의 순서가 보이는 순서이고 첫 번째가 대표다. 미디어 개수는 모듈 설정의 최소와 최대 안이어야 하고 같은 미디어를 두 번 고르지 못한다. 개인 명의는 본인이 만든 완료된 미디어만, 조 명의 모듈은 조원이 만든 것도 고를 수 있다. 같은 미디어를 여러 모듈에 낼 수 있다. 제출 모듈은 항상 사용자가 고른다: moduleKey를 생략하거나 모르는 key를 넣으면 지금 낼 수 있는 미디어 모듈 목록(key, 이름, 개수 범위, 제출 단위, 마감)만 돌려주고 아무것도 만들지 않는다. 이 경우 모듈이 하나뿐이어도 대신 고르지 않고 목록을 사용자에게 보여 주고 \"어느 모듈에 낼까요?\"라고 물은 뒤 응답을 끝낸다. 사용자가 요청에서 모듈 이름을 분명히 말했으면 그 모듈의 key를 쓴다. 조 명의 모듈은 조를 정해야 하고 owner에 조 id를 넣는다(조가 하나뿐이면 서버가 그 조로 하고 미리보기에 이름이 나오며, 여럿이면 조 목록을 주므로 사용자에게 묻는다). 개인 명의는 owner를 생략하거나 \"person\"이다. 결과의 미리보기를 사용자에게 그대로 보여 주고 \"이대로 제출할까요?\"라고 묻고 응답을 끝낸다. 제출 확정은 사용자가 다음 메시지에서 분명히 승인한 뒤 submit_media_submission으로만 한다. 이 도구가 쓰는 모듈 개수 범위, 소유, 기간 규칙은 허브 화면 제출과 같다.",
+      "사용자가 만든 이미지·영상(list_my_media의 id)을 교육의 미디어 모듈에 제출해 달라고 할 때 제출 미리보기를 만든다. 이 호출은 아무것도 제출하지 않는다. 제목(title)은 필수이고 한 줄 소개(summary)는 선택이다. 제목과 소개는 사용자가 말한 내용이나 선택한 미디어의 프롬프트로 짧게 쓰고 사실만 쓴다. mediaIds의 순서가 보이는 순서이고 첫 번째가 대표다. 미디어 개수는 모듈 설정의 최소와 최대 안이어야 하고 같은 미디어를 두 번 선택하지 못한다. 개인 명의는 본인이 만든 완료된 미디어만, 조 명의 모듈은 조원이 만든 것도 선택할 수 있다. 같은 미디어를 여러 모듈에 낼 수 있다. 제출 모듈은 항상 사용자가 선택한다: moduleKey를 생략하거나 모르는 key를 넣으면 지금 낼 수 있는 미디어 모듈 목록(key, 이름, 개수 범위, 제출 단위, 마감)만 돌려주고 아무것도 만들지 않는다. 이 경우 모듈이 하나뿐이어도 대신 선택하지 않고 목록을 사용자에게 보여 주고 \"어느 모듈에 낼까요?\"라고 물은 뒤 응답을 끝낸다. 사용자가 요청에서 모듈 이름을 분명히 말했으면 그 모듈의 key를 쓴다. 조 명의 모듈은 조를 정해야 하고 owner에 조 id를 넣는다(조가 하나뿐이면 서버가 그 조로 하고 미리보기에 이름이 나오며, 여럿이면 조 목록을 주므로 사용자에게 묻는다). 개인 명의는 owner를 생략하거나 \"person\"이다. 결과의 미리보기를 사용자에게 그대로 보여 주고 \"이대로 제출할까요?\"라고 묻고 응답을 끝낸다. 제출 확정은 사용자가 다음 메시지에서 분명히 승인한 뒤 submit_media_submission으로만 한다. 이 도구가 쓰는 모듈 개수 범위, 소유, 기간 규칙은 허브 화면 제출과 같다.",
     inputSchema: {
       educationId: MediaEducationInput,
-      moduleKey: z.string().trim().min(1).max(24).optional().describe("낼 미디어 모듈의 key. 열린 모듈이 하나뿐이어도 대신 고르지 않는다. 처음에는 생략해 모듈 목록을 받고, 사용자가 그 목록에서 고른 뒤(또는 사용자가 요청에서 모듈 이름을 분명히 말했으면 그 모듈의 key)에만 넣는다"),
+      moduleKey: z.string().trim().min(1).max(24).optional().describe("낼 미디어 모듈의 key. 열린 모듈이 하나뿐이어도 대신 선택하지 않는다. 처음에는 생략해 모듈 목록을 받고, 사용자가 그 목록에서 선택한 뒤(또는 사용자가 요청에서 모듈 이름을 분명히 말했으면 그 모듈의 key)에만 넣는다"),
       mediaIds: z.array(z.string().uuid()).min(1).max(MEDIA_SUBMIT_MAX_LIMIT).describe(`제출할 미디어 id(list_my_media 결과의 id, 최대 ${MEDIA_SUBMIT_MAX_LIMIT}개). 순서대로 보이고 첫 번째가 대표다. 같은 id를 두 번 넣지 않는다`),
       title: z.string().trim().min(1).max(MEDIA_SUBMIT_TITLE_MAX).describe(`제출물 제목(${MEDIA_SUBMIT_TITLE_MAX}자 이하). 필수`),
       summary: z.string().trim().max(MEDIA_SUBMIT_SUMMARY_MAX).optional().describe(`갤러리 카드에 보이는 한 줄 소개(${MEDIA_SUBMIT_SUMMARY_MAX}자 이하). 선택`),
@@ -2291,7 +2294,8 @@ groupServer("base").registerTool(
     },
   },
   async () => textResult({
-    plugin: "aiblecampus-apps",
+    plugin: "aiblecampus",
+    server: serverRole ?? "all",
     version: PLUGIN_VERSION,
     apiUrl: apiBase(),
     // automatic: hub 마켓플레이스가 넣은 자동 연결 Credential을 쓴다. device-login: 기기 로그인(start_apps_login)을 쓴다
@@ -2342,7 +2346,7 @@ groupServer("base").registerTool(
       주소: apiBase(),
       ...body,
       ...(notice === null ? {} : { 조배포안내: notice }),
-      client: { plugin: "aiblecampus-apps", version: PLUGIN_VERSION },
+      client: { plugin: "aiblecampus", version: PLUGIN_VERSION },
     });
   },
 );

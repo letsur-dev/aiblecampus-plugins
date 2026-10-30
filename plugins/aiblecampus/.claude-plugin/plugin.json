@@ -1,0 +1,10 @@
+{
+  "name": "aiblecampus",
+  "description": "에이블캠퍼스의 앱 배포, 이미지·영상 생성, 내 파일과 제출물 읽기, 갤러리 제출을 돕고 화면 디자인, 쉬운 시각적 설명, AI 기능 개발을 지원합니다. 배포는 명시적으로 요청받았을 때만 수행합니다.",
+  "version": "0.50.0",
+  "author": {
+    "name": "에이블캠퍼스"
+  },
+  "homepage": "https://github.com/letsur-dev/aiblecampus-plugins",
+  "repository": "https://github.com/letsur-dev/aiblecampus-plugins"
+}

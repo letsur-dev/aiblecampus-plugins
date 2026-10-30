@@ -3,7 +3,7 @@
  *
  * - 서버 계약은 `@aiblecampus/contracts/platform-api/media-library`다. 공개 저장소에서 따로 빌드하므로 허브 패키지를 가져오지 않고 한도와 응답 형식을 옮겼다. 값이 같은지는 단위 시험이 본다
  * - 세 도구는 구성 요소(묶음)가 아니다. 이미지·영상 생성 묶음이 켜지고 교육이 갤러리 기능을 쓸 때만 등록한다(도구 설정 파일의 `mediaSubmit`, 앱 기능과 앱 권한은 필요 없다)
- * - 모듈은 늘 사용자가 고른다. 고르지 않았거나 모르면 서버가 낼 수 있는 미디어 모듈 목록만 주고 아무것도 만들지 않는다(갤러리 제출의 보드 선택 규칙과 같다)
+ * - 모듈은 늘 사용자가 선택한다. 선택하지 않았거나 모르면 서버가 낼 수 있는 미디어 모듈 목록만 주고 아무것도 만들지 않는다(갤러리 제출의 보드 선택 규칙과 같다)
  * - 제출은 두 단계다. 미리보기(draftId는 서버가 저장하지 않는 서명 토큰, 30분)를 사용자에게 보여 주고 사용자가 다음 메시지에서 승인하면 같은 draftId로 확정한다
  */
 import { z } from "zod";
@@ -118,10 +118,10 @@ export function moduleOptionFact(option: ModuleOption): Record<string, unknown> 
 
 /** 사용자에게 모듈을 묻고 응답을 끝내게 하는 지침(갤러리 제출의 보드 선택 규칙과 같다) */
 export const MODULE_ASK_INSTRUCTIONS =
-  "모듈 목록(이름, 개수 범위, 제출 단위, 마감)을 사용자에게 보여 주고 \"어느 모듈에 낼까요?\"라고 묻고 응답을 끝낸다. 모듈이 하나뿐이어도 대신 고르지 않고 사용자가 확인하게 한다. 사용자가 고르면 같은 내용과 고른 모듈의 key를 moduleKey로 넣어 prepare_media_submission을 다시 호출한다. 아무것도 제출하지 않았다.";
+  "모듈 목록(이름, 개수 범위, 제출 단위, 마감)을 사용자에게 보여 주고 \"어느 모듈에 낼까요?\"라고 묻고 응답을 끝낸다. 모듈이 하나뿐이어도 대신 선택하지 않고 사용자가 확인하게 한다. 사용자가 선택하면 같은 내용과 선택한 모듈의 key를 moduleKey로 넣어 prepare_media_submission을 다시 호출한다. 아무것도 제출하지 않았다.";
 
 export const TEAM_ASK_INSTRUCTIONS =
-  "조 목록(이름)을 사용자에게 보여 주고 \"어느 조 명의로 낼까요?\"라고 묻고 응답을 끝낸다. 대신 고르지 않는다. 사용자가 고르면 같은 내용에 그 조의 id를 owner로 넣어 prepare_media_submission을 다시 호출한다. 아무것도 제출하지 않았다.";
+  "조 목록(이름)을 사용자에게 보여 주고 \"어느 조 명의로 낼까요?\"라고 묻고 응답을 끝낸다. 대신 선택하지 않는다. 사용자가 선택하면 같은 내용에 그 조의 id를 owner로 넣어 prepare_media_submission을 다시 호출한다. 아무것도 제출하지 않았다.";
 
 /** 미리보기 지침. 사용자에게 보여 줄 것과 승인 규칙 */
 export const DRAFT_INSTRUCTIONS = [
@@ -129,5 +129,5 @@ export const DRAFT_INSTRUCTIONS = [
   "\"이대로 모듈에 제출할까요?\"라고 묻고 응답을 끝낸다",
   "사용자가 다음 메시지에서 분명히 승인할 때만 이 draftId와 approvedByUser: true로 submit_media_submission을 호출한다",
   "이 흐름을 시작한 \"제출해줘\" 같은 요청은 미리보기 승인이 아니다. 승인 전에는 제출하지 않는다",
-  "사용자가 고르거나 순서, 제목을 고쳐 달라고 하면 고친 내용으로 prepare_media_submission을 다시 호출해 새 미리보기와 새 draftId를 받는다. 이전 draftId는 쓰지 않는다",
+  "사용자가 선택을 바꾸거나 순서, 제목을 고쳐 달라고 하면 고친 내용으로 prepare_media_submission을 다시 호출해 새 미리보기와 새 draftId를 받는다. 이전 draftId는 쓰지 않는다",
 ];
