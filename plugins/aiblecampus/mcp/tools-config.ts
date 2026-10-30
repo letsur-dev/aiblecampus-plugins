@@ -63,34 +63,82 @@ export function toolsConfig(file?: string): ToolsConfig | null {
   return found;
 }
 
-/** 이 묶음의 도구를 등록하는가. 설정이 없으면 모두 등록하고, 있으면 켜진 묶음과(묶음이 하나라도 켜졌을 때의) 기반 도구만 등록한다. 미디어 제출(media-submit)은 구성 요소가 아니라 설정의 `mediaSubmit`이 정한다 */
-export function toolGroupEnabled(config: ToolsConfig | null, group: ToolGroup): boolean {
-  if (config === null) return true;
-  if (group === "media-submit") return config.mediaSubmit;
-  return group === "base" ? config.groups.length > 0 : config.groups.includes(group);
+/**
+ * 이 번들을 띄운 MCP 서버 역할(2026-10-30, 플러그인 `aiblecampus`의 서버 `apps`, `files`, `media`). `.mcp.json`이 서버마다 `--server <역할>` 인자를 다르게 준다
+ * (인자가 같은 서버는 클로드가 하나만 띄운다). 역할이 없으면(인자 없음: 공개 저장소에서 직접 쓰거나 옛 설정) 모든 묶음을 한 서버가 등록한다.
+ * 역할별 묶음 표와 기반 도구를 두는 순서는 서버 계약(`PLUGIN_MCP_SERVERS`, `PLUGIN_MCP_SERVER_IDS`)을 옮겼고 값이 같은지는 단위 시험이 본다
+ */
+export const SERVER_ROLES = ["apps", "files", "media"] as const;
+export type ServerRole = (typeof SERVER_ROLES)[number];
+export const SERVER_ROLE_GROUPS: Readonly<Record<ServerRole, readonly ToolGroupId[]>> = {
+  apps: ["mcp-apps"],
+  files: ["mcp-files", "mcp-google", "mcp-gallery"],
+  media: ["mcp-image", "mcp-video"],
+};
+
+/** 실행 인자의 `--server <역할>` 또는 `--server=<역할>`. 없으면 null이고 모르는 역할이면 오류다 */
+export function parseServerRole(argv: readonly string[]): ServerRole | null {
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index]!;
+    if (arg !== "--server" && !arg.startsWith("--server=")) continue;
+    const value = arg === "--server" ? argv[index + 1] : arg.slice("--server=".length);
+    if (value === undefined || !(SERVER_ROLES as readonly string[]).includes(value)) {
+      throw new Error(`--server 값이 올바르지 않다(${value ?? "없음"}). ${SERVER_ROLES.join(", ")} 중 하나여야 한다`);
+    }
+    return value as ServerRole;
+  }
+  return null;
+}
+
+/** 켜진 도구 묶음. 설정이 없으면 모든 묶음 */
+function enabledGroups(config: ToolsConfig | null): readonly ToolGroupId[] {
+  return config === null ? TOOL_GROUP_IDS : config.groups;
+}
+
+/** 기반 도구(로그인, 상태, 목록)를 두는 역할: 켜진 묶음이 있는 첫 서버(SERVER_ROLES 순서). 켜진 묶음이 없으면 null */
+export function baseToolRole(config: ToolsConfig | null): ServerRole | null {
+  const groups = enabledGroups(config);
+  return SERVER_ROLES.find((role) => SERVER_ROLE_GROUPS[role].some((group) => groups.includes(group))) ?? null;
+}
+
+/**
+ * 이 묶음의 도구를 이 서버가 등록하는가. 설정이 없으면 이 서버의 묶음을 모두 등록하고, 있으면 켜진 묶음과 기반 도구만 등록한다.
+ * 기반 도구는 켜진 첫 서버에만 있다(서버마다 같은 도구를 두지 않는다). 역할이 없으면 한 서버가 모든 묶음을 맡는다.
+ * 미디어 제출(media-submit)은 구성 요소가 아니라 설정의 `mediaSubmit`이 정하고 `media` 서버에 있다
+ */
+export function toolGroupEnabled(config: ToolsConfig | null, group: ToolGroup, role: ServerRole | null = null): boolean {
+  if (group === "base") return role === null ? config === null || config.groups.length > 0 : baseToolRole(config) === role;
+  if (group === "media-submit") return (config === null || config.mediaSubmit) && (role === null || role === "media");
+  return enabledGroups(config).includes(group) && (role === null || SERVER_ROLE_GROUPS[role].includes(group));
 }
 
 /** 도구 설명 끝에 붙일 이 교육의 설정 문장. 설정이 없으면 빈 문자열(일반 설명 그대로) */
 export function mediaToolNote(summary: MediaSummary | undefined, unit: "장" | "개", label: "이미지" | "영상"): string {
   if (summary === undefined) return "";
   if (!summary.enabled) return ` 이 교육에서는 ${label} 생성을 쓰지 않는다(모델을 정하지 않았거나 하루 한도가 0이다). 부르지 말고 사용자에게 "이 교육에서는 ${label} 생성을 쓰지 않아요"라고 알린다.`;
-  return ` 이 교육에서는 사람마다 하루 ${summary.dailyLimit}${unit}까지 만들 수 있고 모델은 ${summary.model ?? "서버가 고른 모델"}이다.`;
+  return ` 이 교육에서는 사람마다 하루 ${summary.dailyLimit}${unit}까지 만들 수 있고 모델은 ${summary.model ?? "서버가 선택한 모델"}이다.`;
+}
+
+/** 서버 지침(이미지·영상 사용 가능 여부)을 싣는 역할. 이미지나 영상 묶음이 켜져 있으면 `media`, 아니면 기반 도구를 둔 서버다(미디어 서버가 없어도 "쓰지 않는다"는 안내가 클로드에 닿게 한다) */
+export function instructionsRole(config: ToolsConfig | null): ServerRole | null {
+  return config !== null && !config.groups.includes("mcp-image") && !config.groups.includes("mcp-video") ? baseToolRole(config) : "media";
 }
 
 /**
  * 서버 지침(MCP instructions). Claude가 도구 목록을 보기 전에 이미지·영상을 쓸 수 있는지 안다.
- * 설정이 없으면 null(지침 없음). 사용자에게 전할 말은 따옴표 안의 문장이다
+ * 설정이 없으면 null(지침 없음). 역할이 있으면 그 지침을 싣는 서버(instructionsRole)만 받는다. 사용자에게 전할 말은 따옴표 안의 문장이다
  */
-export function toolsInstructions(config: ToolsConfig | null): string | null {
+export function toolsInstructions(config: ToolsConfig | null, role: ServerRole | null = null): string | null {
   if (config === null) return null;
+  if (role !== null && role !== instructionsRole(config)) return null;
   const line = (summary: MediaSummary, label: string, unit: string): string =>
     summary.enabled
-      ? `${label} 생성: 쓸 수 있다. 사람마다 하루 ${summary.dailyLimit}${unit}까지, 모델은 ${summary.model ?? "서버가 고른 모델"}이다.`
+      ? `${label} 생성: 쓸 수 있다. 사람마다 하루 ${summary.dailyLimit}${unit}까지, 모델은 ${summary.model ?? "서버가 선택한 모델"}이다.`
       : `${label} 생성: 이 교육에서는 쓰지 않는다. 요청받으면 도구를 찾거나 다른 서비스로 우회하지 않고 사용자에게 "이 교육에서는 ${label} 생성을 쓰지 않아요"라고 알린다.`;
   const only = config.image.enabled && !config.video.enabled ? ' 사용자에게는 "이 교육에서는 영상 생성을 쓰지 않아요, 이미지 생성만 가능해요"처럼 알린다.' : "";
   const lines = [line(config.image, "이미지", "장"), line(config.video, "영상", "개") + only];
   if (config.mediaSubmit) {
-    lines.push("미디어 제출: 만든 이미지와 영상은 list_my_media로 보고, 사용자가 미디어 모듈에 내 달라고 하면 prepare_media_submission으로 미리보기를 만들어 보여 준 뒤 사용자가 다음 메시지에서 승인하면 submit_media_submission으로 제출한다. 모듈은 늘 사용자가 고른다.");
+    lines.push("미디어 제출: 만든 이미지와 영상은 list_my_media로 보고, 사용자가 미디어 모듈에 내 달라고 하면 prepare_media_submission으로 미리보기를 만들어 보여 준 뒤 사용자가 다음 메시지에서 승인하면 submit_media_submission으로 제출한다. 모듈은 늘 사용자가 선택한다.");
   }
   return lines.join("\n");
 }

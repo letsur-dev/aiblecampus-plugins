@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "apps": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/mcp.js",
+        "--server",
+        "apps"
+      ],
+      "env": {}
+    },
+    "files": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/mcp.js",
+        "--server",
+        "files"
+      ],
+      "env": {}
+    },
+    "media": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/mcp.js",
+        "--server",
+        "media"
+      ],
+      "env": {}
+    }
+  }
+}

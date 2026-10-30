@@ -13,10 +13,11 @@ description: Install, update, repair, or uninstall the AibleCampus Apps plugin w
 
 ## 공개 마켓플레이스(Claude Code)
 
-- 설치: 대화에서 `/plugin marketplace add letsur-dev/aiblecampus-plugins` 뒤 `/plugin install aiblecampus-apps@aiblecampus-plugins`(터미널은 `claude plugin marketplace add`, `claude plugin install`). Claude 구독(Pro, Max) 로그인, API 키, 조직의 게이트웨이 설정 중 무엇으로 Claude Code를 쓰든 같다. 플러그인에 넣을 환경변수는 없다.
-- 갱신: 터미널에서 `claude plugin marketplace update aiblecampus-plugins` 뒤 `claude plugin update aiblecampus-apps@aiblecampus-plugins`(또는 대화의 `/plugin` 화면). 그다음 Claude Code를 다시 시작하고 `apps_plugin_status`로 판을 확인한다.
+- 설치: 대화에서 `/plugin marketplace add letsur-dev/aiblecampus-plugins` 뒤 `/plugin install aiblecampus@aiblecampus-plugins`(터미널은 `claude plugin marketplace add`, `claude plugin install`). Claude 구독(Pro, Max) 로그인, API 키, 조직의 게이트웨이 설정 중 무엇으로 Claude Code를 쓰든 같다. 플러그인에 넣을 환경변수는 없다.
+- 갱신: 터미널에서 `claude plugin marketplace update aiblecampus-plugins` 뒤 `claude plugin update aiblecampus@aiblecampus-plugins`(또는 대화의 `/plugin` 화면). 그다음 Claude Code를 다시 시작하고 `apps_plugin_status`로 판을 확인한다.
+- 이름 변경(0.50.0): 예전 이름은 `aiblecampus-apps`다. `claude plugin marketplace update aiblecampus-plugins` 뒤 Claude Code가 마켓플레이스 `renames`로 설치된 옛 이름을 `aiblecampus`로 옮긴다. 옛 이름 `aiblecampus-apps@aiblecampus-plugins`가 그대로 설치돼 있으면 `aiblecampus@aiblecampus-plugins`를 설치하고 옛 것을 제거한다. 기기 로그인은 그대로 쓴다.
 - 앱 도구(배포, 상태, 로그, 앱용 AI 키)는 에이블캠퍼스 계정이 있어야 쓴다. `start_apps_login`, `complete_apps_login`으로 기기 로그인한다. 계정이 없으면 화면 디자인(`frontend-design`), 시각적 설명(`eli5`), 요구 되묻기(`ask-questions-if-underspecified`)와 로컬 개발까지만 할 수 있다고 알리고 로그인을 반복하지 않는다.
-- 제거: 명시적으로 요청받았을 때만 `claude plugin uninstall aiblecampus-apps@aiblecampus-plugins`(또는 `/plugin` 화면). 배포한 앱과 프로젝트 데이터는 지우지 않는다.
+- 제거: 명시적으로 요청받았을 때만 `claude plugin uninstall aiblecampus@aiblecampus-plugins`(또는 `/plugin` 화면). 배포한 앱과 프로젝트 데이터는 지우지 않는다.
 
 ## 지침 가져오기
 
