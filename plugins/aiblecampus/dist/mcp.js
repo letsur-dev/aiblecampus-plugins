@@ -3654,8 +3654,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path14) {
-      let input = path14;
+    function removeDotSegments(path15) {
+      let input = path15;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -4064,8 +4064,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path14 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path14 && path14 !== "/" ? path14 : void 0;
+        const path15 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path15 && path15 !== "/" ? path15 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -8360,10 +8360,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path14) {
-  if (!path14)
+function getElementAtPath(obj, path15) {
+  if (!path15)
     return obj;
-  return path14.reduce((acc, key) => acc?.[key], obj);
+  return path15.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8772,11 +8772,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path14, issues) {
+function prefixIssues(path15, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path14);
+    iss.path.unshift(path15);
     return iss;
   });
 }
@@ -8923,16 +8923,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path14 = []) => {
+  const processError = (error52, path15 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path15, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else {
-        const fullpath = [...path14, ...issue2.path];
+        const fullpath = [...path15, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -8959,17 +8959,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path14 = []) => {
+  const processError = (error52, path15 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path15, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else {
-        const fullpath = [...path14, ...issue2.path];
+        const fullpath = [...path15, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -9001,8 +9001,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path14 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path14) {
+  const path15 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path15) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -21694,13 +21694,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path14 = ref.slice(1).split("/").filter(Boolean);
-  if (path14.length === 0) {
+  const path15 = ref.slice(1).split("/").filter(Boolean);
+  if (path15.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path14[0] === defsKey) {
-    const key = path14[1];
+  if (path15[0] === defsKey) {
+    const key = path15[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -26814,8 +26814,8 @@ function getErrorMap2() {
 
 // ../../node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path14, errorMaps, issueData } = params;
-  const fullPath = [...path14, ...issueData.path || []];
+  const { data, path: path15, errorMaps, issueData } = params;
+  const fullPath = [...path15, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -26930,11 +26930,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path14, key) {
+  constructor(parent, value, path15, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path14;
+    this._path = path15;
     this._key = key;
   }
   get path() {
@@ -30462,11 +30462,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path14) {
-  if (path14.length === 0) {
+function getDotPath(path15) {
+  if (path15.length === 0) {
     return "object root";
   }
-  return path14.reduce((acc, seg, index) => {
+  return path15.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -36093,7 +36093,7 @@ var StdioServerTransport = class {
 // mcp/index.ts
 import { createHash as createHash4 } from "node:crypto";
 import { existsSync } from "node:fs";
-import path13 from "node:path";
+import path14 from "node:path";
 
 // mcp/device-auth.ts
 import { mkdir as mkdir7, readFile as readFile5, rename as rename3, writeFile as writeFile3 } from "node:fs/promises";
@@ -38740,6 +38740,171 @@ async function deploymentAttempt(fingerprint, forceNewRevision, options = {}) {
   });
 }
 
+// mcp/deploy-wait.ts
+var DEPLOY_WAIT_DEFAULT_SECONDS = 45;
+var DEPLOY_WAIT_MAX_SECONDS = 900;
+var STATUS_REQUEST_TIMEOUT_MS = 15e3;
+var POLL_DEFAULT_MS = 2500;
+function deployWaitSeconds() {
+  const raw = appsEnv("DEPLOY_WAIT_SECONDS");
+  if (raw === void 0 || raw === "") return DEPLOY_WAIT_DEFAULT_SECONDS;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1) return DEPLOY_WAIT_DEFAULT_SECONDS;
+  return Math.min(value, DEPLOY_WAIT_MAX_SECONDS);
+}
+function deployPollMs(serverHint) {
+  const raw = appsEnv("DEPLOY_POLL_MS");
+  if (raw !== void 0 && raw !== "") {
+    const value = Number(raw);
+    if (Number.isInteger(value) && value >= 10) return value;
+  }
+  const hint = serverHint !== void 0 && Number.isFinite(serverHint) ? serverHint : POLL_DEFAULT_MS;
+  return Math.min(Math.max(hint, 2e3), 3e3);
+}
+var AcceptedDeployment = external_exports.looseObject({
+  accepted: external_exports.literal(true),
+  deploymentId: external_exports.string().min(1),
+  revisionId: external_exports.string().min(1),
+  statusPath: external_exports.string().startsWith("/v1/deployments/").optional(),
+  revisionNumber: external_exports.number().int().optional(),
+  status: external_exports.string().optional(),
+  pollAfterMs: external_exports.number().optional()
+});
+var RevisionState = external_exports.looseObject({
+  id: external_exports.string().optional(),
+  number: external_exports.number().int().optional(),
+  status: external_exports.string(),
+  phase: external_exports.string().optional(),
+  error: external_exports.looseObject({
+    stage: external_exports.string(),
+    message: external_exports.string(),
+    code: external_exports.string().optional(),
+    status: external_exports.number().int().optional(),
+    details: external_exports.unknown().optional()
+  }).nullable().optional(),
+  result: external_exports.record(external_exports.string(), external_exports.unknown()).nullable().optional()
+});
+function phaseLabel(state) {
+  switch (state.phase ?? state.status) {
+    case "queued":
+      return "\uBC30\uD3EC \uB300\uAE30";
+    case "build":
+      return "\uBE4C\uB4DC \uC911";
+    case "start":
+      return "\uC571 \uAE30\uB3D9 \uC911";
+    case "health":
+      return "\uB3D9\uC791 \uD655\uC778 \uC911";
+    case "done":
+    case "running":
+      return "\uC2E4\uD589 \uC911, \uACB0\uACFC \uC815\uB9AC \uC911";
+    default:
+      return state.status === "building" ? "\uBE4C\uB4DC\uC640 \uAE30\uB3D9 \uC911" : state.status;
+  }
+}
+function defaultSleep(ms2, signal3) {
+  const { promise: promise2, resolve } = Promise.withResolvers();
+  if (signal3?.aborted === true) {
+    resolve();
+    return promise2;
+  }
+  const timer = setTimeout(done, ms2);
+  signal3?.addEventListener("abort", done, { once: true });
+  function done() {
+    clearTimeout(timer);
+    signal3?.removeEventListener("abort", done);
+    resolve();
+  }
+  return promise2;
+}
+async function waitForRevision(options) {
+  const now = options.now ?? Date.now;
+  const sleep = options.sleep ?? defaultSleep;
+  const startedAt = options.startedAt ?? now();
+  let last = null;
+  const cancelled = () => options.signal?.aborted === true;
+  for (; ; ) {
+    if (cancelled()) return { kind: "pending", state: last, elapsedMs: now() - startedAt };
+    const request = AbortSignal.any([AbortSignal.timeout(STATUS_REQUEST_TIMEOUT_MS), ...options.signal === void 0 ? [] : [options.signal]]);
+    const response = await options.fetchState(request);
+    if (cancelled()) return { kind: "pending", state: last, elapsedMs: now() - startedAt };
+    const transient = !response.ok && (response.status === 0 || response.status >= 500);
+    if (!response.ok && !transient) return { kind: "error", result: response };
+    const parsed = response.ok ? RevisionState.safeParse(response.body) : null;
+    if (response.ok && !parsed?.success) return { kind: "error", result: { ok: false, status: response.status, body: "\uD68C\uCC28 \uC0C1\uD0DC \uC751\uB2F5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4" } };
+    const state = parsed?.success ? parsed.data : null;
+    if (state !== null) {
+      last = state;
+      if (state.status === "running" && state.result !== null && state.result !== void 0) return { kind: "running", state, result: state.result };
+      if (state.status === "failed") {
+        const error51 = state.error;
+        return {
+          kind: "failed",
+          state,
+          failure: { stage: error51?.stage ?? "build", message: error51?.message ?? "\uBC30\uD3EC\uC5D0 \uC2E4\uD328\uD588\uB2E4", status: error51?.status ?? 422, details: error51?.details ?? null }
+        };
+      }
+      if (state.status === "stopped") {
+        return { kind: "failed", state, failure: { stage: "run", message: "\uBC30\uD3EC\uD55C \uBC84\uC804\uC774 \uC774\uBBF8 \uC911\uC9C0\uB410\uB2E4", status: 409, details: null } };
+      }
+      const label = phaseLabel(state);
+      const elapsedMs = now() - startedAt;
+      if (options.onProgress !== void 0) await options.onProgress(`${label} (${Math.round(elapsedMs / 1e3)}\uCD08 \uACBD\uACFC)`, elapsedMs);
+    }
+    if (now() + options.pollMs >= options.deadline) return { kind: "pending", state: last, elapsedMs: now() - startedAt };
+    await sleep(options.pollMs, options.signal);
+  }
+}
+
+// mcp/pending-deploys.ts
+import { randomUUID as randomUUID5 } from "node:crypto";
+import { mkdir as mkdir10, readFile as readFile8, rename as rename5, writeFile as writeFile5 } from "node:fs/promises";
+import { homedir as homedir4 } from "node:os";
+import path13 from "node:path";
+var TTL_MS = 24 * 60 * 60 * 1e3;
+function defaultFile2() {
+  const configured = appsEnv("PENDING_DEPLOY_FILE");
+  if (configured) return path13.resolve(configured);
+  const configRoot = process.env["XDG_CONFIG_HOME"]?.trim() || path13.join(homedir4(), ".config");
+  return path13.join(configRoot, "aiblecampus-apps", "pending-deploys.json");
+}
+async function read(file2) {
+  try {
+    const parsed = JSON.parse(await readFile8(file2, "utf8"));
+    if (parsed.version === 1 && parsed.revisions !== null && typeof parsed.revisions === "object") return { version: 1, revisions: parsed.revisions };
+  } catch {
+  }
+  return { version: 1, revisions: {} };
+}
+async function write(file2, state) {
+  await mkdir10(path13.dirname(file2), { recursive: true, mode: 448 });
+  const temporary = `${file2}.${process.pid}.${randomUUID5()}.tmp`;
+  await writeFile5(temporary, `${JSON.stringify(state, null, 2)}
+`, { mode: 384 });
+  await rename5(temporary, file2);
+}
+async function rememberPendingDeploy(revisionId, entry, options = {}) {
+  const file2 = options.file ?? defaultFile2();
+  const now = options.now ?? Date.now();
+  await withFileLock(file2, async () => {
+    const state = await read(file2);
+    for (const [id, item] of Object.entries(state.revisions)) if (item.expiresAt <= now) delete state.revisions[id];
+    state.revisions[revisionId] = { ...entry, expiresAt: now + TTL_MS };
+    await write(file2, state);
+  });
+}
+async function takePendingDeploy(revisionId, options = {}) {
+  const file2 = options.file ?? defaultFile2();
+  const now = options.now ?? Date.now();
+  return withFileLock(file2, async () => {
+    const state = await read(file2);
+    const entry = state.revisions[revisionId];
+    if (entry === void 0) return null;
+    delete state.revisions[revisionId];
+    await write(file2, state);
+    return entry.expiresAt > now ? entry : null;
+  });
+}
+
 // mcp/failure.ts
 var FAILURE_FIELDS = ["error", "code", "message", "stage", "details", "educations", "reason", "requestId"];
 var FAILURE_MESSAGE_MAX = 2e3;
@@ -38785,7 +38950,7 @@ function failureFacts(prefix, result, note) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.50.1";
+var PLUGIN_VERSION = "0.51.0";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || hubCredential()?.apiBase || "https://api.aible-campus.com";
@@ -39012,6 +39177,76 @@ async function movedAppWorkspace(state, deployment, workspace) {
   const [found] = matches;
   if (matches.length !== 1 || found === void 0 || found.id === state.workspace || found.slug === state.workspace) return void 0;
   return found;
+}
+var RESPOND_ASYNC = { prefer: "respond-async" };
+function progressReporter(extra) {
+  const token = extra._meta?.progressToken;
+  if (token === void 0) return void 0;
+  let step = 0;
+  return async (message2) => {
+    step += 1;
+    await extra.sendNotification({ method: "notifications/progress", params: { progressToken: token, progress: step, message: message2 } }).catch(() => void 0);
+  };
+}
+function nextStatusCall(deployment, workspace) {
+  return { tool: "deployment_status", arguments: { deployment, ...workspace === void 0 ? {} : { workspace }, waitSeconds: deployWaitSeconds() } };
+}
+function inProgressResult(input) {
+  return textResult({
+    \uBC30\uD3EC_\uC9C4\uD589_\uC911: true,
+    \uBC30\uD3EC\uB428: false,
+    \uC774\uB984: input.name,
+    deploymentId: input.deploymentId,
+    revisionId: input.revisionId,
+    ...input.number === void 0 ? {} : { \uD68C\uCC28: input.number },
+    \uB2E8\uACC4: input.state === null ? "\uC811\uC218\uB428" : phaseLabel(input.state),
+    \uACBD\uACFC_\uCD08: Math.round(input.elapsedMs / 1e3),
+    ...input.url === void 0 ? {} : { \uC8FC\uC18C: input.url },
+    ...input.extra ?? {},
+    \uC548\uB0B4: "\uBC30\uD3EC\uB294 \uC11C\uBC84\uC5D0\uC11C \uACC4\uC18D \uC9C4\uD589 \uC911\uC774\uBA70 \uC544\uC9C1 \uB05D\uB098\uC9C0 \uC54A\uC558\uB2E4. \uC644\uB8CC\uB098 \uC2E4\uD328\uB97C \uC54C\uB9AC\uC9C0 \uC54A\uB294\uB2E4. deployment_status\uB97C \uB2E4\uC74C_\uC870\uD68C\uC758 \uC778\uC790\uB85C running\uC774\uB098 failed\uAC00 \uB098\uC62C \uB54C\uAE4C\uC9C0 \uB418\uD480\uC774\uD574 \uBD80\uB978\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C\uB294 \uBC30\uD3EC\uAC00 \uC9C4\uD589 \uC911\uC784\uC744 \uC9E7\uAC8C \uC54C\uB9B0\uB2E4",
+    \uB2E4\uC74C_\uC870\uD68C: nextStatusCall(input.name, input.workspace)
+  });
+}
+async function settleAccepted(accepted, input) {
+  const parsed = AcceptedDeployment.safeParse(accepted.body);
+  if (!parsed.success) return { result: { ok: false, status: 502, body: "\uBC30\uD3EC \uC811\uC218(202) \uC751\uB2F5 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4" } };
+  const info = parsed.data;
+  const name = typeof info["name"] === "string" ? info["name"] : info.deploymentId;
+  const url2 = typeof info["url"] === "string" ? info["url"] : void 0;
+  const report = progressReporter(input.extra);
+  await report?.("\uBC30\uD3EC \uC811\uC218");
+  const outcome = await waitForRevision({
+    fetchState: (signal3) => callApi(`/v1/deployments/${encodeURIComponent(info.deploymentId)}/revisions/${encodeURIComponent(info.revisionId)}`, { signal: signal3, redirect: "error", cache: "no-store" }, input.workspace),
+    deadline: input.startedAt + deployWaitSeconds() * 1e3,
+    pollMs: deployPollMs(info.pollAfterMs),
+    signal: input.extra.signal,
+    startedAt: input.startedAt,
+    ...report === void 0 ? {} : { onProgress: (message2) => report(message2) }
+  });
+  switch (outcome.kind) {
+    case "running":
+      return { result: { ok: true, status: 201, body: outcome.result } };
+    case "failed":
+      return { result: { ok: false, status: outcome.failure.status, body: { stage: outcome.failure.stage, message: outcome.failure.message, details: outcome.failure.details } } };
+    case "error":
+      return { final: failure("\uBC30\uD3EC\uB294 \uC11C\uBC84\uC5D0\uC11C \uACC4\uC18D \uC9C4\uD589 \uC911\uC77C \uC218 \uC788\uC73C\uB098 \uC9C4\uD589 \uC0C1\uD0DC\uB97C \uC870\uD68C\uD558\uC9C0 \uBABB\uD588\uB2E4", outcome.result, `deployment_status\uB85C '${name}'\uC758 \uC0C1\uD0DC\uB97C \uD655\uC778\uD55C\uB2E4`) };
+    case "pending":
+      if (input.project !== void 0) {
+        await rememberPendingDeploy(info.revisionId, { projectPath: input.project.projectPath, api: apiBase(), deployment: input.project.deployment, workspace: input.workspace ?? null }).catch(() => void 0);
+      }
+      return { final: inProgressResult({ name, deploymentId: info.deploymentId, revisionId: info.revisionId, number: info.revisionNumber, url: url2, state: outcome.state, elapsedMs: outcome.elapsedMs, workspace: input.workspace }) };
+  }
+}
+async function completePendingDeploy(revisionId, sourceCommit) {
+  if (revisionId === void 0 || typeof sourceCommit !== "string") return {};
+  const pending = await takePendingDeploy(revisionId).catch(() => null);
+  if (pending === null || pending.api !== apiBase()) return {};
+  try {
+    await saveSourceBase(pending.projectPath, pending.api, pending.deployment, pending.workspace ?? void 0, sourceCommit);
+    return { \uC18C\uC2A4_\uAE30\uC900_\uAE30\uB85D: `${pending.projectPath}/.apps-source.json\uC744 \uC774\uBC88 \uBC30\uD3EC \uCEE4\uBC0B\uC73C\uB85C \uB9DE\uCDC4\uB2E4` };
+  } catch {
+    return { \uC18C\uC2A4_\uAE30\uC900_\uAE30\uB85D: "\uBC30\uD3EC\uB294 \uC644\uB8CC\uB410\uC73C\uB098 \uB85C\uCEEC \uC18C\uC2A4 \uAE30\uC900\uC744 \uAE30\uB85D\uD558\uC9C0 \uBABB\uD588\uB2E4. \uB2E4\uC74C \uBC30\uD3EC \uC804\uC5D0 \uCD5C\uC2E0 \uC18C\uC2A4\uB97C \uD655\uC778\uD55C\uB2E4" };
+  }
 }
 async function deploymentFailure(result, deployment, workspace, sourceBaseCommit) {
   const body = result.body;
@@ -39421,7 +39656,7 @@ groupServer("mcp-apps").registerTool(
   "deploy_project",
   {
     title: "\uD504\uB85C\uC81D\uD2B8 \uBC30\uD3EC",
-    description: "\uD504\uB85C\uC81D\uD2B8\uB97C \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 Apps \uC5D0 \uBC30\uD3EC\uD55C\uB2E4. \uB85C\uCEEC \uB514\uB809\uD1A0\uB9AC \uACBD\uB85C\uB97C \uC8FC\uBA74 tar.gz \uB85C \uBB36\uC5B4 \uC62C\uB9AC\uACE0, git \uC8FC\uC18C\uB97C \uC8FC\uBA74 \uC11C\uBC84\uAC00 \uC9C1\uC811 clone \uD55C\uB2E4. \uBE4C\uB4DC\uC640 \uC2E4\uD589, \uC811\uC18D URL \uBC1C\uAE09\uAE4C\uC9C0 \uC218\uD589\uD55C\uB2E4. \uC0C8 \uC571\uC5D0\uB294 displayName\uC744, \uBAA8\uB4E0 \uBC30\uD3EC\uC5D0\uB294 changeSummary\uB97C \uC5D0\uC774\uC804\uD2B8\uAC00 \uD504\uB85C\uC81D\uD2B8 \uB0B4\uC6A9\uACFC \uB300\uD654 \uB9E5\uB77D\uC73C\uB85C \uD55C\uAD6D\uC5B4\uB85C \uC9C0\uC5B4 \uD568\uAED8 \uBCF4\uB0B8\uB2E4(\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4). \uAD50\uC721 \uC571\uC774\uBA74 \uAC24\uB7EC\uB9AC \uC124\uBA85 gallery\uB3C4 \uAC19\uC740 \uBC29\uBC95\uC73C\uB85C \uC368\uC11C \uBCF4\uB0B8\uB2E4. validate_project\uB97C \uD1B5\uACFC\uD55C \uB4A4 \uACE0\uCE58\uC9C0 \uC54A\uC740 \uAC19\uC740 \uC18C\uC2A4\uB97C \uBCF4\uB0B8\uB2E4. \uBE4C\uB4DC\uC640 healthcheck\uAC00 \uB05D\uB0A0 \uB54C\uAE4C\uC9C0 \uAE30\uB2E4\uB9AC\uACE0 \uACB0\uACFC\uC758 url\uC744 \uADF8\uB300\uB85C \uC548\uB0B4\uD558\uBA70 \uC8FC\uC18C\uB97C \uC870\uB9BD\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC751\uB2F5\uC774 \uB04A\uAE30\uAC70\uB098 \uC2DC\uAC04\uC774 \uC9C0\uB098\uBA74 \uB2E4\uC2DC \uBD80\uB974\uAE30 \uC804\uC5D0 deployment_status\uB85C \uAE30\uC874 \uC791\uC5C5\uC744 \uD655\uC778\uD55C\uB2E4. \uACB0\uACFC\uC758 gallerySubmission\uC774 unpublished\uBA74 message\uC758 \uAC24\uB7EC\uB9AC \uC81C\uCD9C \uD398\uC774\uC9C0\uC5D0\uC11C \uC774 \uC571\uC744 \uACE0\uB974\uBA74 \uB41C\uB2E4\uACE0 \uC54C\uB9B0\uB2E4. \uB85C\uCEEC \uACBD\uB85C\uC758 .env\uC640 .env.* \uD30C\uC77C\uB3C4 \uC18C\uC2A4 \uC555\uCD95\uC5D0 \uD3EC\uD568\uB41C\uB2E4(\uAD50\uC721 \uC124\uACC4\uC0C1 \uC758\uB3C4). \uCC38\uAC00\uC790\uAC00 \uBB3C\uC73C\uBA74 \uC758\uB3C4\uB41C \uB3D9\uC791\uC774\uB77C\uACE0 \uB2F5\uD55C\uB2E4. \uBC30\uD3EC\uD560 \uB54C \uC18C\uC2A4 \uB8E8\uD2B8\uC758 .env.production.local, .env.local, .env.production, .env \uAC12\uC740 \uC571 \uBE44\uBC00\uAC12\uC73C\uB85C \uC790\uB3D9 \uB4F1\uB85D\uB41C\uB2E4(\uC55E \uD30C\uC77C \uC6B0\uC120). \uBC30\uD3EC \uC694\uCCAD\uC758 env, secrets, localEnv\uC640 \uC774\uBBF8 \uC800\uC7A5\uB41C \uC124\uC815\uC774 \uBA3C\uC800\uC774\uACE0 \uD30C\uC77C\uC740 \uC5C6\uB294 \uD0A4\uB9CC \uB354\uD558\uBA70, PORT, NODE_ENV, DATABASE_URL, APPS_ \uC811\uB450 \uD0A4\uB294 \uB4F1\uB85D\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC815\uC801 \uC571\uC740 .env \uAC19\uC740 \uC810 \uD30C\uC77C\uC744 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uC8FC\uC9C0 \uC54A\uB294\uB2E4(404). \uACB0\uACFC\uC758 envFiles.registered\uC5D0 \uD0A4\uAC00 \uC788\uC73C\uBA74 \uC790\uB3D9 \uB4F1\uB85D\uD55C \uD0A4 \uC774\uB984\uB9CC \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9AC\uACE0 \uAC12\uC740 \uB9D0\uD558\uC9C0 \uC54A\uB294\uB2E4. envFiles.kept\uC758 \uD0A4\uB294 \uC774\uBBF8 \uC800\uC7A5\uB41C \uAC12\uC744 \uC37C\uC73C\uBBC0\uB85C, \uD30C\uC77C \uAC12\uC73C\uB85C \uBC14\uAFB8\uB824\uBA74 localEnv\uB85C \uADF8 \uD0A4\uB97C \uBCF4\uB0B4\uAC70\uB098 set_deployment_config\uB85C \uACE0\uCE5C\uB2E4.",
+    description: "\uD504\uB85C\uC81D\uD2B8\uB97C \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 Apps \uC5D0 \uBC30\uD3EC\uD55C\uB2E4. \uB85C\uCEEC \uB514\uB809\uD1A0\uB9AC \uACBD\uB85C\uB97C \uC8FC\uBA74 tar.gz \uB85C \uBB36\uC5B4 \uC62C\uB9AC\uACE0, git \uC8FC\uC18C\uB97C \uC8FC\uBA74 \uC11C\uBC84\uAC00 \uC9C1\uC811 clone \uD55C\uB2E4. \uBE4C\uB4DC\uC640 \uC2E4\uD589, \uC811\uC18D URL \uBC1C\uAE09\uAE4C\uC9C0 \uC218\uD589\uD55C\uB2E4. \uC0C8 \uC571\uC5D0\uB294 displayName\uC744, \uBAA8\uB4E0 \uBC30\uD3EC\uC5D0\uB294 changeSummary\uB97C \uC5D0\uC774\uC804\uD2B8\uAC00 \uD504\uB85C\uC81D\uD2B8 \uB0B4\uC6A9\uACFC \uB300\uD654 \uB9E5\uB77D\uC73C\uB85C \uD55C\uAD6D\uC5B4\uB85C \uC9C0\uC5B4 \uD568\uAED8 \uBCF4\uB0B8\uB2E4(\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4). \uAD50\uC721 \uC571\uC774\uBA74 \uAC24\uB7EC\uB9AC \uC124\uBA85 gallery\uB3C4 \uAC19\uC740 \uBC29\uBC95\uC73C\uB85C \uC368\uC11C \uBCF4\uB0B8\uB2E4. validate_project\uB97C \uD1B5\uACFC\uD55C \uB4A4 \uACE0\uCE58\uC9C0 \uC54A\uC740 \uAC19\uC740 \uC18C\uC2A4\uB97C \uBCF4\uB0B8\uB2E4. \uC0AC\uC804 \uAC80\uC0AC \uC2E4\uD328(\uC18C\uC2A4 \uCDA9\uB3CC, \uAC80\uC99D \uC2E4\uD328)\uB294 \uBC14\uB85C \uC624\uB958\uB85C \uB3CC\uB824\uC900\uB2E4. \uBE4C\uB4DC\uC640 \uAE30\uB3D9\uC740 \uC11C\uBC84\uAC00 \uACC4\uC18D\uD558\uACE0 \uC774 \uB3C4\uAD6C\uB294 \uCD5C\uB300 45\uCD08(\uC124\uC815 APPS_DEPLOY_WAIT_SECONDS) \uAE30\uB2E4\uB9B0\uB2E4. \uADF8 \uC548\uC5D0 \uB05D\uB098\uBA74 \uACB0\uACFC\uC758 url\uC744 \uADF8\uB300\uB85C \uC548\uB0B4\uD558\uBA70 \uC8FC\uC18C\uB97C \uC870\uB9BD\uD558\uC9C0 \uC54A\uB294\uB2E4. \uACB0\uACFC\uAC00 \uBC30\uD3EC_\uC9C4\uD589_\uC911\uC774\uBA74 \uC544\uC9C1 \uB05D\uB098\uC9C0 \uC54A\uC740 \uAC83\uC774\uB2E4: \uC644\uB8CC\uB098 \uC2E4\uD328\uB97C \uB9D0\uD558\uC9C0 \uB9D0\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC9C4\uD589 \uC911\uC774\uB77C\uACE0 \uC9E7\uAC8C \uC54C\uB9B0 \uB4A4 deployment_status\uB97C waitSeconds 45\uB85C running\uC774\uB098 failed\uAC00 \uB098\uC62C \uB54C\uAE4C\uC9C0 \uB418\uD480\uC774\uD574 \uBD80\uB978\uB2E4(deploy_project\uB97C \uB2E4\uC2DC \uBD80\uB974\uC9C0 \uC54A\uB294\uB2E4). \uC751\uB2F5\uC774 \uB04A\uAE30\uAC70\uB098 \uC2DC\uAC04\uC774 \uC9C0\uB098\uBA74 \uB2E4\uC2DC \uBD80\uB974\uAE30 \uC804\uC5D0 deployment_status\uB85C \uAE30\uC874 \uC791\uC5C5\uC744 \uD655\uC778\uD55C\uB2E4. \uACB0\uACFC\uC758 gallerySubmission\uC774 unpublished\uBA74 message\uC758 \uAC24\uB7EC\uB9AC \uC81C\uCD9C \uD398\uC774\uC9C0\uC5D0\uC11C \uC774 \uC571\uC744 \uACE0\uB974\uBA74 \uB41C\uB2E4\uACE0 \uC54C\uB9B0\uB2E4. \uB85C\uCEEC \uACBD\uB85C\uC758 .env\uC640 .env.* \uD30C\uC77C\uB3C4 \uC18C\uC2A4 \uC555\uCD95\uC5D0 \uD3EC\uD568\uB41C\uB2E4(\uAD50\uC721 \uC124\uACC4\uC0C1 \uC758\uB3C4). \uCC38\uAC00\uC790\uAC00 \uBB3C\uC73C\uBA74 \uC758\uB3C4\uB41C \uB3D9\uC791\uC774\uB77C\uACE0 \uB2F5\uD55C\uB2E4. \uBC30\uD3EC\uD560 \uB54C \uC18C\uC2A4 \uB8E8\uD2B8\uC758 .env.production.local, .env.local, .env.production, .env \uAC12\uC740 \uC571 \uBE44\uBC00\uAC12\uC73C\uB85C \uC790\uB3D9 \uB4F1\uB85D\uB41C\uB2E4(\uC55E \uD30C\uC77C \uC6B0\uC120). \uBC30\uD3EC \uC694\uCCAD\uC758 env, secrets, localEnv\uC640 \uC774\uBBF8 \uC800\uC7A5\uB41C \uC124\uC815\uC774 \uBA3C\uC800\uC774\uACE0 \uD30C\uC77C\uC740 \uC5C6\uB294 \uD0A4\uB9CC \uB354\uD558\uBA70, PORT, NODE_ENV, DATABASE_URL, APPS_ \uC811\uB450 \uD0A4\uB294 \uB4F1\uB85D\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC815\uC801 \uC571\uC740 .env \uAC19\uC740 \uC810 \uD30C\uC77C\uC744 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uC8FC\uC9C0 \uC54A\uB294\uB2E4(404). \uACB0\uACFC\uC758 envFiles.registered\uC5D0 \uD0A4\uAC00 \uC788\uC73C\uBA74 \uC790\uB3D9 \uB4F1\uB85D\uD55C \uD0A4 \uC774\uB984\uB9CC \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9AC\uACE0 \uAC12\uC740 \uB9D0\uD558\uC9C0 \uC54A\uB294\uB2E4. envFiles.kept\uC758 \uD0A4\uB294 \uC774\uBBF8 \uC800\uC7A5\uB41C \uAC12\uC744 \uC37C\uC73C\uBBC0\uB85C, \uD30C\uC77C \uAC12\uC73C\uB85C \uBC14\uAFB8\uB824\uBA74 localEnv\uB85C \uADF8 \uD0A4\uB97C \uBCF4\uB0B4\uAC70\uB098 set_deployment_config\uB85C \uACE0\uCE5C\uB2E4.",
     inputSchema: {
       path: external_exports.string().describe(
         "\uBC30\uD3EC\uD560 \uD504\uB85C\uC81D\uD2B8\uC758 \uC704\uCE58. \uB85C\uCEEC \uB514\uB809\uD1A0\uB9AC\uC758 \uC808\uB300 \uACBD\uB85C(\uBCF4\uD1B5 \uD604\uC7AC \uC791\uC5C5 \uB514\uB809\uD1A0\uB9AC)\uC774\uAC70\uB098 public git \uC800\uC7A5\uC18C\uC758 https \uC8FC\uC18C\uB2E4. package.json\uC774\uB098 index.html\uC774 \uC788\uB294 \uB8E8\uD2B8. \uCEE4\uBC0B\uD558\uC9C0 \uC54A\uC740 \uBCC0\uACBD\uC774\uB098 private \uC800\uC7A5\uC18C\uB294 \uB85C\uCEEC \uACBD\uB85C\uB97C \uC4F4\uB2E4. git \uC8FC\uC18C\uB294 \uC6D0\uACA9\uC5D0 \uC62C\uB77C\uAC04 \uB0B4\uC6A9\uB9CC \uBC30\uD3EC\uB41C\uB2E4"
@@ -39494,7 +39729,8 @@ groupServer("mcp-apps").registerTool(
     changeSummary,
     gallery,
     newApp
-  }) => {
+  }, extra) => {
+    const startedAt = Date.now();
     const writeup = galleryWriteup(gallery);
     if (education && legacyOrganization && education !== legacyOrganization) return errorResult("\uAD50\uC721\uC740 \uD55C \uBC88\uB9CC \uC9C0\uC815\uD55C\uB2E4");
     const organization = education ?? legacyOrganization;
@@ -39532,9 +39768,9 @@ groupServer("mcp-apps").registerTool(
           `\uBC30\uD3EC \uC694\uCCAD\uC744 \uC548\uC804\uD558\uAC8C \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
         );
       }
-      const result2 = await callApi("/v1/deployments/git", {
+      let result2 = await callApi("/v1/deployments/git", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...RESPOND_ASYNC },
         body: JSON.stringify({
           name: deploymentName2,
           organization,
@@ -39549,6 +39785,11 @@ groupServer("mcp-apps").registerTool(
           ...writeup === void 0 ? {} : { gallery: writeup }
         })
       }, workspace);
+      if (result2.status === 202) {
+        const settled = await settleAccepted(result2, { workspace, startedAt, extra });
+        if ("final" in settled) return settled.final;
+        result2 = settled.result;
+      }
       if (!result2.ok) return deploymentFailure(result2, deploymentName2, workspace, void 0);
       return textResult({
         \uBC30\uD3EC\uB428: true,
@@ -39574,7 +39815,7 @@ groupServer("mcp-apps").registerTool(
         `\uB85C\uCEEC \uD658\uACBD \uC124\uC815\uC744 \uC900\uBE44\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}`
       );
     }
-    const deploymentName = toDeploymentName(name ?? path13.basename(projectPath));
+    const deploymentName = toDeploymentName(name ?? path14.basename(projectPath));
     let movedFrom;
     if (newApp !== true) {
       try {
@@ -39654,10 +39895,16 @@ groupServer("mcp-apps").registerTool(
       );
     }
     form.set("idempotencyKey", attempt.key);
-    const result = await callApi("/v1/deployments", {
+    let result = await callApi("/v1/deployments", {
       method: "POST",
+      headers: RESPOND_ASYNC,
       body: form
     }, workspace);
+    if (result.status === 202) {
+      const settled = await settleAccepted(result, { workspace, startedAt, extra, project: { projectPath, deployment: deploymentName } });
+      if ("final" in settled) return settled.final;
+      result = settled.result;
+    }
     if (!result.ok) return deploymentFailure(result, deploymentName, workspace, base);
     const committed = typeof result.body === "object" && result.body !== null ? result.body.sourceCommit : null;
     if (typeof committed === "string") {
@@ -39846,10 +40093,11 @@ groupServer("mcp-apps").registerTool(
   "deployment_status",
   {
     title: "\uBC30\uD3EC \uC0C1\uD0DC \uC870\uD68C",
-    description: "\uBC30\uD3EC\uC758 \uC811\uC18D URL, \uD604\uC7AC \uC11C\uBE44\uC2A4 \uC911\uC778 revision\uACFC \uAC00\uC7A5 \uCD5C\uADFC \uBC30\uD3EC \uC791\uC5C5\uC758 queued, building, healthcheck, running \uB610\uB294 failed \uC0C1\uD0DC\uB97C \uC870\uD68C\uD55C\uB2E4. \uC774\uB984\uC774\uB098 \uBC30\uD3EC id \uB85C \uCC3E\uB294\uB2E4. \uC2E4\uD328\uB294 \uACB0\uACFC\uC758 failureSummary\uB97C \uBA3C\uC800 \uADF8\uB300\uB85C \uC804\uD55C\uB2E4. latestRevision.error.explanationStatus\uAC00 pending\uC774\uBA74 10\uCD08\uCBE4 \uB4A4 \uD55C \uBC88 \uB354 \uC870\uD68C\uD558\uACE0, unavailable\uC774\uBA74 \uC624\uB958 \uC6D0\uBB38\uC744 \uD55C\uAD6D\uC5B4\uB85C \uD480\uC5B4 \uB367\uBD99\uC778\uB2E4. \uC774\uC804 \uBC84\uC804 \uC2E4\uD589 \uC5EC\uBD80\uB294 \uC774 \uBB38\uC7A5\uC744 \uB530\uB978\uB2E4.",
+    description: "\uBC30\uD3EC\uC758 \uC811\uC18D URL, \uD604\uC7AC \uC11C\uBE44\uC2A4 \uC911\uC778 revision\uACFC \uAC00\uC7A5 \uCD5C\uADFC \uBC30\uD3EC \uC791\uC5C5\uC758 queued, building, healthcheck, running \uB610\uB294 failed \uC0C1\uD0DC\uB97C \uC870\uD68C\uD55C\uB2E4. \uC774\uB984\uC774\uB098 \uBC30\uD3EC id \uB85C \uCC3E\uB294\uB2E4. deploy_project\uAC00 \uBC30\uD3EC_\uC9C4\uD589_\uC911\uC73C\uB85C \uB05D\uB0AC\uC73C\uBA74 waitSeconds\uB97C 45\uB85C \uC8FC\uACE0 \uC774 \uB3C4\uAD6C\uB97C running\uC774\uB098 failed\uAC00 \uB098\uC62C \uB54C\uAE4C\uC9C0 \uB418\uD480\uC774\uD574 \uBD80\uB978\uB2E4. \uD55C \uBC88 \uBD80\uB974\uBA74 \uB05D\uB098\uAC70\uB098 waitSeconds\uAC00 \uB420 \uB54C\uAE4C\uC9C0 \uC11C\uBC84\uC5D0\uC11C \uAE30\uB2E4\uB838\uB2E4\uAC00 \uCD5C\uC885 \uACB0\uACFC(\uC8FC\uC18C, \uC2E4\uD328\uBA74 \uC624\uB958\uC640 \uBCF5\uAD6C \uC548\uB0B4)\uB97C \uC900\uB2E4. \uACB0\uACFC\uAC00 \uBC30\uD3EC_\uC9C4\uD589_\uC911\uC774\uBA74 \uC544\uC9C1 \uB05D\uB098\uC9C0 \uC54A\uC740 \uAC83\uC774\uBBC0\uB85C \uC644\uB8CC\uB098 \uC2E4\uD328\uB97C \uB9D0\uD558\uC9C0 \uB9D0\uACE0 \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uC2E4\uD328\uB294 \uACB0\uACFC\uC758 failureSummary\uB97C \uBA3C\uC800 \uADF8\uB300\uB85C \uC804\uD55C\uB2E4. latestRevision.error.explanationStatus\uAC00 pending\uC774\uBA74 10\uCD08\uCBE4 \uB4A4 \uD55C \uBC88 \uB354 \uC870\uD68C\uD558\uACE0, unavailable\uC774\uBA74 \uC624\uB958 \uC6D0\uBB38\uC744 \uD55C\uAD6D\uC5B4\uB85C \uD480\uC5B4 \uB367\uBD99\uC778\uB2E4. \uC774\uC804 \uBC84\uC804 \uC2E4\uD589 \uC5EC\uBD80\uB294 \uC774 \uBB38\uC7A5\uC744 \uB530\uB978\uB2E4.",
     inputSchema: {
       deployment: external_exports.string().describe("\uBC30\uD3EC \uC774\uB984 \uB610\uB294 \uBC30\uD3EC id"),
-      workspace: WorkspaceInputSchema
+      workspace: WorkspaceInputSchema,
+      waitSeconds: external_exports.number().int().min(0).max(DEPLOY_WAIT_MAX_SECONDS).optional().describe("\uAC00\uC7A5 \uCD5C\uADFC \uBC30\uD3EC\uAC00 \uC9C4\uD589 \uC911(queued, building)\uC774\uBA74 \uB05D\uB0A0 \uB54C\uAE4C\uC9C0 \uC11C\uBC84\uC5D0\uC11C \uAE30\uB2E4\uB9AC\uB294 \uCD5C\uB300 \uCD08. \uBC30\uD3EC_\uC9C4\uD589_\uC911 \uACB0\uACFC\uB97C \uBC1B\uC558\uC73C\uBA74 45\uB97C \uC900\uB2E4. \uD55C \uBC88\uC758 \uD638\uCD9C \uC0C1\uD55C\uC740 \uC124\uC815(APPS_DEPLOY_WAIT_SECONDS, \uAE30\uBCF8 45\uCD08)\uC774\uB2E4. \uC0DD\uB7B5\uD558\uAC70\uB098 0\uC774\uBA74 \uAE30\uB2E4\uB9AC\uC9C0 \uC54A\uACE0 \uC9C0\uAE08 \uC0C1\uD0DC\uB9CC \uC900\uB2E4")
     },
     annotations: {
       readOnlyHint: true,
@@ -39858,14 +40106,63 @@ groupServer("mcp-apps").registerTool(
       openWorldHint: true
     }
   },
-  async ({ deployment, workspace }) => {
+  async ({ deployment, workspace, waitSeconds }, extra) => {
+    const startedAt = Date.now();
     const result = await callApi(
       `/v1/deployments/${encodeURIComponent(deployment)}`,
       {},
       workspace
     );
     if (!result.ok) return failure("\uC0C1\uD0DC\uB97C \uC870\uD68C\uD558\uC9C0 \uBABB\uD588\uB2E4", result);
-    return textResult(result.body);
+    const view = typeof result.body === "object" ? result.body : null;
+    const latest = view !== null && typeof view["latestRevision"] === "object" && view["latestRevision"] !== null ? view["latestRevision"] : null;
+    const latestId = typeof latest?.["id"] === "string" ? latest["id"] : void 0;
+    const deploymentId = typeof view?.["id"] === "string" ? view["id"] : void 0;
+    const name = typeof view?.["name"] === "string" ? view["name"] : deployment;
+    const inProgress = latest?.["status"] === "queued" || latest?.["status"] === "building";
+    const wait2 = Math.min(waitSeconds ?? 0, deployWaitSeconds());
+    if (wait2 > 0 && inProgress && latestId !== void 0 && deploymentId !== void 0) {
+      const report = progressReporter(extra);
+      const outcome = await waitForRevision({
+        fetchState: (signal3) => callApi(`/v1/deployments/${encodeURIComponent(deploymentId)}/revisions/${encodeURIComponent(latestId)}`, { signal: signal3, redirect: "error", cache: "no-store" }, workspace),
+        deadline: startedAt + wait2 * 1e3,
+        pollMs: deployPollMs(),
+        signal: extra.signal,
+        startedAt,
+        ...report === void 0 ? {} : { onProgress: (message2) => report(message2) }
+      });
+      switch (outcome.kind) {
+        case "running": {
+          const created = outcome.result;
+          return textResult({
+            \uBC30\uD3EC\uB428: true,
+            ...await checkPublicAccess(created),
+            \uC774\uB984: typeof created["name"] === "string" ? created["name"] : name,
+            ...mergeNotice(created),
+            ...await completePendingDeploy(latestId, created["sourceCommit"]),
+            ...created
+          });
+        }
+        case "failed":
+          return deploymentFailure({ ok: false, status: outcome.failure.status, body: { stage: outcome.failure.stage, message: outcome.failure.message, details: outcome.failure.details } }, name, workspace, void 0);
+        case "error":
+          return failure("\uC9C4\uD589 \uC0C1\uD0DC\uB97C \uC870\uD68C\uD558\uC9C0 \uBABB\uD588\uB2E4", outcome.result);
+        case "pending":
+          return inProgressResult({
+            name,
+            deploymentId,
+            revisionId: latestId,
+            number: typeof latest?.["number"] === "number" ? latest["number"] : void 0,
+            url: typeof view?.["url"] === "string" ? view["url"] : void 0,
+            state: outcome.state,
+            elapsedMs: outcome.elapsedMs,
+            workspace
+          });
+      }
+    }
+    const recorded = latest?.["status"] === "running" ? await completePendingDeploy(latestId, latest["sourceCommit"]) : {};
+    const withProgress = inProgress && view !== null ? { \uBC30\uD3EC_\uC9C4\uD589_\uC911: true, \uB2E4\uC74C_\uC870\uD68C: nextStatusCall(name, workspace) } : {};
+    return textResult(typeof result.body === "string" ? result.body : { ...result.body, ...withProgress, ...recorded });
   }
 );
 groupServer("mcp-apps").registerTool(
@@ -40620,7 +40917,7 @@ groupServer("mcp-apps").registerTool(
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
   },
   async ({ deployment, directory, commit: reference, workspace }) => {
-    if (!path13.isAbsolute(directory)) return errorResult("\uC0C8 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD55C\uB2E4");
+    if (!path14.isAbsolute(directory)) return errorResult("\uC0C8 \uD3F4\uB354\uC758 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD55C\uB2E4");
     const result = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}/source${reference ? `?commit=${reference}` : ""}`, {}, workspace);
     if (!result.ok) return failure("\uCD5C\uC2E0 \uC18C\uC2A4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uB2E4", result);
     try {

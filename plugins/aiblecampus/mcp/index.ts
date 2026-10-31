@@ -54,10 +54,14 @@ import {
 } from "./persistence-migration.ts";
 import { openVerificationUrl, parseOpenableUrl, OPEN_LINK_MAX_LENGTH } from "./open-browser.ts";
 import { deploymentAttempt } from "./deployment-attempts.ts";
+import { AcceptedDeployment, deployPollMs, deployWaitSeconds, DEPLOY_WAIT_MAX_SECONDS, phaseLabel, type RevisionState, waitForRevision } from "./deploy-wait.ts";
+import { rememberPendingDeploy, takePendingDeploy } from "./pending-deploys.ts";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type { ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.50.1";
+export const PLUGIN_VERSION = "0.51.0";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -440,6 +444,98 @@ async function movedAppWorkspace(state: SourceState, deployment: string, workspa
   const [found] = matches;
   if (matches.length !== 1 || found === undefined || found.id === state.workspace || found.slug === state.workspace) return undefined;
   return found;
+}
+
+/** 도구 호출이 받는 부가 정보(취소 신호, 진행 알림 보내기) */
+type ToolExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
+
+/** 비동기 배포 요청 헤더(RFC 7240). 서버가 모르면(옛 서버) 무시하고 지금처럼 끝까지 기다려 201로 답한다 */
+const RESPOND_ASYNC = { prefer: "respond-async" } as const;
+
+/** 호출이 progressToken을 가졌을 때만 진행 알림을 보낸다. 알림 실패는 배포와 무관하므로 삼킨다 */
+function progressReporter(extra: ToolExtra): ((message: string) => Promise<void>) | undefined {
+  const token = extra._meta?.progressToken;
+  if (token === undefined) return undefined;
+  let step = 0;
+  return async (message) => {
+    step += 1;
+    await extra.sendNotification({ method: "notifications/progress", params: { progressToken: token, progress: step, message } }).catch(() => undefined);
+  };
+}
+
+/** 다음에 부를 deployment_status 인자. 한 번에 기다리는 시간은 설정(기본 45초)을 넘지 않는다 */
+function nextStatusCall(deployment: string, workspace: string | undefined): { tool: "deployment_status"; arguments: { deployment: string; workspace?: string; waitSeconds: number } } {
+  return { tool: "deployment_status", arguments: { deployment, ...(workspace === undefined ? {} : { workspace }), waitSeconds: deployWaitSeconds() } };
+}
+
+/** 서버가 계속 진행 중인 배포를 알리는 도구 결과. 오류가 아니다. 끝나지 않았으므로 완료나 실패를 말하지 않고 상태를 이어서 확인해야 한다 */
+function inProgressResult(input: { name: string; deploymentId: string; revisionId: string; number: number | undefined; url: string | undefined; state: RevisionState | null; elapsedMs: number; workspace: string | undefined; extra?: Record<string, unknown> }) {
+  return textResult({
+    배포_진행_중: true,
+    배포됨: false,
+    이름: input.name,
+    deploymentId: input.deploymentId,
+    revisionId: input.revisionId,
+    ...(input.number === undefined ? {} : { 회차: input.number }),
+    단계: input.state === null ? "접수됨" : phaseLabel(input.state),
+    경과_초: Math.round(input.elapsedMs / 1000),
+    ...(input.url === undefined ? {} : { 주소: input.url }),
+    ...(input.extra ?? {}),
+    안내: "배포는 서버에서 계속 진행 중이며 아직 끝나지 않았다. 완료나 실패를 알리지 않는다. deployment_status를 다음_조회의 인자로 running이나 failed가 나올 때까지 되풀이해 부른다. 사용자에게는 배포가 진행 중임을 짧게 알린다",
+    다음_조회: nextStatusCall(input.name, input.workspace),
+  });
+}
+
+/**
+ * 202 접수 뒤 기다린다(한 번의 호출에서 deployWaitSeconds까지). 끝나면 동기 응답과 같은 모양의 ApiResult(201 본문 또는 동기 오류 본문)를 돌려줘
+ * 호출한 쪽이 지금까지의 성공과 실패 처리를 그대로 쓰게 한다. 끝나지 않았거나 조회하지 못하면 도구 결과(final)를 돌려준다
+ */
+async function settleAccepted(
+  accepted: ApiResult,
+  input: { workspace: string | undefined; startedAt: number; extra: ToolExtra; project?: { projectPath: string; deployment: string } },
+): Promise<{ result: ApiResult } | { final: ReturnType<typeof textResult> | ReturnType<typeof errorResult> }> {
+  const parsed = AcceptedDeployment.safeParse(accepted.body);
+  if (!parsed.success) return { result: { ok: false, status: 502, body: "배포 접수(202) 응답 형식이 올바르지 않다" } };
+  const info = parsed.data;
+  const name = typeof info["name"] === "string" ? info["name"] : info.deploymentId;
+  const url = typeof info["url"] === "string" ? info["url"] : undefined;
+  const report = progressReporter(input.extra);
+  await report?.("배포 접수");
+  const outcome = await waitForRevision({
+    fetchState: (signal) =>
+      callApi(`/v1/deployments/${encodeURIComponent(info.deploymentId)}/revisions/${encodeURIComponent(info.revisionId)}`, { signal, redirect: "error", cache: "no-store" }, input.workspace),
+    deadline: input.startedAt + deployWaitSeconds() * 1000,
+    pollMs: deployPollMs(info.pollAfterMs),
+    signal: input.extra.signal,
+    startedAt: input.startedAt,
+    ...(report === undefined ? {} : { onProgress: (message) => report(message) }),
+  });
+  switch (outcome.kind) {
+    case "running":
+      return { result: { ok: true, status: 201, body: outcome.result } };
+    case "failed":
+      return { result: { ok: false, status: outcome.failure.status, body: { stage: outcome.failure.stage, message: outcome.failure.message, details: outcome.failure.details } } };
+    case "error":
+      return { final: failure("배포는 서버에서 계속 진행 중일 수 있으나 진행 상태를 조회하지 못했다", outcome.result, `deployment_status로 '${name}'의 상태를 확인한다`) };
+    case "pending":
+      if (input.project !== undefined) {
+        await rememberPendingDeploy(info.revisionId, { projectPath: input.project.projectPath, api: apiBase(), deployment: input.project.deployment, workspace: input.workspace ?? null }).catch(() => undefined);
+      }
+      return { final: inProgressResult({ name, deploymentId: info.deploymentId, revisionId: info.revisionId, number: info.revisionNumber, url, state: outcome.state, elapsedMs: outcome.elapsedMs, workspace: input.workspace }) };
+  }
+}
+
+/** 끝난 배포가 진행 중으로 기록돼 있었으면 그 프로젝트 폴더의 소스 기준을 회차 커밋으로 맞춘다. 실패해도 배포 결과는 바꾸지 않는다 */
+async function completePendingDeploy(revisionId: string | undefined, sourceCommit: unknown): Promise<{ 소스_기준_기록?: string }> {
+  if (revisionId === undefined || typeof sourceCommit !== "string") return {};
+  const pending = await takePendingDeploy(revisionId).catch(() => null);
+  if (pending === null || pending.api !== apiBase()) return {};
+  try {
+    await saveSourceBase(pending.projectPath, pending.api, pending.deployment, pending.workspace ?? undefined, sourceCommit);
+    return { 소스_기준_기록: `${pending.projectPath}/.apps-source.json을 이번 배포 커밋으로 맞췄다` };
+  } catch {
+    return { 소스_기준_기록: "배포는 완료됐으나 로컬 소스 기준을 기록하지 못했다. 다음 배포 전에 최신 소스를 확인한다" };
+  }
 }
 
 /**
@@ -893,7 +989,7 @@ groupServer("mcp-apps").registerTool(
   {
     title: "프로젝트 배포",
     description:
-      "프로젝트를 에이블캠퍼스 Apps 에 배포한다. 로컬 디렉토리 경로를 주면 tar.gz 로 묶어 올리고, git 주소를 주면 서버가 직접 clone 한다. 빌드와 실행, 접속 URL 발급까지 수행한다. 새 앱에는 displayName을, 모든 배포에는 changeSummary를 에이전트가 프로젝트 내용과 대화 맥락으로 한국어로 지어 함께 보낸다(사용자에게 묻지 않는다). 교육 앱이면 갤러리 설명 gallery도 같은 방법으로 써서 보낸다. validate_project를 통과한 뒤 고치지 않은 같은 소스를 보낸다. 빌드와 healthcheck가 끝날 때까지 기다리고 결과의 url을 그대로 안내하며 주소를 조립하지 않는다. 응답이 끊기거나 시간이 지나면 다시 부르기 전에 deployment_status로 기존 작업을 확인한다. 결과의 gallerySubmission이 unpublished면 message의 갤러리 제출 페이지에서 이 앱을 고르면 된다고 알린다. 로컬 경로의 .env와 .env.* 파일도 소스 압축에 포함된다(교육 설계상 의도). 참가자가 물으면 의도된 동작이라고 답한다. 배포할 때 소스 루트의 .env.production.local, .env.local, .env.production, .env 값은 앱 비밀값으로 자동 등록된다(앞 파일 우선). 배포 요청의 env, secrets, localEnv와 이미 저장된 설정이 먼저이고 파일은 없는 키만 더하며, PORT, NODE_ENV, DATABASE_URL, APPS_ 접두 키는 등록하지 않는다. 정적 앱은 .env 같은 점 파일을 브라우저에 주지 않는다(404). 결과의 envFiles.registered에 키가 있으면 자동 등록한 키 이름만 사용자에게 알리고 값은 말하지 않는다. envFiles.kept의 키는 이미 저장된 값을 썼으므로, 파일 값으로 바꾸려면 localEnv로 그 키를 보내거나 set_deployment_config로 고친다.",
+      "프로젝트를 에이블캠퍼스 Apps 에 배포한다. 로컬 디렉토리 경로를 주면 tar.gz 로 묶어 올리고, git 주소를 주면 서버가 직접 clone 한다. 빌드와 실행, 접속 URL 발급까지 수행한다. 새 앱에는 displayName을, 모든 배포에는 changeSummary를 에이전트가 프로젝트 내용과 대화 맥락으로 한국어로 지어 함께 보낸다(사용자에게 묻지 않는다). 교육 앱이면 갤러리 설명 gallery도 같은 방법으로 써서 보낸다. validate_project를 통과한 뒤 고치지 않은 같은 소스를 보낸다. 사전 검사 실패(소스 충돌, 검증 실패)는 바로 오류로 돌려준다. 빌드와 기동은 서버가 계속하고 이 도구는 최대 45초(설정 APPS_DEPLOY_WAIT_SECONDS) 기다린다. 그 안에 끝나면 결과의 url을 그대로 안내하며 주소를 조립하지 않는다. 결과가 배포_진행_중이면 아직 끝나지 않은 것이다: 완료나 실패를 말하지 말고 사용자에게 진행 중이라고 짧게 알린 뒤 deployment_status를 waitSeconds 45로 running이나 failed가 나올 때까지 되풀이해 부른다(deploy_project를 다시 부르지 않는다). 응답이 끊기거나 시간이 지나면 다시 부르기 전에 deployment_status로 기존 작업을 확인한다. 결과의 gallerySubmission이 unpublished면 message의 갤러리 제출 페이지에서 이 앱을 고르면 된다고 알린다. 로컬 경로의 .env와 .env.* 파일도 소스 압축에 포함된다(교육 설계상 의도). 참가자가 물으면 의도된 동작이라고 답한다. 배포할 때 소스 루트의 .env.production.local, .env.local, .env.production, .env 값은 앱 비밀값으로 자동 등록된다(앞 파일 우선). 배포 요청의 env, secrets, localEnv와 이미 저장된 설정이 먼저이고 파일은 없는 키만 더하며, PORT, NODE_ENV, DATABASE_URL, APPS_ 접두 키는 등록하지 않는다. 정적 앱은 .env 같은 점 파일을 브라우저에 주지 않는다(404). 결과의 envFiles.registered에 키가 있으면 자동 등록한 키 이름만 사용자에게 알리고 값은 말하지 않는다. envFiles.kept의 키는 이미 저장된 값을 썼으므로, 파일 값으로 바꾸려면 localEnv로 그 키를 보내거나 set_deployment_config로 고친다.",
     inputSchema: {
       path: z
         .string()
@@ -1017,7 +1113,8 @@ groupServer("mcp-apps").registerTool(
     changeSummary,
     gallery,
     newApp,
-  }) => {
+  }, extra) => {
+    const startedAt = Date.now();
     const writeup = galleryWriteup(gallery);
     if (education && legacyOrganization && education !== legacyOrganization) return errorResult("교육은 한 번만 지정한다");
     const organization = education ?? legacyOrganization;
@@ -1056,9 +1153,9 @@ groupServer("mcp-apps").registerTool(
           `배포 요청을 안전하게 준비하지 못했다: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
-      const result = await callApi("/v1/deployments/git", {
+      let result = await callApi("/v1/deployments/git", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...RESPOND_ASYNC },
         body: JSON.stringify({
           name: deploymentName,
           organization,
@@ -1073,6 +1170,11 @@ groupServer("mcp-apps").registerTool(
           ...(writeup === undefined ? {} : { gallery: writeup }),
         }),
       }, workspace);
+      if (result.status === 202) {
+        const settled = await settleAccepted(result, { workspace, startedAt, extra });
+        if ("final" in settled) return settled.final;
+        result = settled.result;
+      }
       if (!result.ok) return deploymentFailure(result, deploymentName, workspace, undefined);
       return textResult({
         배포됨: true,
@@ -1191,10 +1293,16 @@ groupServer("mcp-apps").registerTool(
     }
     form.set("idempotencyKey", attempt.key);
 
-    const result = await callApi("/v1/deployments", {
+    let result = await callApi("/v1/deployments", {
       method: "POST",
+      headers: RESPOND_ASYNC,
       body: form,
     }, workspace);
+    if (result.status === 202) {
+      const settled = await settleAccepted(result, { workspace, startedAt, extra, project: { projectPath, deployment: deploymentName } });
+      if ("final" in settled) return settled.final;
+      result = settled.result;
+    }
 
     // 실패 단계와 원인을 그대로 전달해야 agent 가 다음 행동을 판단할 수 있다.
     if (!result.ok) return deploymentFailure(result, deploymentName, workspace, base);
@@ -1396,10 +1504,17 @@ groupServer("mcp-apps").registerTool(
   {
     title: "배포 상태 조회",
     description:
-      "배포의 접속 URL, 현재 서비스 중인 revision과 가장 최근 배포 작업의 queued, building, healthcheck, running 또는 failed 상태를 조회한다. 이름이나 배포 id 로 찾는다. 실패는 결과의 failureSummary를 먼저 그대로 전한다. latestRevision.error.explanationStatus가 pending이면 10초쯤 뒤 한 번 더 조회하고, unavailable이면 오류 원문을 한국어로 풀어 덧붙인다. 이전 버전 실행 여부는 이 문장을 따른다.",
+      "배포의 접속 URL, 현재 서비스 중인 revision과 가장 최근 배포 작업의 queued, building, healthcheck, running 또는 failed 상태를 조회한다. 이름이나 배포 id 로 찾는다. deploy_project가 배포_진행_중으로 끝났으면 waitSeconds를 45로 주고 이 도구를 running이나 failed가 나올 때까지 되풀이해 부른다. 한 번 부르면 끝나거나 waitSeconds가 될 때까지 서버에서 기다렸다가 최종 결과(주소, 실패면 오류와 복구 안내)를 준다. 결과가 배포_진행_중이면 아직 끝나지 않은 것이므로 완료나 실패를 말하지 말고 다시 부른다. 실패는 결과의 failureSummary를 먼저 그대로 전한다. latestRevision.error.explanationStatus가 pending이면 10초쯤 뒤 한 번 더 조회하고, unavailable이면 오류 원문을 한국어로 풀어 덧붙인다. 이전 버전 실행 여부는 이 문장을 따른다.",
     inputSchema: {
       deployment: z.string().describe("배포 이름 또는 배포 id"),
       workspace: WorkspaceInputSchema,
+      waitSeconds: z
+        .number()
+        .int()
+        .min(0)
+        .max(DEPLOY_WAIT_MAX_SECONDS)
+        .optional()
+        .describe("가장 최근 배포가 진행 중(queued, building)이면 끝날 때까지 서버에서 기다리는 최대 초. 배포_진행_중 결과를 받았으면 45를 준다. 한 번의 호출 상한은 설정(APPS_DEPLOY_WAIT_SECONDS, 기본 45초)이다. 생략하거나 0이면 기다리지 않고 지금 상태만 준다"),
     },
     annotations: {
       readOnlyHint: true,
@@ -1408,14 +1523,65 @@ groupServer("mcp-apps").registerTool(
       openWorldHint: true,
     },
   },
-  async ({ deployment, workspace }) => {
+  async ({ deployment, workspace, waitSeconds }, extra) => {
+    const startedAt = Date.now();
     const result = await callApi(
       `/v1/deployments/${encodeURIComponent(deployment)}`,
       {},
       workspace,
     );
     if (!result.ok) return failure("상태를 조회하지 못했다", result);
-    return textResult(result.body);
+    const view = typeof result.body === "object" ? result.body : null;
+    const latest = view !== null && typeof view["latestRevision"] === "object" && view["latestRevision"] !== null ? (view["latestRevision"] as JsonRecord) : null;
+    const latestId = typeof latest?.["id"] === "string" ? latest["id"] : undefined;
+    const deploymentId = typeof view?.["id"] === "string" ? view["id"] : undefined;
+    const name = typeof view?.["name"] === "string" ? view["name"] : deployment;
+    const inProgress = latest?.["status"] === "queued" || latest?.["status"] === "building";
+    const wait = Math.min(waitSeconds ?? 0, deployWaitSeconds());
+    if (wait > 0 && inProgress && latestId !== undefined && deploymentId !== undefined) {
+      const report = progressReporter(extra);
+      const outcome = await waitForRevision({
+        fetchState: (signal) =>
+          callApi(`/v1/deployments/${encodeURIComponent(deploymentId)}/revisions/${encodeURIComponent(latestId)}`, { signal, redirect: "error", cache: "no-store" }, workspace),
+        deadline: startedAt + wait * 1000,
+        pollMs: deployPollMs(),
+        signal: extra.signal,
+        startedAt,
+        ...(report === undefined ? {} : { onProgress: (message) => report(message) }),
+      });
+      switch (outcome.kind) {
+        case "running": {
+          const created = outcome.result;
+          return textResult({
+            배포됨: true,
+            ...(await checkPublicAccess(created)),
+            이름: typeof created["name"] === "string" ? created["name"] : name,
+            ...mergeNotice(created),
+            ...(await completePendingDeploy(latestId, created["sourceCommit"])),
+            ...created,
+          });
+        }
+        case "failed":
+          return deploymentFailure({ ok: false, status: outcome.failure.status, body: { stage: outcome.failure.stage, message: outcome.failure.message, details: outcome.failure.details } }, name, workspace, undefined);
+        case "error":
+          return failure("진행 상태를 조회하지 못했다", outcome.result);
+        case "pending":
+          return inProgressResult({
+            name,
+            deploymentId,
+            revisionId: latestId,
+            number: typeof latest?.["number"] === "number" ? latest["number"] : undefined,
+            url: typeof view?.["url"] === "string" ? view["url"] : undefined,
+            state: outcome.state,
+            elapsedMs: outcome.elapsedMs,
+            workspace,
+          });
+      }
+    }
+    // 기다리지 않는 조회라도 진행 중이던 배포가 끝나 있으면 그 폴더의 소스 기준을 맞춘다
+    const recorded = latest?.["status"] === "running" ? await completePendingDeploy(latestId, latest["sourceCommit"]) : {};
+    const withProgress = inProgress && view !== null ? { 배포_진행_중: true, 다음_조회: nextStatusCall(name, workspace) } : {};
+    return textResult(typeof result.body === "string" ? result.body : { ...result.body, ...withProgress, ...recorded });
   },
 );
 
