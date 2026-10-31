@@ -38785,7 +38785,7 @@ function failureFacts(prefix, result, note) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.50.0";
+var PLUGIN_VERSION = "0.50.1";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || hubCredential()?.apiBase || "https://api.aible-campus.com";
