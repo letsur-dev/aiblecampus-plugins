@@ -57,7 +57,7 @@ import { deploymentAttempt } from "./deployment-attempts.ts";
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.50.0";
+export const PLUGIN_VERSION = "0.50.1";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
