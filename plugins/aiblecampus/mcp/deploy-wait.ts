@@ -2,7 +2,7 @@
  * 비동기 배포(0.51.0)의 기다리기. 서버가 요청 헤더 `Prefer: respond-async`에 202와 상태 조회 경로를 주면 한 번의 도구 호출 안에서
  * 짧은 상태 조회를 2~3초 간격으로 되풀이해 running이나 failed를 기다린다.
  *
- * - 한 번의 호출이 기다리는 최대 시간은 APPS_DEPLOY_WAIT_SECONDS(기본 45초)다. Claude 데스크톱과 Cowork가 도구 호출을 약 60초에 끊는다는
+ * - 한 번의 호출이 기다리는 최대 시간은 APPS_DEPLOY_WAIT_SECONDS(기본 40초)다. Claude 데스크톱과 Cowork가 도구 호출을 약 60초에 끊는다는
  *   보고가 있어 그 안에 끝낸다. 넘으면 오류가 아니라 '진행 중' 결과로 끝내고 deployment_status(waitSeconds)로 이어서 기다리게 한다
  * - 상태 조회 한 번은 15초 안에 끝나야 하고(요청이 짧아 undici의 300초 한도와 무관하다), 취소 신호가 오면 바로 멈춘다
  * - 진행 알림(notifications/progress)은 호출이 progressToken을 가졌을 때만 보낸다(Claude Code CLI가 작업 항목에 보여 준다)
@@ -12,14 +12,14 @@ import type { ApiResult } from "./failure.ts";
 import { appsEnv } from "./config.ts";
 
 /** 한 번의 도구 호출이 기다리는 기본 시간(초). 60초에서 끊기는 클라이언트를 피한다 */
-export const DEPLOY_WAIT_DEFAULT_SECONDS = 45;
+export const DEPLOY_WAIT_DEFAULT_SECONDS = 40;
 /** 설정으로 늘릴 수 있는 한 번의 대기 상한(초). Claude Code CLI처럼 한도가 긴 클라이언트용이다 */
 export const DEPLOY_WAIT_MAX_SECONDS = 900;
 /** 상태 조회 한 번의 제한 시간 */
 const STATUS_REQUEST_TIMEOUT_MS = 15_000;
 const POLL_DEFAULT_MS = 2_500;
 
-/** 한 번의 도구 호출이 기다리는 시간(초). APPS_DEPLOY_WAIT_SECONDS가 올바른 정수면 그 값(1 이상, 상한 900)이고 아니면 45다 */
+/** 한 번의 도구 호출이 기다리는 시간(초). APPS_DEPLOY_WAIT_SECONDS가 올바른 정수면 그 값(1 이상, 상한 900)이고 아니면 40이다 */
 export function deployWaitSeconds(): number {
   const raw = appsEnv("DEPLOY_WAIT_SECONDS");
   if (raw === undefined || raw === "") return DEPLOY_WAIT_DEFAULT_SECONDS;
