@@ -287,6 +287,17 @@ export async function startDeviceLogin(apiBase: string): Promise<{
 
 /** 한 번 부를 때 기다리는 최대 polling 횟수(간격마다 한 번). 넘으면 polling_limit으로 돌려주고 에이전트가 다시 부른다 */
 const POLLS_PER_CALL = 12;
+/** complete_apps_login 한 번이 기다리는 최대 시간. 간격이 길어도(5초 간격이면 60초) 이 안에서 멈춘다. 데스크톱과 Cowork가 도구 호출을 약 60초에 끊는다는 보고가 있다 */
+export const LOGIN_WAIT_MAX_MS = 40_000;
+
+/** 아직 승인 전(pending, polling_limit)이면 다시 호출하라는 안내 필드. 다른 상태는 안내가 없다 */
+export function loginWaitNotice(status: string): { 안내?: string; 다음_행동?: string } {
+  if (status !== "pending" && status !== "polling_limit") return {};
+  return {
+    안내: "아직 사용자 승인을 기다리는 중이다. 로그인은 끝나지 않았으니 새 로그인을 시작하지 않고, 승인했다는 말을 기다리지 말고 바로 complete_apps_login을 다시 호출한다. 승인되면 approved가 온다",
+    다음_행동: "complete_apps_login을 지금 바로 다시 호출한다",
+  };
+}
 
 export async function completeDeviceLogin(apiBase: string): Promise<
   | { status: "approved"; deviceLabel: string }
@@ -303,7 +314,7 @@ export async function completeDeviceLogin(apiBase: string): Promise<
   const remaining = pending.expiresAt - Date.now();
   if (remaining <= 0) return expire();
   const configuration = oidcConfiguration(apiBase);
-  // openid-client가 간격(interval, slow_down이면 5초씩 늘린다)마다 polling한다. 한 번 부를 때는 POLLS_PER_CALL 간격까지만 기다린다.
+  // openid-client가 간격(interval, slow_down이면 5초씩 늘린다)마다 polling한다. 한 번 부를 때는 POLLS_PER_CALL 간격과 LOGIN_WAIT_MAX_MS(40초) 중 짧은 쪽까지만 기다린다.
   // 그 시각에 토큰 요청이 오가는 중이면 끊지 않고 응답을 받은 뒤 멈춘다. 끊으면 그사이 승인되어 Identity가 낸 토큰을 잃고
   // 기기 코드도 다시 쓸 수 없어 처음부터 다시 로그인해야 한다
   const limit = new AbortController();
@@ -324,7 +335,7 @@ export async function completeDeviceLogin(apiBase: string): Promise<
   const timer = setTimeout(() => {
     limitReached = true;
     if (inFlight === 0) limit.abort();
-  }, Math.min(remaining, POLLS_PER_CALL * pending.intervalSeconds * 1000));
+  }, Math.min(remaining, POLLS_PER_CALL * pending.intervalSeconds * 1000, LOGIN_WAIT_MAX_MS));
   try {
     const tokens = await oidc.pollDeviceAuthorizationGrant(
       configuration,

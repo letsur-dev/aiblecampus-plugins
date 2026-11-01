@@ -42,6 +42,7 @@ import { packDirectory } from "./pack.ts";
 import { loadSelectedLocalEnv } from "./local-env.ts";
 import {
   completeDeviceLogin,
+  loginWaitNotice,
   deviceRequestHeaders,
   startDeviceLogin,
 } from "./device-auth.ts";
@@ -61,7 +62,7 @@ import type { ServerNotification, ServerRequest } from "@modelcontextprotocol/sd
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.51.0";
+export const PLUGIN_VERSION = "0.51.1";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -463,7 +464,7 @@ function progressReporter(extra: ToolExtra): ((message: string) => Promise<void>
   };
 }
 
-/** 다음에 부를 deployment_status 인자. 한 번에 기다리는 시간은 설정(기본 45초)을 넘지 않는다 */
+/** 다음에 부를 deployment_status 인자. 한 번에 기다리는 시간은 설정(기본 40초)을 넘지 않는다 */
 function nextStatusCall(deployment: string, workspace: string | undefined): { tool: "deployment_status"; arguments: { deployment: string; workspace?: string; waitSeconds: number } } {
   return { tool: "deployment_status", arguments: { deployment, ...(workspace === undefined ? {} : { workspace }), waitSeconds: deployWaitSeconds() } };
 }
@@ -481,7 +482,8 @@ function inProgressResult(input: { name: string; deploymentId: string; revisionI
     경과_초: Math.round(input.elapsedMs / 1000),
     ...(input.url === undefined ? {} : { 주소: input.url }),
     ...(input.extra ?? {}),
-    안내: "배포는 서버에서 계속 진행 중이며 아직 끝나지 않았다. 완료나 실패를 알리지 않는다. deployment_status를 다음_조회의 인자로 running이나 failed가 나올 때까지 되풀이해 부른다. 사용자에게는 배포가 진행 중임을 짧게 알린다",
+    안내: "배포는 서버에서 계속 진행 중이며 아직 끝나지 않았다. 지금 바로 deployment_status를 다음_조회의 인자로 다시 호출하고 running이나 failed가 나올 때까지 되풀이한다. 셸 sleep이나 배경 작업으로 기다리지 않는다. 최종 결과(배포됨 또는 실패)를 받기 전에는 배포가 끝났다고 말하지 않고, 사용자에게 확인을 맡기며 턴을 끝내지 않는다",
+    다음_행동: "deployment_status를 지금 바로 다시 호출한다",
     다음_조회: nextStatusCall(input.name, input.workspace),
   });
 }
@@ -857,7 +859,7 @@ groupServer("base").registerTool(
   "complete_apps_login",
   {
     title: "Apps 기기 로그인 완료",
-    description: "사용자 승인 상태를 Identity 표준 polling 간격에 맞춰 확인하고 성공하면 이 기기의 Credential을 0600 로컬 파일에 저장한다. pending이나 polling_limit이면 새 로그인을 시작하지 않고 이 도구를 다시 불러 같은 요청을 이어간다. 성공하면 원래 요청을 다시 묻지 않고 이어간다.",
+    description: "사용자 승인 상태를 Identity 표준 polling 간격에 맞춰 확인하고 성공하면 이 기기의 Credential을 0600 로컬 파일에 저장한다. 한 번의 호출은 최대 40초까지만 기다린다. pending이나 polling_limit이면 아직 승인 대기 중이니 새 로그인을 시작하지 않고 바로 이 도구를 다시 불러 같은 요청을 이어간다(승인했다는 말을 기다리며 턴을 끝내지 않는다). 성공하면 원래 요청을 다시 묻지 않고 이어간다.",
     inputSchema: {},
     annotations: {
       readOnlyHint: false,
@@ -868,7 +870,8 @@ groupServer("base").registerTool(
   },
   async () => {
     try {
-      return textResult(await completeDeviceLogin(apiBase()));
+      const login = await completeDeviceLogin(apiBase());
+      return textResult({ ...login, ...loginWaitNotice(login.status) });
     } catch (error) {
       return errorResult(error instanceof Error ? error.message : String(error));
     }
@@ -989,7 +992,7 @@ groupServer("mcp-apps").registerTool(
   {
     title: "프로젝트 배포",
     description:
-      "프로젝트를 에이블캠퍼스 Apps 에 배포한다. 로컬 디렉토리 경로를 주면 tar.gz 로 묶어 올리고, git 주소를 주면 서버가 직접 clone 한다. 빌드와 실행, 접속 URL 발급까지 수행한다. 새 앱에는 displayName을, 모든 배포에는 changeSummary를 에이전트가 프로젝트 내용과 대화 맥락으로 한국어로 지어 함께 보낸다(사용자에게 묻지 않는다). 교육 앱이면 갤러리 설명 gallery도 같은 방법으로 써서 보낸다. validate_project를 통과한 뒤 고치지 않은 같은 소스를 보낸다. 사전 검사 실패(소스 충돌, 검증 실패)는 바로 오류로 돌려준다. 빌드와 기동은 서버가 계속하고 이 도구는 최대 45초(설정 APPS_DEPLOY_WAIT_SECONDS) 기다린다. 그 안에 끝나면 결과의 url을 그대로 안내하며 주소를 조립하지 않는다. 결과가 배포_진행_중이면 아직 끝나지 않은 것이다: 완료나 실패를 말하지 말고 사용자에게 진행 중이라고 짧게 알린 뒤 deployment_status를 waitSeconds 45로 running이나 failed가 나올 때까지 되풀이해 부른다(deploy_project를 다시 부르지 않는다). 응답이 끊기거나 시간이 지나면 다시 부르기 전에 deployment_status로 기존 작업을 확인한다. 결과의 gallerySubmission이 unpublished면 message의 갤러리 제출 페이지에서 이 앱을 고르면 된다고 알린다. 로컬 경로의 .env와 .env.* 파일도 소스 압축에 포함된다(교육 설계상 의도). 참가자가 물으면 의도된 동작이라고 답한다. 배포할 때 소스 루트의 .env.production.local, .env.local, .env.production, .env 값은 앱 비밀값으로 자동 등록된다(앞 파일 우선). 배포 요청의 env, secrets, localEnv와 이미 저장된 설정이 먼저이고 파일은 없는 키만 더하며, PORT, NODE_ENV, DATABASE_URL, APPS_ 접두 키는 등록하지 않는다. 정적 앱은 .env 같은 점 파일을 브라우저에 주지 않는다(404). 결과의 envFiles.registered에 키가 있으면 자동 등록한 키 이름만 사용자에게 알리고 값은 말하지 않는다. envFiles.kept의 키는 이미 저장된 값을 썼으므로, 파일 값으로 바꾸려면 localEnv로 그 키를 보내거나 set_deployment_config로 고친다.",
+      "프로젝트를 에이블캠퍼스 Apps 에 배포한다. 로컬 디렉토리 경로를 주면 tar.gz 로 묶어 올리고, git 주소를 주면 서버가 직접 clone 한다. 빌드와 실행, 접속 URL 발급까지 수행한다. 새 앱에는 displayName을, 모든 배포에는 changeSummary를 에이전트가 프로젝트 내용과 대화 맥락으로 한국어로 지어 함께 보낸다(사용자에게 묻지 않는다). 교육 앱이면 갤러리 설명 gallery도 같은 방법으로 써서 보낸다. validate_project를 통과한 뒤 고치지 않은 같은 소스를 보낸다. 사전 검사 실패(소스 충돌, 검증 실패)는 바로 오류로 돌려준다. 빌드와 기동은 서버가 계속하고 이 도구는 최대 40초(설정 APPS_DEPLOY_WAIT_SECONDS) 기다린다. 그 안에 끝나면 결과의 url을 그대로 안내하며 주소를 조립하지 않는다. 결과가 배포_진행_중이면 아직 끝나지 않은 것이다: 완료나 실패를 말하지 말고 사용자에게 진행 중이라고 짧게 알린 뒤 바로 deployment_status를 waitSeconds 40으로 부르고 running이나 failed가 나올 때까지 되풀이해 부른다(deploy_project를 다시 부르지 않는다). 셸 sleep이나 배경 작업으로 기다리지 않고, 최종 결과(배포됨 또는 실패)를 받기 전에는 배포가 끝났다고 말하지 않으며 사용자에게 확인을 맡기고 턴을 끝내지 않는다. 응답이 끊기거나 시간이 지나면 다시 부르기 전에 deployment_status로 기존 작업을 확인한다. 결과의 gallerySubmission이 unpublished면 message의 갤러리 제출 페이지에서 이 앱을 고르면 된다고 알린다. 로컬 경로의 .env와 .env.* 파일도 소스 압축에 포함된다(교육 설계상 의도). 참가자가 물으면 의도된 동작이라고 답한다. 배포할 때 소스 루트의 .env.production.local, .env.local, .env.production, .env 값은 앱 비밀값으로 자동 등록된다(앞 파일 우선). 배포 요청의 env, secrets, localEnv와 이미 저장된 설정이 먼저이고 파일은 없는 키만 더하며, PORT, NODE_ENV, DATABASE_URL, APPS_ 접두 키는 등록하지 않는다. 정적 앱은 .env 같은 점 파일을 브라우저에 주지 않는다(404). 결과의 envFiles.registered에 키가 있으면 자동 등록한 키 이름만 사용자에게 알리고 값은 말하지 않는다. envFiles.kept의 키는 이미 저장된 값을 썼으므로, 파일 값으로 바꾸려면 localEnv로 그 키를 보내거나 set_deployment_config로 고친다.",
     inputSchema: {
       path: z
         .string()
@@ -1080,7 +1083,7 @@ groupServer("mcp-apps").registerTool(
         .describe(
           "같은 소스와 설정의 직전 요청이 명확히 실패했고 새 빌드가 필요할 때만 true. 응답 단절 복구에는 사용하지 않는다. 한 번만 쓴다",
         ),
-      education: z.string().optional().describe("새 개인 앱을 배포할 교육 ID(list_educations의 id). 배포할 수 있는 교육이 둘 이상이면 list_educations 목록을 사용자에게 보여 주고 고른 교육을 넣는다. 하나뿐이면 참가자는 생략하고, 운영진은 그 교육을 넣는다. education-required로 거절되면 응답의 교육 목록에서 고르게 한다. 기존 앱 재배포와 조 앱은 앱과 조의 교육을 따르므로 생략한다. 요청이나 .aiblecampus-deploy.json에 정해진 교육이 있으면 그 교육을 쓴다. 운영진은 apps_whoami의 canManagePluginSettings가 true인 계정이다"),
+      education: z.string().optional().describe("새 개인 앱을 배포할 교육 ID(list_educations의 id). 배포할 수 있는 교육이 둘 이상이면 list_educations 목록을 사용자에게 보여 주고 고른 교육을 넣는다. 하나뿐이면 참가자는 생략하고(교육 이름이나 추측한 ID를 넣지 않는다. 서버가 그 교육을 자동으로 고른다), 운영진은 그 교육을 넣는다. education-required로 거절되면 응답의 교육 목록에서 고르게 한다. 기존 앱 재배포와 조 앱은 앱과 조의 교육을 따르므로 생략한다. 요청이나 .aiblecampus-deploy.json에 정해진 교육이 있으면 그 교육을 쓴다. 운영진은 apps_whoami의 canManagePluginSettings가 true인 계정이다"),
       organization: z.string().optional().describe("이전 클라이언트 호환 필드. 새 호출에서는 생략하고 교육은 education으로 지정한다"),
       workspace: z.string().min(1).describe("apps_whoami로 확인한 대상 공간(개인 또는 조)의 UUID 또는 slug. 요청과 프로젝트의 .aiblecampus-deploy.json을 확인한다. 대상 공간이 불분명하면 추측하지 말고 \"개인 산출물 배포\"와 \"조 산출물 배포(조 이름)\" 중 무엇인지 사용자에게 묻는다. 조 대상을 요청받았으면 개인 공간으로 바꾸지 않는다"),
       newApp: z
@@ -1504,7 +1507,7 @@ groupServer("mcp-apps").registerTool(
   {
     title: "배포 상태 조회",
     description:
-      "배포의 접속 URL, 현재 서비스 중인 revision과 가장 최근 배포 작업의 queued, building, healthcheck, running 또는 failed 상태를 조회한다. 이름이나 배포 id 로 찾는다. deploy_project가 배포_진행_중으로 끝났으면 waitSeconds를 45로 주고 이 도구를 running이나 failed가 나올 때까지 되풀이해 부른다. 한 번 부르면 끝나거나 waitSeconds가 될 때까지 서버에서 기다렸다가 최종 결과(주소, 실패면 오류와 복구 안내)를 준다. 결과가 배포_진행_중이면 아직 끝나지 않은 것이므로 완료나 실패를 말하지 말고 다시 부른다. 실패는 결과의 failureSummary를 먼저 그대로 전한다. latestRevision.error.explanationStatus가 pending이면 10초쯤 뒤 한 번 더 조회하고, unavailable이면 오류 원문을 한국어로 풀어 덧붙인다. 이전 버전 실행 여부는 이 문장을 따른다.",
+      "배포의 접속 URL, 현재 서비스 중인 revision과 가장 최근 배포 작업의 queued, building, healthcheck, running 또는 failed 상태를 조회한다. 이름이나 배포 id 로 찾는다. deploy_project가 배포_진행_중으로 끝났으면 바로 waitSeconds를 40으로 주고 이 도구를 running이나 failed가 나올 때까지 되풀이해 부른다. 셸 sleep이나 배경 작업으로 기다리지 않고, 최종 결과를 받기 전에는 끝났다고 말하지 않는다. 한 번 부르면 끝나거나 waitSeconds가 될 때까지 서버에서 기다렸다가 최종 결과(주소, 실패면 오류와 복구 안내)를 준다. 결과가 배포_진행_중이면 아직 끝나지 않은 것이므로 완료나 실패를 말하지 말고 다시 부른다. 실패는 결과의 failureSummary를 먼저 그대로 전한다. latestRevision.error.explanationStatus가 pending이면 10초쯤 뒤 한 번 더 조회하고, unavailable이면 오류 원문을 한국어로 풀어 덧붙인다. 이전 버전 실행 여부는 이 문장을 따른다.",
     inputSchema: {
       deployment: z.string().describe("배포 이름 또는 배포 id"),
       workspace: WorkspaceInputSchema,
@@ -1514,7 +1517,7 @@ groupServer("mcp-apps").registerTool(
         .min(0)
         .max(DEPLOY_WAIT_MAX_SECONDS)
         .optional()
-        .describe("가장 최근 배포가 진행 중(queued, building)이면 끝날 때까지 서버에서 기다리는 최대 초. 배포_진행_중 결과를 받았으면 45를 준다. 한 번의 호출 상한은 설정(APPS_DEPLOY_WAIT_SECONDS, 기본 45초)이다. 생략하거나 0이면 기다리지 않고 지금 상태만 준다"),
+        .describe("가장 최근 배포가 진행 중(queued, building)이면 끝날 때까지 서버에서 기다리는 최대 초. 배포_진행_중 결과를 받았으면 40을 준다. 한 번의 호출 상한은 설정(APPS_DEPLOY_WAIT_SECONDS, 기본 40초)이다. 생략하거나 0이면 기다리지 않고 지금 상태만 준다"),
     },
     annotations: {
       readOnlyHint: true,
