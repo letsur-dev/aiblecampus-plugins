@@ -14,16 +14,12 @@ import { z } from "zod";
 export const IMAGE_PROMPT_MAX_LENGTH = 4000;
 export const IMAGE_SIZES = ["1024x1024", "1536x1024", "1024x1536"] as const;
 
-/** 서버 성공 응답 중 쓰는 칸 */
+/** 서버 성공 응답 중 쓰는 칸. 옛 서버가 보내는 remainingToday, dailyLimit, resetsAt은 읽지도 전하지도 않는다(looseObject) */
 export const GeneratedImage = z.looseObject({
   model: z.string().min(1),
   size: z.enum(IMAGE_SIZES),
   mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
   imageBase64: z.string().min(1).regex(/^[A-Za-z0-9+/]+={0,2}$/),
-  remainingToday: z.number().int().min(0),
-  /** 교육에서 정한 하루 한도와 다시 채워지는 시각(0.48.0 서버부터). 옛 서버 응답에는 없다 */
-  dailyLimit: z.number().int().min(0).optional(),
-  resetsAt: z.iso.datetime({ offset: true }).optional(),
 });
 export type GeneratedImage = z.infer<typeof GeneratedImage>;
 

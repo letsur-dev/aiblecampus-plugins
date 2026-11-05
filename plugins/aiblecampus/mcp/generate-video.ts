@@ -14,7 +14,6 @@ import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { z } from "zod";
-import { koreanTime } from "./media-failure.ts";
 
 export const VIDEO_PROMPT_MAX_LENGTH = 4000;
 export const VIDEO_DURATION_MIN = 4;
@@ -38,9 +37,6 @@ export const AcceptedVideo = z.looseObject({
   durationSeconds: z.number().int(),
   resolution: z.enum(VIDEO_RESOLUTIONS),
   aspectRatio: z.enum(VIDEO_ASPECT_RATIOS),
-  remainingToday: z.number().int().min(0),
-  dailyLimit: z.number().int().min(0),
-  resetsAt: Iso,
 });
 export type AcceptedVideo = z.infer<typeof AcceptedVideo>;
 
@@ -59,9 +55,6 @@ export const VideoStatusResult = z.looseObject({
   download: z
     .looseObject({ url: z.url(), expiresAt: Iso.nullable(), contentType: z.string().min(1), sizeBytes: z.number().int().min(0).nullable() })
     .nullable(),
-  remainingToday: z.number().int().min(0),
-  dailyLimit: z.number().int().min(0),
-  resetsAt: Iso,
 });
 export type VideoStatusResult = z.infer<typeof VideoStatusResult>;
 
@@ -147,9 +140,4 @@ export async function saveVideo(
 export function elapsedText(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   return minutes === 0 ? `${seconds}초` : `${minutes}분 ${seconds % 60}초`;
-}
-
-/** 오늘 남은 수와 다시 채워지는 시각(한국 시간) 사실. 접수와 상태 결과에 함께 넣는다 */
-export function videoLimitFacts(job: { remainingToday: number; dailyLimit: number; resetsAt: string }): Record<string, string | number> {
-  return { 오늘_남은_개수: job.remainingToday, 하루_한도: job.dailyLimit, 한도_초기화_시각: `${koreanTime(job.resetsAt)}(한국 시간)` };
 }

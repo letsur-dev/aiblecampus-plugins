@@ -14,13 +14,13 @@ export async function readSourceState(root: string): Promise<SourceState | undef
 }
 /**
  * 폴더에 남은 기준 커밋(.apps-source.json). 다른 앱이나 공간에 연결된 폴더면 사용자에게 고르게 하는 오류다.
- * newApp이면(사용자가 다른 이름의 새 앱을 골랐다) 같은 API와 공간에서 다른 앱 이름일 때 기준 없이 새 앱으로 배포한다. 배포 뒤 연결은 새 앱으로 바뀐다
+ * newApp이면(사용자가 다른 이름의 새 앱을 골랐거나 조 앱 폴더를 개인 앱으로 올리라고 했다) 같은 API에서 폴더의 연결과 상관없이 기준 없이 새 앱으로 배포한다. 배포 뒤 연결은 새 앱으로 바뀐다
  */
 export async function readSourceBase(root: string, api: string, deployment: string, workspace?: string, newApp = false): Promise<string | undefined> {
   const state = await readSourceState(root);
   if (state === undefined) return undefined;
   if (state.api === api && state.deployment === deployment && state.workspace === (workspace ?? null)) return state.commit;
-  if (newApp && state.api === api && state.workspace === (workspace ?? null)) return undefined;
+  if (newApp && state.api === api) return undefined;
   if (state.api === api && state.workspace === (workspace ?? null)) {
     throw new Error(
       `이 폴더는 이미 앱 '${state.deployment}'로 배포돼 있습니다. 배포하지 않았습니다. 사용자에게 고르게 하세요: ` +
@@ -28,7 +28,7 @@ export async function readSourceBase(root: string, api: string, deployment: stri
         `2) 다른 이름의 새 앱으로 배포: 사용자가 고른 경우에만 새 name과 newApp: true로 다시 배포합니다. 폴더를 복사해 우회하지 않습니다.`,
     );
   }
-  throw new Error(`이 폴더는 다른 공간이나 다른 Apps 주소의 앱 '${state.deployment}'로 배포돼 있습니다. 배포하지 않았습니다. 개인 산출물 배포와 조 산출물 배포 중 어디에 올릴지 사용자에게 확인하세요.`);
+  throw new Error(`이 폴더는 다른 공간이나 다른 Apps 주소의 앱 '${state.deployment}'에 연결돼 있습니다. 배포하지 않았습니다. 그 앱을 갱신하려면 사용자가 말한 공간을 workspace에 넣습니다. 사용자가 이 폴더를 새 앱(개인 앱 포함)으로 올리라고 했으면 같은 Apps 주소에서는 workspace를 생략하고 newApp: true로 다시 배포합니다. 개인 앱인지 조 앱인지 사용자에게 되묻지 않습니다.`);
 }
 export async function saveSourceBase(root: string, api: string, deployment: string, workspace: string | undefined, commit: string): Promise<void> {
   const state = State.parse({ api, deployment, workspace: workspace ?? null, commit });
