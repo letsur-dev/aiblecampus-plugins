@@ -9,6 +9,17 @@ import { loadSelectedLocalEnv } from "./local-env.ts";
 
 export class AiSetupError extends Error {}
 
+/**
+ * 앱용 AI 공용 키(hub_relay)는 NAT 고정 주소로 IP가 제한된다(docs/gateway-keys.md 5.1). 참가자 PC에서 앱을 로컬로 돌리면 렛서 게이트웨이가 403 ip_not_allowed로 거부한다.
+ * 도구 결과, 도구 설명과 스킬이 같은 사실과 행동 기준을 말하도록 이 문구를 한 곳에 둔다. 클로드에게 주는 지시문이다
+ */
+export const LOCAL_AI_NOTICE =
+  "앱용 AI 키(.env.apps-ai)는 배포된 앱의 서버 주소에서만 쓰도록 IP가 제한돼 있다. 사용자 PC에서 앱을 로컬로 실행해 AI를 부르면 렛서 게이트웨이가 403 ip_not_allowed로 거부한다. " +
+  "앱 코드나 키의 오류가 아니므로 로컬에서 AI 응답을 확인하려 하지 않고 이 거부를 고치려 하지 않는다(키를 바꾸거나 IP 제한을 우회하지 않는다). " +
+  "AI 호출 코드를 구현하고 화면과 나머지 기능만 로컬에서 확인한 뒤, 사용자가 배포를 요청했으면 배포해 배포 주소에서 AI 기능을 확인한다. " +
+  "배포 요청이 없으면 AI 응답은 배포해야 확인할 수 있다고 알리고 배포할지 한 번 묻는다. 요청 없이 배포하지 않는다. " +
+  "사용자에게는 \"AI 기능은 배포된 앱에서만 동작함. 로컬 실행에서는 IP 제한으로 AI 호출이 거부되므로 배포 후 배포 주소에서 확인 필요\" 뜻으로 알린다.";
+
 const AI_ENV_FILE = ".env.apps-ai";
 const AI_ENV_KEYS = ["LETSUR_BASE_URL", "LETSUR_MODEL"];
 const AI_SECRET_KEYS = ["LETSUR_API_KEY"];
@@ -82,7 +93,7 @@ export async function configureAiGateway(projectPath: string, model: string, inp
     await rename(temporary, target);
     return { configured: true, environment: config.environment, baseUrl: config.baseUrl, model,
       localEnv: { file: AI_ENV_FILE, envKeys: AI_ENV_KEYS, secretKeys: AI_SECRET_KEYS },
-      nextAction: "서버에서 .env.apps-ai를 읽도록 구현하고 로컬 요청과 응답을 검증하십시오. 배포는 명시적으로 요청받았을 때만 수행합니다." };
+      nextAction: `서버에서 .env.apps-ai를 읽도록 구현하십시오. ${LOCAL_AI_NOTICE} 배포는 사용자가 요청했을 때만 수행합니다.` };
   } finally {
     await unlink(temporary).catch(() => {});
     await lock.close();
@@ -105,7 +116,13 @@ export async function verifyAiGateway(projectPath: string, fetcher: typeof fetch
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const error = z.object({ type: z.string().regex(/^[a-z_]{1,80}$/).optional() }).safeParse(body);
-    return { verified: false, httpStatus: response.status, errorType: error.success ? error.data.type ?? "gateway_error" : "gateway_error",
+    const errorType = error.success ? error.data.type ?? "gateway_error" : "gateway_error";
+    // 렛서 문서: IP 허용 목록 밖 호출은 403 ip_not_allowed. 다른 403(유형 없음 포함)은 원인을 단정하지 않고 일반 오류로 둔다
+    if (response.status === 403 && errorType === "ip_not_allowed")
+      return { verified: false, httpStatus: response.status, errorType,
+        원인: "앱용 AI 키의 IP 제한. 이 PC(로컬)에서 보낸 요청은 허용 주소가 아니라서 거부됨. 키와 설정은 정상일 수 있음",
+        nextAction: `${LOCAL_AI_NOTICE} 이 도구를 다시 부르지 않는다.` };
+    return { verified: false, httpStatus: response.status, errorType,
       nextAction: "공식 오류 가이드에 따라 인증, 한도, 모델 지원 여부를 확인하십시오. 자동 재시도는 수행하지 않았습니다." };
   }
   const result = z.object({ choices: z.array(z.object({ message: z.object({ content: z.string() }), finish_reason: z.string() })).min(1) }).safeParse(body);

@@ -3495,9 +3495,9 @@ var require_data = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/lib/utils.js
+// ../../node_modules/.pnpm/fast-uri@3.1.9/node_modules/fast-uri/lib/utils.js
 var require_utils = __commonJS({
-  "../../node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/lib/utils.js"(exports, module) {
+  "../../node_modules/.pnpm/fast-uri@3.1.9/node_modules/fast-uri/lib/utils.js"(exports, module) {
     "use strict";
     var isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu);
     var isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u);
@@ -3728,6 +3728,37 @@ var require_utils = __commonJS({
         }
       }
       return output.join("");
+    }
+    function removeDotSegmentsRelative(path15) {
+      if (path15 === "" || path15[0] === "/") {
+        return removeDotSegments(path15);
+      }
+      const segments = path15.split("/");
+      const last = segments.length - 1;
+      const output = [];
+      let trailingDirectory = false;
+      for (let i = 0; i <= last; i++) {
+        const segment = segments[i];
+        if (segment === "." || segment === "..") {
+          if (segment === "..") {
+            if (output.length !== 0 && output[output.length - 1] !== "..") {
+              output.pop();
+            } else {
+              output.push("..");
+            }
+          }
+          trailingDirectory = i === last;
+        } else {
+          output.push(segment);
+        }
+      }
+      if (trailingDirectory && output[output.length - 1] !== "..") {
+        output.push("");
+      }
+      if (output.length === 0 || output[0] === "" || output[0].includes(":")) {
+        output.unshift(".");
+      }
+      return output.join("/");
     }
     var HOST_DELIMS = { "@": "%40", "/": "%2F", "?": "%3F", "#": "%23", ":": "%3A" };
     var HOST_DELIM_RE = /[@/?#:]/g;
@@ -3989,6 +4020,7 @@ var require_utils = __commonJS({
       encodeFragment,
       escapePreservingEscapes,
       removeDotSegments,
+      removeDotSegmentsRelative,
       isIPv4,
       isUUID,
       normalizeIPv6,
@@ -3997,9 +4029,9 @@ var require_utils = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/lib/schemes.js
+// ../../node_modules/.pnpm/fast-uri@3.1.9/node_modules/fast-uri/lib/schemes.js
 var require_schemes = __commonJS({
-  "../../node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/lib/schemes.js"(exports, module) {
+  "../../node_modules/.pnpm/fast-uri@3.1.9/node_modules/fast-uri/lib/schemes.js"(exports, module) {
     "use strict";
     var { isUUID } = require_utils();
     var URN_REG = /^([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-./:;=@]|%[\da-f]{2})+)$/iu;
@@ -4208,20 +4240,22 @@ var require_schemes = __commonJS({
   }
 });
 
-// ../../node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/index.js
+// ../../node_modules/.pnpm/fast-uri@3.1.9/node_modules/fast-uri/index.js
 var require_fast_uri = __commonJS({
-  "../../node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/index.js"(exports, module) {
+  "../../node_modules/.pnpm/fast-uri@3.1.9/node_modules/fast-uri/index.js"(exports, module) {
     "use strict";
-    var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, serializePathEncoding, normalizeQueryFragmentEncoding, encodeQuery, encodeFragment, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils();
+    var { normalizeIPv6, removeDotSegments, removeDotSegmentsRelative, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, serializePathEncoding, normalizeQueryFragmentEncoding, encodeQuery, encodeFragment, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
     var VALID_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*$/u;
     var MALFORMED_SCHEME_ERROR = "URI scheme is malformed.";
-    function decodeValidScheme(scheme) {
-      const decodedScheme = unescape(String(scheme));
-      if (!VALID_SCHEME.test(decodedScheme)) {
+    var MALFORMED_HOST_ERROR = "URI host is malformed.";
+    var FORBIDDEN_DOMAIN_HOST_CHARACTER = /[\0-\x20"#/:<>?@[\\\]^`{|}\x7F]/u;
+    function validateScheme(scheme) {
+      const stringScheme = String(scheme);
+      if (!VALID_SCHEME.test(stringScheme)) {
         throw new TypeError(MALFORMED_SCHEME_ERROR);
       }
-      return decodedScheme;
+      return stringScheme;
     }
     function normalize(uri, options) {
       if (typeof uri === "string") {
@@ -4258,6 +4292,9 @@ var require_fast_uri = __commonJS({
       const resolvedSchemeHandler = getSchemeHandler(options && options.scheme || resolved.scheme);
       const resolvedHost = resolved.host;
       const resolvedHostIsIP = resolvedHost !== void 0 && resolvedHost !== "" && (isIPv4(resolvedHost) || normalizeIPv6(resolvedHost).isIPV6);
+      if (hasForbiddenDomainHost(resolved, options || {}, resolvedSchemeHandler, resolvedHostIsIP)) {
+        throw new Error(MALFORMED_HOST_ERROR);
+      }
       canonicalizeHost(resolved, options || {}, resolvedSchemeHandler, resolvedHostIsIP);
       const encodedASCIIHost = resolvedHost && resolvedHost.indexOf("%") !== -1 && !new RegExp("\\P{ASCII}", "u").test(resolvedHost);
       if (resolved.error && !encodedASCIIHost) {
@@ -4299,14 +4336,15 @@ var require_fast_uri = __commonJS({
             if (relative.path[0] === "/") {
               target.path = removeDotSegments(relative.path);
             } else {
-              if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
+              const baseHasAuthority = base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0;
+              if (baseHasAuthority && !base.path) {
                 target.path = "/" + relative.path;
               } else if (!base.path) {
                 target.path = relative.path;
               } else {
                 target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative.path;
               }
-              target.path = removeDotSegments(target.path);
+              target.path = base.scheme === void 0 && !baseHasAuthority && target.path[0] !== "/" ? removeDotSegmentsRelative(target.path) : removeDotSegments(target.path);
             }
             target.query = relative.query;
           }
@@ -4344,12 +4382,13 @@ var require_fast_uri = __commonJS({
       const options = Object.assign({}, opts);
       const uriTokens = [];
       if (component.scheme) {
-        component.scheme = decodeValidScheme(component.scheme);
+        component.scheme = validateScheme(component.scheme);
       }
       const schemeHandler = getSchemeHandler(options.scheme || component.scheme);
       if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(component, options);
       const hasAuthority = component.userinfo !== void 0 || component.host !== void 0 || component.port !== void 0;
-      const pathNoScheme = !options.skipEscape && component.scheme === void 0 && !hasAuthority;
+      const schemelessReference = (component.scheme === void 0 || options.reference === "suffix") && !hasAuthority;
+      const pathNoScheme = !options.skipEscape && schemelessReference;
       if (component.path !== void 0) {
         if (!options.skipEscape) {
           component.path = serializePathEncoding(component.path, pathNoScheme);
@@ -4358,7 +4397,7 @@ var require_fast_uri = __commonJS({
         }
       }
       if (options.reference !== "suffix" && component.scheme) {
-        component.scheme = decodeValidScheme(component.scheme);
+        component.scheme = validateScheme(component.scheme);
         uriTokens.push(component.scheme, ":");
       }
       const authority = recomposeAuthority(component);
@@ -4374,9 +4413,9 @@ var require_fast_uri = __commonJS({
       if (component.path !== void 0) {
         let s3 = component.path;
         if (!options.absolutePath && (!schemeHandler || !schemeHandler.absolutePath)) {
-          s3 = removeDotSegments(s3);
+          s3 = schemelessReference && s3[0] !== "/" ? removeDotSegmentsRelative(s3) : removeDotSegments(s3);
         }
-        if (pathNoScheme) {
+        if (schemelessReference) {
           s3 = serializePathEncoding(s3, true);
         }
         if (authority === void 0 && s3[0] === "/" && s3[1] === "/") {
@@ -4423,15 +4462,33 @@ var require_fast_uri = __commonJS({
       return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
     }
     function canonicalizeHost(parsed, options, schemeHandler, isIP) {
+      if (hasForbiddenDomainHost(parsed, options, schemeHandler, isIP)) {
+        parsed.error = parsed.error || MALFORMED_HOST_ERROR;
+        return true;
+      }
       if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
+        let url2;
         try {
-          parsed.host = new URL("http://" + parsed.host).hostname;
+          url2 = new URL("http://" + parsed.host);
         } catch (e2) {
           parsed.error = parsed.error || "Host's domain name can not be converted to ASCII: " + e2;
           return true;
         }
+        if (!isHostOnlyURL(url2)) {
+          parsed.error = parsed.error || MALFORMED_HOST_ERROR;
+          return true;
+        }
+        parsed.host = url2.hostname;
       }
       return false;
+    }
+    function hasForbiddenDomainHost(parsed, options, schemeHandler, isIP) {
+      return Boolean(
+        parsed.host && isIP === false && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
+      );
+    }
+    function isHostOnlyURL(url2) {
+      return url2.username === "" && url2.password === "" && url2.port === "" && url2.pathname === "/" && url2.search === "" && url2.hash === "" && url2.hostname !== "";
     }
     function parseWithStatus(uri, opts) {
       const options = Object.assign({}, opts);
@@ -4487,9 +4544,8 @@ var require_fast_uri = __commonJS({
         parsed.query = matches[7];
         parsed.fragment = matches[8];
         if (parsed.scheme !== void 0) {
-          const decodedScheme = unescape(parsed.scheme);
-          if (VALID_SCHEME.test(decodedScheme)) {
-            parsed.scheme = decodedScheme.toLowerCase();
+          if (VALID_SCHEME.test(parsed.scheme)) {
+            parsed.scheme = parsed.scheme.toLowerCase();
           } else {
             parsed.error = parsed.error || MALFORMED_SCHEME_ERROR;
             malformedScheme = true;
@@ -4517,7 +4573,7 @@ var require_fast_uri = __commonJS({
             malformedIPLiteral = hasIPLiteralBracket && (!bracketedIPLiteral || ipv6result.error === true);
             parsed.host = isIP ? ipv6result.host : ipv6result.host.toLowerCase();
             if (malformedIPLiteral) {
-              parsed.error = parsed.error || "URI host is malformed.";
+              parsed.error = parsed.error || MALFORMED_HOST_ERROR;
               malformedAuthorityOrPort = true;
             }
           } else {
@@ -4545,7 +4601,7 @@ var require_fast_uri = __commonJS({
           if (!isIP) {
             host = normalizePercentEncoding(host.toLowerCase());
           }
-          parsed.host = reescapeHostDelimiters(host, isIP);
+          parsed.host = isIP || options.scheme !== "null" ? reescapeHostDelimiters(host, isIP) : host;
         }
         if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
           if (parsed.path) {
@@ -25786,6 +25842,7 @@ async function loadSelectedLocalEnv(projectRoot, selection) {
 // mcp/ai-gateway.ts
 var AiSetupError = class extends Error {
 };
+var LOCAL_AI_NOTICE = '\uC571\uC6A9 AI \uD0A4(.env.apps-ai)\uB294 \uBC30\uD3EC\uB41C \uC571\uC758 \uC11C\uBC84 \uC8FC\uC18C\uC5D0\uC11C\uB9CC \uC4F0\uB3C4\uB85D IP\uAC00 \uC81C\uD55C\uB3FC \uC788\uB2E4. \uC0AC\uC6A9\uC790 PC\uC5D0\uC11C \uC571\uC744 \uB85C\uCEEC\uB85C \uC2E4\uD589\uD574 AI\uB97C \uBD80\uB974\uBA74 \uB81B\uC11C \uAC8C\uC774\uD2B8\uC6E8\uC774\uAC00 403 ip_not_allowed\uB85C \uAC70\uBD80\uD55C\uB2E4. \uC571 \uCF54\uB4DC\uB098 \uD0A4\uC758 \uC624\uB958\uAC00 \uC544\uB2C8\uBBC0\uB85C \uB85C\uCEEC\uC5D0\uC11C AI \uC751\uB2F5\uC744 \uD655\uC778\uD558\uB824 \uD558\uC9C0 \uC54A\uACE0 \uC774 \uAC70\uBD80\uB97C \uACE0\uCE58\uB824 \uD558\uC9C0 \uC54A\uB294\uB2E4(\uD0A4\uB97C \uBC14\uAFB8\uAC70\uB098 IP \uC81C\uD55C\uC744 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4). AI \uD638\uCD9C \uCF54\uB4DC\uB97C \uAD6C\uD604\uD558\uACE0 \uD654\uBA74\uACFC \uB098\uBA38\uC9C0 \uAE30\uB2A5\uB9CC \uB85C\uCEEC\uC5D0\uC11C \uD655\uC778\uD55C \uB4A4, \uC0AC\uC6A9\uC790\uAC00 \uBC30\uD3EC\uB97C \uC694\uCCAD\uD588\uC73C\uBA74 \uBC30\uD3EC\uD574 \uBC30\uD3EC \uC8FC\uC18C\uC5D0\uC11C AI \uAE30\uB2A5\uC744 \uD655\uC778\uD55C\uB2E4. \uBC30\uD3EC \uC694\uCCAD\uC774 \uC5C6\uC73C\uBA74 AI \uC751\uB2F5\uC740 \uBC30\uD3EC\uD574\uC57C \uD655\uC778\uD560 \uC218 \uC788\uB2E4\uACE0 \uC54C\uB9AC\uACE0 \uBC30\uD3EC\uD560\uC9C0 \uD55C \uBC88 \uBB3B\uB294\uB2E4. \uC694\uCCAD \uC5C6\uC774 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C\uB294 "AI \uAE30\uB2A5\uC740 \uBC30\uD3EC\uB41C \uC571\uC5D0\uC11C\uB9CC \uB3D9\uC791\uD568. \uB85C\uCEEC \uC2E4\uD589\uC5D0\uC11C\uB294 IP \uC81C\uD55C\uC73C\uB85C AI \uD638\uCD9C\uC774 \uAC70\uBD80\uB418\uBBC0\uB85C \uBC30\uD3EC \uD6C4 \uBC30\uD3EC \uC8FC\uC18C\uC5D0\uC11C \uD655\uC778 \uD544\uC694" \uB73B\uC73C\uB85C \uC54C\uB9B0\uB2E4.';
 var AI_ENV_FILE = ".env.apps-ai";
 var AI_ENV_KEYS = ["LETSUR_BASE_URL", "LETSUR_MODEL"];
 var AI_SECRET_KEYS = ["LETSUR_API_KEY"];
@@ -25873,7 +25930,7 @@ LETSUR_API_KEY=${JSON.stringify(config2.apiKey)}
       baseUrl: config2.baseUrl,
       model,
       localEnv: { file: AI_ENV_FILE, envKeys: AI_ENV_KEYS, secretKeys: AI_SECRET_KEYS },
-      nextAction: "\uC11C\uBC84\uC5D0\uC11C .env.apps-ai\uB97C \uC77D\uB3C4\uB85D \uAD6C\uD604\uD558\uACE0 \uB85C\uCEEC \uC694\uCCAD\uACFC \uC751\uB2F5\uC744 \uAC80\uC99D\uD558\uC2ED\uC2DC\uC624. \uBC30\uD3EC\uB294 \uBA85\uC2DC\uC801\uC73C\uB85C \uC694\uCCAD\uBC1B\uC558\uC744 \uB54C\uB9CC \uC218\uD589\uD569\uB2C8\uB2E4."
+      nextAction: `\uC11C\uBC84\uC5D0\uC11C .env.apps-ai\uB97C \uC77D\uB3C4\uB85D \uAD6C\uD604\uD558\uC2ED\uC2DC\uC624. ${LOCAL_AI_NOTICE} \uBC30\uD3EC\uB294 \uC0AC\uC6A9\uC790\uAC00 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uC218\uD589\uD569\uB2C8\uB2E4.`
     };
   } finally {
     await unlink2(temporary).catch(() => {
@@ -25901,10 +25958,19 @@ async function verifyAiGateway(projectPath, fetcher = fetch) {
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     const error51 = external_exports.object({ type: external_exports.string().regex(/^[a-z_]{1,80}$/).optional() }).safeParse(body);
+    const errorType = error51.success ? error51.data.type ?? "gateway_error" : "gateway_error";
+    if (response.status === 403 && errorType === "ip_not_allowed")
+      return {
+        verified: false,
+        httpStatus: response.status,
+        errorType,
+        \uC6D0\uC778: "\uC571\uC6A9 AI \uD0A4\uC758 IP \uC81C\uD55C. \uC774 PC(\uB85C\uCEEC)\uC5D0\uC11C \uBCF4\uB0B8 \uC694\uCCAD\uC740 \uD5C8\uC6A9 \uC8FC\uC18C\uAC00 \uC544\uB2C8\uB77C\uC11C \uAC70\uBD80\uB428. \uD0A4\uC640 \uC124\uC815\uC740 \uC815\uC0C1\uC77C \uC218 \uC788\uC74C",
+        nextAction: `${LOCAL_AI_NOTICE} \uC774 \uB3C4\uAD6C\uB97C \uB2E4\uC2DC \uBD80\uB974\uC9C0 \uC54A\uB294\uB2E4.`
+      };
     return {
       verified: false,
       httpStatus: response.status,
-      errorType: error51.success ? error51.data.type ?? "gateway_error" : "gateway_error",
+      errorType,
       nextAction: "\uACF5\uC2DD \uC624\uB958 \uAC00\uC774\uB4DC\uC5D0 \uB530\uB77C \uC778\uC99D, \uD55C\uB3C4, \uBAA8\uB378 \uC9C0\uC6D0 \uC5EC\uBD80\uB97C \uD655\uC778\uD558\uC2ED\uC2DC\uC624. \uC790\uB3D9 \uC7AC\uC2DC\uB3C4\uB294 \uC218\uD589\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4."
     };
   }
@@ -25929,11 +25995,7 @@ var GeneratedImage = external_exports.looseObject({
   model: external_exports.string().min(1),
   size: external_exports.enum(IMAGE_SIZES),
   mimeType: external_exports.enum(["image/png", "image/jpeg", "image/webp"]),
-  imageBase64: external_exports.string().min(1).regex(/^[A-Za-z0-9+/]+={0,2}$/),
-  remainingToday: external_exports.number().int().min(0),
-  /** 교육에서 정한 하루 한도와 다시 채워지는 시각(0.48.0 서버부터). 옛 서버 응답에는 없다 */
-  dailyLimit: external_exports.number().int().min(0).optional(),
-  resetsAt: external_exports.iso.datetime({ offset: true }).optional()
+  imageBase64: external_exports.string().min(1).regex(/^[A-Za-z0-9+/]+={0,2}$/)
 });
 var EXTENSIONS = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
 function imageDirectory(directory, cwd = process.cwd()) {
@@ -25975,65 +26037,6 @@ import { mkdir as mkdir5, open as open4, stat as stat2, unlink as unlink3 } from
 import path7 from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
-
-// mcp/media-failure.ts
-var LABEL = { image: { noun: "\uC774\uBBF8\uC9C0", obj: "\uC774\uBBF8\uC9C0\uB97C", unit: "\uC7A5" }, video: { noun: "\uC601\uC0C1", obj: "\uC601\uC0C1\uC744", unit: "\uAC1C" } };
-var MediaFailureBody = external_exports.looseObject({
-  message: external_exports.string().trim().min(1).max(1e3).optional(),
-  dailyLimit: external_exports.number().int().min(0).optional(),
-  remainingToday: external_exports.number().int().min(0).optional(),
-  resetsAt: external_exports.iso.datetime({ offset: true }).optional()
-});
-function koreanTime(iso) {
-  const time3 = Date.parse(iso);
-  if (!Number.isFinite(time3)) return iso;
-  const kst = new Date(time3 + 9 * 60 * 60 * 1e3);
-  const pad3 = (value) => String(value).padStart(2, "0");
-  return `${kst.getUTCFullYear()}\uB144 ${kst.getUTCMonth() + 1}\uC6D4 ${kst.getUTCDate()}\uC77C ${pad3(kst.getUTCHours())}:${pad3(kst.getUTCMinutes())}`;
-}
-function fallback(kind, status) {
-  const { noun, obj } = LABEL[kind];
-  const texts = {
-    400: kind === "image" ? "\uC774\uBBF8\uC9C0 \uC694\uCCAD \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC124\uBA85\uC744 4000\uC790 \uC548\uC73C\uB85C \uC904\uC774\uACE0 \uD06C\uAE30\uB294 1024x1024, 1536x1024, 1024x1536 \uC911\uC5D0\uC11C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694." : "\uC601\uC0C1 \uC694\uCCAD \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC124\uBA85\uC744 4000\uC790 \uC548\uC73C\uB85C \uC904\uC774\uACE0 \uAE38\uC774, \uD574\uC0C1\uB3C4, \uD654\uBA74 \uBE44\uC728\uC744 \uC815\uD574\uC9C4 \uAC12\uC5D0\uC11C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.",
-    403: `${obj} \uB9CC\uB4E4 \uC218 \uC788\uB294 \uAD50\uC721\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC774 \uAD50\uC721\uC5D0\uC11C ${noun} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uAC70\uB098 \uCC38\uC5EC \uC911\uC778 \uAD50\uC721\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uBB38\uC758\uD574 \uC8FC\uC138\uC694.`,
-    404: kind === "image" ? "\uC774\uBBF8\uC9C0 \uB9CC\uB4E4\uAE30\uB97C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. Apps \uB85C\uADF8\uC778\uACFC \uD50C\uB7EC\uADF8\uC778 \uBC84\uC804\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694." : "\uC601\uC0C1 \uC791\uC5C5\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC791\uC5C5 ID\uC640 Apps \uB85C\uADF8\uC778, \uD50C\uB7EC\uADF8\uC778 \uBC84\uC804\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694.",
-    409: `${obj} \uC774\uBBF8 \uB9CC\uB4E4\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uB05D\uB09C \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694.`,
-    429: `\uC624\uB298 \uB9CC\uB4E4 \uC218 \uC788\uB294 ${obj} \uBAA8\uB450 \uB9CC\uB4E4\uC5C8\uC2B5\uB2C8\uB2E4. \uB0B4\uC77C \uB2E4\uC2DC \uC774\uC6A9\uD574 \uC8FC\uC138\uC694.`,
-    502: kind === "image" ? "\uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694." : "\uC601\uC0C1 \uC11C\uBE44\uC2A4\uC5D0 \uC5F0\uACB0\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694.",
-    503: `${noun} \uB9CC\uB4E4\uAE30\uAC00 \uC544\uC9C1 \uC900\uBE44\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uBB38\uC758\uD574 \uC8FC\uC138\uC694.`
-  };
-  return texts[status];
-}
-function nextAction(kind, status) {
-  const { noun } = LABEL[kind];
-  const stop = `\uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. API \uD0A4\uB97C \uBB3B\uAC70\uB098 \uB2E4\uB978 ${noun} \uC11C\uBE44\uC2A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4.`;
-  const texts = {
-    409: kind === "image" ? "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC55E \uC694\uCCAD\uC774 \uB05D\uB09C \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uB2E4\uC2DC \uBD80\uB978\uB2E4." : "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC9C4\uD589 \uC911\uC778 \uC791\uC5C5\uC740 video_status\uB85C \uD655\uC778\uD558\uACE0, \uB05D\uB09C \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uC0C8\uB85C \uC811\uC218\uD55C\uB2E4.",
-    429: `\uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uB2E4\uB978 ${noun} \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB97C \uCC3E\uC544 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uD55C\uB3C4\uAC00 \uB2E4\uC2DC \uCC44\uC6CC\uC9C0\uB294 \uC2DC\uAC01\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4.`,
-    502: "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uD55C \uBC88 \uB2E4\uC2DC \uBD80\uB978\uB2E4.",
-    503: stop,
-    403: stop
-  };
-  return texts[status];
-}
-function limitFacts(kind, body) {
-  const { noun, unit } = LABEL[kind];
-  const parts = [
-    ...body.dailyLimit === void 0 ? [] : [`\uD558\uB8E8 \uD55C\uB3C4\uB294 ${noun} ${body.dailyLimit}${unit}`],
-    ...body.remainingToday === void 0 ? [] : [`\uC624\uB298 \uB0A8\uC740 \uC218\uB294 ${body.remainingToday}${unit}`],
-    ...body.resetsAt === void 0 ? [] : [`${koreanTime(body.resetsAt)}(\uD55C\uAD6D \uC2DC\uAC04)\uBD80\uD130 \uB2E4\uC2DC \uC4F8 \uC218 \uC788\uB2E4`]
-  ];
-  return parts.length === 0 ? null : `\uD55C\uB3C4 \uC548\uB0B4(\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4): ${parts.join(", ")}.`;
-}
-function mediaFailureText(kind, status, body) {
-  const parsed = MediaFailureBody.safeParse(body);
-  const message2 = (parsed.success ? parsed.data.message : void 0) ?? fallback(kind, status) ?? `${LABEL[kind].obj} \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4(\uC0C1\uD0DC ${status}).`;
-  const facts = status === 429 && parsed.success ? limitFacts(kind, parsed.data) : null;
-  const next = nextAction(kind, status);
-  return [`\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4: ${message2}`, ...facts === null ? [] : [facts], ...next === void 0 ? [] : [next]].join("\n");
-}
-
-// mcp/generate-video.ts
 var VIDEO_PROMPT_MAX_LENGTH = 4e3;
 var VIDEO_DURATION_MIN = 4;
 var VIDEO_DURATION_MAX = 15;
@@ -26049,10 +26052,7 @@ var AcceptedVideo = external_exports.looseObject({
   status: external_exports.enum(["queued", "running"]),
   durationSeconds: external_exports.number().int(),
   resolution: external_exports.enum(VIDEO_RESOLUTIONS),
-  aspectRatio: external_exports.enum(VIDEO_ASPECT_RATIOS),
-  remainingToday: external_exports.number().int().min(0),
-  dailyLimit: external_exports.number().int().min(0),
-  resetsAt: Iso
+  aspectRatio: external_exports.enum(VIDEO_ASPECT_RATIOS)
 });
 var VideoStatusResult = external_exports.looseObject({
   id: external_exports.uuid(),
@@ -26065,10 +26065,7 @@ var VideoStatusResult = external_exports.looseObject({
   elapsedSeconds: external_exports.number().int().min(0),
   failure: external_exports.string().nullable(),
   failureCode: external_exports.string().nullable(),
-  download: external_exports.looseObject({ url: external_exports.url(), expiresAt: Iso.nullable(), contentType: external_exports.string().min(1), sizeBytes: external_exports.number().int().min(0).nullable() }).nullable(),
-  remainingToday: external_exports.number().int().min(0),
-  dailyLimit: external_exports.number().int().min(0),
-  resetsAt: Iso
+  download: external_exports.looseObject({ url: external_exports.url(), expiresAt: Iso.nullable(), contentType: external_exports.string().min(1), sizeBytes: external_exports.number().int().min(0).nullable() }).nullable()
 });
 function videoDirectory(directory, cwd = process.cwd()) {
   return directory === void 0 ? path7.join(cwd, "videos") : path7.resolve(cwd, directory);
@@ -26131,9 +26128,6 @@ function elapsedText(seconds) {
   const minutes = Math.floor(seconds / 60);
   return minutes === 0 ? `${seconds}\uCD08` : `${minutes}\uBD84 ${seconds % 60}\uCD08`;
 }
-function videoLimitFacts(job) {
-  return { \uC624\uB298_\uB0A8\uC740_\uAC1C\uC218: job.remainingToday, \uD558\uB8E8_\uD55C\uB3C4: job.dailyLimit, \uD55C\uB3C4_\uCD08\uAE30\uD654_\uC2DC\uAC01: `${koreanTime(job.resetsAt)}(\uD55C\uAD6D \uC2DC\uAC04)` };
-}
 
 // mcp/file-link.ts
 import path8 from "node:path";
@@ -26146,6 +26140,57 @@ function fileLink(file2) {
   return `[${name}](${fileUrl(file2)})`;
 }
 var LINK_NOTE = "\uB2F5\uBCC0\uC5D0\uB294 \uACB0\uACFC\uC758 \uD30C\uC77C_\uB9C1\uD06C(\uB9C8\uD06C\uB2E4\uC6B4 \uB9C1\uD06C)\uB97C \uAE00\uC790 \uD558\uB098 \uBC14\uAFB8\uC9C0 \uC54A\uACE0 \uADF8\uB300\uB85C \uBD99\uC5EC \uBCF4\uC5EC \uC900\uB2E4. \uCF54\uB4DC \uAE00\uC528(\uBC31\uD2F1)\uB85C \uAC10\uC2F8\uAC70\uB098 \uC774\uB984\uC744 \uC904\uC774\uAC70\uB098(\u2026) \uACBD\uB85C\uB97C \uB530\uB85C \uD480\uC5B4 \uC4F0\uC9C0 \uC54A\uB294\uB2E4.";
+
+// mcp/media-failure.ts
+var LABEL = { image: { noun: "\uC774\uBBF8\uC9C0", obj: "\uC774\uBBF8\uC9C0\uB97C" }, video: { noun: "\uC601\uC0C1", obj: "\uC601\uC0C1\uC744" } };
+var MediaFailureBody = external_exports.looseObject({
+  message: external_exports.string().trim().min(1).max(1e3).optional(),
+  dailyLimit: external_exports.unknown().optional(),
+  remainingToday: external_exports.unknown().optional(),
+  resetsAt: external_exports.unknown().optional()
+});
+function limitReached(status, body) {
+  return status === 429 && ((body.message ?? "").includes("\uBBF8\uB514\uC5B4 \uC0DD\uC131 \uD55C\uB3C4") || body.dailyLimit !== void 0 || body.remainingToday !== void 0 || body.resetsAt !== void 0);
+}
+var LIMIT_REACHED = "\uBBF8\uB514\uC5B4 \uC0DD\uC131 \uD55C\uB3C4\uC5D0 \uB3C4\uB2EC\uD588\uB2E4. \uC6B4\uC601\uC9C4\uC5D0\uAC8C \uBB38\uC758\uD558\uB3C4\uB85D \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4.";
+function koreanTime(iso) {
+  const time3 = Date.parse(iso);
+  if (!Number.isFinite(time3)) return iso;
+  const kst = new Date(time3 + 9 * 60 * 60 * 1e3);
+  const pad3 = (value) => String(value).padStart(2, "0");
+  return `${kst.getUTCFullYear()}\uB144 ${kst.getUTCMonth() + 1}\uC6D4 ${kst.getUTCDate()}\uC77C ${pad3(kst.getUTCHours())}:${pad3(kst.getUTCMinutes())}`;
+}
+function fallback(kind, status) {
+  const { noun, obj } = LABEL[kind];
+  const texts = {
+    400: kind === "image" ? "\uC774\uBBF8\uC9C0 \uC694\uCCAD \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC124\uBA85\uC744 4000\uC790 \uC548\uC73C\uB85C \uC904\uC774\uACE0 \uD06C\uAE30\uB294 1024x1024, 1536x1024, 1024x1536 \uC911\uC5D0\uC11C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694." : "\uC601\uC0C1 \uC694\uCCAD \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC124\uBA85\uC744 4000\uC790 \uC548\uC73C\uB85C \uC904\uC774\uACE0 \uAE38\uC774, \uD574\uC0C1\uB3C4, \uD654\uBA74 \uBE44\uC728\uC744 \uC815\uD574\uC9C4 \uAC12\uC5D0\uC11C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.",
+    403: `${obj} \uB9CC\uB4E4 \uC218 \uC788\uB294 \uAD50\uC721\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC774 \uAD50\uC721\uC5D0\uC11C ${noun} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uAC70\uB098 \uCC38\uC5EC \uC911\uC778 \uAD50\uC721\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uBB38\uC758\uD574 \uC8FC\uC138\uC694.`,
+    404: kind === "image" ? "\uC774\uBBF8\uC9C0 \uB9CC\uB4E4\uAE30\uB97C \uC4F8 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. Apps \uB85C\uADF8\uC778\uACFC \uD50C\uB7EC\uADF8\uC778 \uBC84\uC804\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694." : "\uC601\uC0C1 \uC791\uC5C5\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC791\uC5C5 ID\uC640 Apps \uB85C\uADF8\uC778, \uD50C\uB7EC\uADF8\uC778 \uBC84\uC804\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694.",
+    409: `${obj} \uC774\uBBF8 \uB9CC\uB4E4\uACE0 \uC788\uC2B5\uB2C8\uB2E4. \uB05D\uB09C \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694.`,
+    502: kind === "image" ? "\uC774\uBBF8\uC9C0\uB97C \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694." : "\uC601\uC0C1 \uC11C\uBE44\uC2A4\uC5D0 \uC5F0\uACB0\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uB4A4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694.",
+    503: `${noun} \uB9CC\uB4E4\uAE30\uAC00 \uC544\uC9C1 \uC900\uBE44\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uC5D0\uAC8C \uBB38\uC758\uD574 \uC8FC\uC138\uC694.`
+  };
+  return texts[status];
+}
+function nextAction(kind, status, limit) {
+  const { noun } = LABEL[kind];
+  const stop = `\uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. API \uD0A4\uB97C \uBB3B\uAC70\uB098 \uB2E4\uB978 ${noun} \uC11C\uBE44\uC2A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4.`;
+  const texts = {
+    409: kind === "image" ? "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC55E \uC694\uCCAD\uC774 \uB05D\uB09C \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uB2E4\uC2DC \uBD80\uB978\uB2E4." : "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC9C4\uD589 \uC911\uC778 \uC791\uC5C5\uC740 video_status\uB85C \uD655\uC778\uD558\uACE0, \uB05D\uB09C \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uC0C8\uB85C \uC811\uC218\uD55C\uB2E4.",
+    429: limit ? `\uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uB2E4\uB978 ${noun} \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB97C \uCC3E\uC544 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4.` : "\uC694\uCCAD\uC774 \uBAB0\uB838\uB2E4. \uC7A0\uC2DC(1\uBD84\uCBE4) \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uB2E4\uB978 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4.",
+    502: "\uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uD55C \uBC88 \uB2E4\uC2DC \uBD80\uB978\uB2E4.",
+    503: stop,
+    403: stop
+  };
+  return texts[status];
+}
+function mediaFailureText(kind, status, body) {
+  const parsed = MediaFailureBody.safeParse(body);
+  const limit = parsed.success && limitReached(status, parsed.data);
+  const message2 = limit ? LIMIT_REACHED : (parsed.success ? parsed.data.message : void 0) ?? fallback(kind, status) ?? `${LABEL[kind].obj} \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4(\uC0C1\uD0DC ${status}).`;
+  const next = nextAction(kind, status, limit);
+  return [limit ? message2 : `\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4: ${message2}`, ...next === void 0 ? [] : [next]].join("\n");
+}
 
 // mcp/media-submit.ts
 var MEDIA_SUBMIT_TITLE_MAX = 120;
@@ -26249,10 +26294,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 var PLUGIN_TOOLS_FILE = "aiblecampus-tools.json";
 var TOOL_GROUP_IDS = ["mcp-image", "mcp-video", "mcp-apps", "mcp-files", "mcp-google", "mcp-gallery"];
-var MediaSummary = external_exports.strictObject({
+var MediaSummary = external_exports.looseObject({
   enabled: external_exports.boolean(),
-  model: external_exports.string().min(1).max(200).nullable(),
-  dailyLimit: external_exports.number().int().min(0)
+  model: external_exports.string().min(1).max(200).nullable()
 });
 var ToolsConfigSchema = external_exports.strictObject({
   version: external_exports.literal(1),
@@ -26312,10 +26356,10 @@ function toolGroupEnabled(config2, group, role = null) {
   if (group === "media-submit") return (config2 === null || config2.mediaSubmit) && (role === null || role === "media");
   return enabledGroups(config2).includes(group) && (role === null || SERVER_ROLE_GROUPS[role].includes(group));
 }
-function mediaToolNote(summary, unit, label) {
+function mediaToolNote(summary, label) {
   if (summary === void 0) return "";
-  if (!summary.enabled) return ` \uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uB294\uB2E4(\uBAA8\uB378\uC744 \uC815\uD558\uC9C0 \uC54A\uC558\uAC70\uB098 \uD558\uB8E8 \uD55C\uB3C4\uAC00 0\uC774\uB2E4). \uBD80\uB974\uC9C0 \uB9D0\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694"\uB77C\uACE0 \uC54C\uB9B0\uB2E4.`;
-  return ` \uC774 \uAD50\uC721\uC5D0\uC11C\uB294 \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8 ${summary.dailyLimit}${unit}\uAE4C\uC9C0 \uB9CC\uB4E4 \uC218 \uC788\uACE0 \uBAA8\uB378\uC740 ${summary.model ?? "\uC11C\uBC84\uAC00 \uC120\uD0DD\uD55C \uBAA8\uB378"}\uC774\uB2E4.`;
+  if (!summary.enabled) return ` \uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uB294\uB2E4(\uBAA8\uB378\uC744 \uC815\uD558\uC9C0 \uC54A\uC558\uB2E4). \uBD80\uB974\uC9C0 \uB9D0\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694"\uB77C\uACE0 \uC54C\uB9B0\uB2E4.`;
+  return ` \uC774 \uAD50\uC721\uC5D0\uC11C \uC4F8 \uC218 \uC788\uACE0 \uBAA8\uB378\uC740 ${summary.model ?? "\uC11C\uBC84\uAC00 \uC120\uD0DD\uD55C \uBAA8\uB378"}\uC774\uB2E4.`;
 }
 function instructionsRole(config2) {
   return config2 !== null && !config2.groups.includes("mcp-image") && !config2.groups.includes("mcp-video") ? baseToolRole(config2) : "media";
@@ -26323,9 +26367,9 @@ function instructionsRole(config2) {
 function toolsInstructions(config2, role = null) {
   if (config2 === null) return null;
   if (role !== null && role !== instructionsRole(config2)) return null;
-  const line = (summary, label, unit) => summary.enabled ? `${label} \uC0DD\uC131: \uC4F8 \uC218 \uC788\uB2E4. \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8 ${summary.dailyLimit}${unit}\uAE4C\uC9C0, \uBAA8\uB378\uC740 ${summary.model ?? "\uC11C\uBC84\uAC00 \uC120\uD0DD\uD55C \uBAA8\uB378"}\uC774\uB2E4.` : `${label} \uC0DD\uC131: \uC774 \uAD50\uC721\uC5D0\uC11C\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uC694\uCCAD\uBC1B\uC73C\uBA74 \uB3C4\uAD6C\uB97C \uCC3E\uAC70\uB098 \uB2E4\uB978 \uC11C\uBE44\uC2A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694"\uB77C\uACE0 \uC54C\uB9B0\uB2E4.`;
+  const line = (summary, label) => summary.enabled ? `${label} \uC0DD\uC131: \uC4F8 \uC218 \uC788\uB2E4. \uBAA8\uB378\uC740 ${summary.model ?? "\uC11C\uBC84\uAC00 \uC120\uD0DD\uD55C \uBAA8\uB378"}\uC774\uB2E4.` : `${label} \uC0DD\uC131: \uC774 \uAD50\uC721\uC5D0\uC11C\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uC694\uCCAD\uBC1B\uC73C\uBA74 \uB3C4\uAD6C\uB97C \uCC3E\uAC70\uB098 \uB2E4\uB978 \uC11C\uBE44\uC2A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 ${label} \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694"\uB77C\uACE0 \uC54C\uB9B0\uB2E4.`;
   const only = config2.image.enabled && !config2.video.enabled ? ' \uC0AC\uC6A9\uC790\uC5D0\uAC8C\uB294 "\uC774 \uAD50\uC721\uC5D0\uC11C\uB294 \uC601\uC0C1 \uC0DD\uC131\uC744 \uC4F0\uC9C0 \uC54A\uC544\uC694, \uC774\uBBF8\uC9C0 \uC0DD\uC131\uB9CC \uAC00\uB2A5\uD574\uC694"\uCC98\uB7FC \uC54C\uB9B0\uB2E4.' : "";
-  const lines = [line(config2.image, "\uC774\uBBF8\uC9C0", "\uC7A5"), line(config2.video, "\uC601\uC0C1", "\uAC1C") + only];
+  const lines = [line(config2.image, "\uC774\uBBF8\uC9C0"), line(config2.video, "\uC601\uC0C1") + only];
   if (config2.mediaSubmit) {
     lines.push("\uBBF8\uB514\uC5B4 \uC81C\uCD9C: \uB9CC\uB4E0 \uC774\uBBF8\uC9C0\uC640 \uC601\uC0C1\uC740 list_my_media\uB85C \uBCF4\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uBBF8\uB514\uC5B4 \uBAA8\uB4C8\uC5D0 \uB0B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 prepare_media_submission\uC73C\uB85C \uBBF8\uB9AC\uBCF4\uAE30\uB97C \uB9CC\uB4E4\uC5B4 \uBCF4\uC5EC \uC900 \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uB2E4\uC74C \uBA54\uC2DC\uC9C0\uC5D0\uC11C \uC2B9\uC778\uD558\uBA74 submit_media_submission\uC73C\uB85C \uC81C\uCD9C\uD55C\uB2E4. \uBAA8\uB4C8\uC740 \uB298 \uC0AC\uC6A9\uC790\uAC00 \uC120\uD0DD\uD55C\uB2E4.");
   }
@@ -26351,13 +26395,13 @@ async function readSourceBase(root, api, deployment, workspace, newApp = false) 
   const state = await readSourceState(root);
   if (state === void 0) return void 0;
   if (state.api === api && state.deployment === deployment && state.workspace === (workspace ?? null)) return state.commit;
-  if (newApp && state.api === api && state.workspace === (workspace ?? null)) return void 0;
+  if (newApp && state.api === api) return void 0;
   if (state.api === api && state.workspace === (workspace ?? null)) {
     throw new Error(
       `\uC774 \uD3F4\uB354\uB294 \uC774\uBBF8 \uC571 '${state.deployment}'\uB85C \uBC30\uD3EC\uB3FC \uC788\uC2B5\uB2C8\uB2E4. \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uACE0\uB974\uAC8C \uD558\uC138\uC694: 1) \uAE30\uC874 \uC571\uC744 \uC0C8 \uBC84\uC804\uC73C\uB85C \uAC31\uC2E0(\uC8FC\uC18C \uC720\uC9C0): name\uC744 '${state.deployment}'\uB85C \uB2E4\uC2DC \uBC30\uD3EC\uD569\uB2C8\uB2E4. 2) \uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC571\uC73C\uB85C \uBC30\uD3EC: \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB978 \uACBD\uC6B0\uC5D0\uB9CC \uC0C8 name\uACFC newApp: true\uB85C \uB2E4\uC2DC \uBC30\uD3EC\uD569\uB2C8\uB2E4. \uD3F4\uB354\uB97C \uBCF5\uC0AC\uD574 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`
     );
   }
-  throw new Error(`\uC774 \uD3F4\uB354\uB294 \uB2E4\uB978 \uACF5\uAC04\uC774\uB098 \uB2E4\uB978 Apps \uC8FC\uC18C\uC758 \uC571 '${state.deployment}'\uB85C \uBC30\uD3EC\uB3FC \uC788\uC2B5\uB2C8\uB2E4. \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uAC1C\uC778 \uC0B0\uCD9C\uBB3C \uBC30\uD3EC\uC640 \uC870 \uC0B0\uCD9C\uBB3C \uBC30\uD3EC \uC911 \uC5B4\uB514\uC5D0 \uC62C\uB9B4\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD655\uC778\uD558\uC138\uC694.`);
+  throw new Error(`\uC774 \uD3F4\uB354\uB294 \uB2E4\uB978 \uACF5\uAC04\uC774\uB098 \uB2E4\uB978 Apps \uC8FC\uC18C\uC758 \uC571 '${state.deployment}'\uC5D0 \uC5F0\uACB0\uB3FC \uC788\uC2B5\uB2C8\uB2E4. \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uADF8 \uC571\uC744 \uAC31\uC2E0\uD558\uB824\uBA74 \uC0AC\uC6A9\uC790\uAC00 \uB9D0\uD55C \uACF5\uAC04\uC744 workspace\uC5D0 \uB123\uC2B5\uB2C8\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC774 \uD3F4\uB354\uB97C \uC0C8 \uC571(\uAC1C\uC778 \uC571 \uD3EC\uD568)\uC73C\uB85C \uC62C\uB9AC\uB77C\uACE0 \uD588\uC73C\uBA74 \uAC19\uC740 Apps \uC8FC\uC18C\uC5D0\uC11C\uB294 workspace\uB97C \uC0DD\uB7B5\uD558\uACE0 newApp: true\uB85C \uB2E4\uC2DC \uBC30\uD3EC\uD569\uB2C8\uB2E4. \uAC1C\uC778 \uC571\uC778\uC9C0 \uC870 \uC571\uC778\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uB418\uBB3B\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.`);
 }
 async function saveSourceBase(root, api, deployment, workspace, commit) {
   const state = State2.parse({ api, deployment, workspace: workspace ?? null, commit });
@@ -38367,7 +38411,7 @@ async function completeDeviceLogin(apiBase2) {
   const configuration = oidcConfiguration(apiBase2);
   const limit = new AbortController();
   let inFlight = 0;
-  let limitReached = false;
+  let limitReached2 = false;
   configuration[customFetch2] = async (url2, options) => {
     inFlight += 1;
     try {
@@ -38376,11 +38420,11 @@ async function completeDeviceLogin(apiBase2) {
       return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
     } finally {
       inFlight -= 1;
-      if (limitReached && inFlight === 0) limit.abort();
+      if (limitReached2 && inFlight === 0) limit.abort();
     }
   };
   const timer = setTimeout(() => {
-    limitReached = true;
+    limitReached2 = true;
     if (inFlight === 0) limit.abort();
   }, Math.min(remaining, POLLS_PER_CALL * pending.intervalSeconds * 1e3, LOGIN_WAIT_MAX_MS));
   try {
@@ -38958,7 +39002,7 @@ function failureFacts(prefix, result, note) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.51.1";
+var PLUGIN_VERSION = "0.53.0";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || hubCredential()?.apiBase || "https://api.aible-campus.com";
@@ -39003,7 +39047,7 @@ function deploymentFingerprint(input) {
   ).digest("hex");
 }
 var WorkspaceInputSchema = external_exports.string().min(1).optional().describe(
-  "apps_whoami\uB85C \uD655\uC778\uD55C \uB300\uC0C1 \uACF5\uAC04(\uAC1C\uC778 \uB610\uB294 \uC870)\uC758 UUID \uB610\uB294 slug. \uC0DD\uB7B5\uD558\uBA74 \uC11C\uBC84\uAC00 \uAC1C\uC778 \uACF5\uAC04\uC73C\uB85C \uCC98\uB9AC\uD55C\uB2E4. \uB300\uC0C1 \uACF5\uAC04\uC774 \uBD88\uBD84\uBA85\uD558\uBA74 \uCD94\uCE21\uD558\uC9C0 \uB9D0\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uB294\uB2E4. \uC870 \uB300\uC0C1\uC744 \uC694\uCCAD\uBC1B\uC558\uC73C\uBA74 \uC0DD\uB7B5\uD558\uAC70\uB098 \uAC1C\uC778 \uACF5\uAC04\uC73C\uB85C \uBC14\uAFB8\uC9C0 \uC54A\uB294\uB2E4. \uD55C \uC791\uC5C5\uC758 \uBAA8\uB4E0 \uB3C4\uAD6C\uC5D0 \uAC19\uC740 \uAC12\uC744 \uB123\uB294\uB2E4"
+  '\uB300\uC0C1 \uACF5\uAC04\uC758 UUID \uB610\uB294 slug. \uAE30\uBCF8\uC740 \uAC1C\uC778 \uACF5\uAC04\uC774\uBBC0\uB85C \uC0DD\uB7B5\uD55C\uB2E4(\uC11C\uBC84\uAC00 \uAC1C\uC778 \uACF5\uAC04\uC73C\uB85C \uCC98\uB9AC\uD55C\uB2E4). \uC870 \uACF5\uAC04\uC740 \uC0AC\uC6A9\uC790\uAC00 \uC694\uCCAD\uC5D0\uC11C "\uC870 \uC571"\uC774\uB098 \uC870 \uC774\uB984\uC744 \uBA85\uC2DC\uD588\uAC70\uB098 \uC778\uACC4 \uAE30\uB85D(.aiblecampus-deploy.json)\uC5D0 \uC815\uD574\uC838 \uC788\uC744 \uB54C\uB9CC apps_whoami\uB85C \uD655\uC778\uD55C \uC870 UUID\uB97C \uB123\uB294\uB2E4. \uC18C\uC18D \uC870\uAC00 \uC788\uAC70\uB098 \uD558\uB098\uBFD0\uC774\uB77C\uB294 \uC774\uC720\uB85C \uC870\uB97C \uACE0\uB974\uAC70\uB098 \uCD94\uCE21\uD558\uC9C0 \uC54A\uACE0, \uAC1C\uC778\uC778\uC9C0 \uC870\uC778\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0\uB3C4 \uC54A\uB294\uB2E4. \uC870 \uC571 \uC791\uC5C5\uC5D0\uC11C\uB294 \uD55C \uC791\uC5C5\uC758 \uBAA8\uB4E0 \uB3C4\uAD6C\uC5D0 \uAC19\uC740 \uAC12\uC744 \uB123\uB294\uB2E4'
 );
 var EnvironmentKeySchema = external_exports.string().regex(/^[A-Z_][A-Z0-9_]*$/, "\uD658\uACBD\uBCC0\uC218 \uD0A4 \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uB2E4");
 var LocalEnvInputSchema = external_exports.object({
@@ -39168,7 +39212,7 @@ function mergeNotice(body) {
   };
 }
 async function movedAppWorkspace(state, deployment, workspace) {
-  if (state.workspace === workspace) {
+  if (state.workspace === (workspace ?? null)) {
     const here = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}`, {}, workspace);
     if (here.status !== 404) return void 0;
   }
@@ -39257,39 +39301,67 @@ async function completePendingDeploy(revisionId, sourceCommit) {
     return { \uC18C\uC2A4_\uAE30\uC900_\uAE30\uB85D: "\uBC30\uD3EC\uB294 \uC644\uB8CC\uB410\uC73C\uB098 \uB85C\uCEEC \uC18C\uC2A4 \uAE30\uC900\uC744 \uAE30\uB85D\uD558\uC9C0 \uBABB\uD588\uB2E4. \uB2E4\uC74C \uBC30\uD3EC \uC804\uC5D0 \uCD5C\uC2E0 \uC18C\uC2A4\uB97C \uD655\uC778\uD55C\uB2E4" };
   }
 }
-async function deploymentFailure(result, deployment, workspace, sourceBaseCommit) {
-  const body = result.body;
-  if (result.status !== 409 || typeof body !== "object" || body === null || typeof body.details !== "object" || body.details === null || !("code" in body.details) || body.details.code !== "source-conflict") {
-    return failure("\uBC30\uD3EC\uC5D0 \uC2E4\uD328\uD588\uB2E4", result, deploymentFailureNote(body));
-  }
-  const latest = "latestCommit" in body.details && typeof body.details.latestCommit === "string" && /^[a-f0-9]{40}$/.test(body.details.latestCommit) ? body.details.latestCommit : void 0;
+async function sourceRecovery(input) {
+  const { deployment, workspace, sourceBaseCommit, latest, trigger } = input;
   const workflowResult = await callApi("/v1/plugin-skills/deploy-to-apps", { signal: AbortSignal.timeout(8e3), redirect: "error", cache: "no-store" });
   const workflow = workflowResult.ok ? external_exports.object({ schemaVersion: external_exports.literal(1), skill: external_exports.object({
     id: external_exports.literal("deploy-to-apps"),
     content: external_exports.string().min(1).max(1e5),
     version: external_exports.number().int().positive()
   }) }).safeParse(workflowResult.body) : null;
+  return {
+    ...workflow?.success ? { workflow: { id: workflow.data.skill.id, version: workflow.data.skill.version } } : {},
+    action: "merge_latest_validate_redeploy",
+    trigger,
+    deployment,
+    workspace,
+    sourceBaseCommit: sourceBaseCommit ?? null,
+    latestSource: { tool: "checkout_app_source", arguments: { deployment, workspace, ...latest === void 0 ? {} : { commit: latest } } },
+    ...sourceBaseCommit === void 0 ? {} : {
+      baseSource: { tool: "checkout_app_source", arguments: { deployment, workspace, commit: sourceBaseCommit } }
+    },
+    instructions: [
+      "\uAE30\uC874 \uBC30\uD3EC \uC694\uCCAD\uC774 \uC720\uD6A8\uD558\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC7AC\uC2DC\uB3C4\uB098 \uC7AC\uC2B9\uC778\uC744 \uB9E1\uAE30\uC9C0 \uB9D0\uACE0 \uC774 \uBCF5\uAD6C\uB97C \uACC4\uC18D \uC218\uD589\uD55C\uB2E4",
+      "\uC6D0\uBCF8 \uC791\uC5C5 \uD3F4\uB354\uC640 \uBCC0\uACBD\uC744 \uBCF4\uC874\uD55C\uB2E4. checkout_app_source\uC758 directory\uC5D0 \uAC01\uAC01 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD574 \uCD5C\uC2E0 \uC18C\uC2A4\uC640 \uAE30\uC900 \uC18C\uC2A4\uB97C \uBCC4\uB3C4 \uD3F4\uB354\uB85C \uBC1B\uB294\uB2E4",
+      "\uAE30\uC900 \uC18C\uC2A4\uC640 \uC790\uC2E0\uC758 \uC791\uC5C5\uC744 \uBE44\uAD50\uD55C \uBCC0\uACBD\uB9CC \uCD5C\uC2E0 \uC18C\uC2A4\uC5D0 \uD1B5\uD569\uD55C\uB2E4. \uAE30\uC900\uC774 \uC5C6\uC73C\uBA74 \uC694\uCCAD\uACFC \uC791\uC5C5 \uC774\uB825\uC73C\uB85C \uC790\uC2E0\uC758 \uBCC0\uACBD \uBC94\uC704\uB97C \uD655\uC778\uD558\uBA70 \uB85C\uCEEC \uC804\uCCB4\uB97C \uCD5C\uC2E0 \uD3F4\uB354\uC5D0 \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4",
+      "\uAC19\uC740 \uC904\uC758 \uCDA9\uB3CC\uB3C4 \uC591\uCABD \uC758\uB3C4\uB97C \uC720\uC9C0\uD560 \uC218 \uC788\uC73C\uBA74 \uC9C1\uC811 \uD574\uACB0\uD55C\uB2E4. \uC11C\uB85C \uC591\uB9BD\uD560 \uC218 \uC5C6\uB294 \uC694\uAD6C\uC0AC\uD56D\uC774\uB098 \uBCC0\uACBD \uBC94\uC704\uB97C \uD655\uC815\uD560 \uC218 \uC5C6\uB294 \uACBD\uC6B0\uC5D0\uB9CC \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD310\uB2E8\uC744 \uC694\uCCAD\uD55C\uB2E4",
+      "\uCD5C\uC2E0 \uC18C\uC2A4\uB97C \uBC1B\uC740 \uD3F4\uB354\uC5D0 \uD1B5\uD569\uD558\uACE0 \uADF8 \uD3F4\uB354\uC5D0\uC11C \uAE30\uB2A5\uACFC \uBE4C\uB4DC\uB97C \uD655\uC778\uD55C\uB2E4. validate_project\uB97C \uD1B5\uACFC\uD55C \uB4A4 \uADF8 \uD3F4\uB354 \uACBD\uB85C\uC640 \uAC19\uC740 deployment \uC774\uB984, workspace\uB85C deploy_project\uB97C \uD638\uCD9C\uD55C\uB2E4. \uAE30\uC900 \uCEE4\uBC0B\uC740 \uADF8 \uD3F4\uB354\uC758 .apps-source.json\uC5D0\uC11C \uC790\uB3D9\uC73C\uB85C \uBCF4\uB0B8\uB2E4. \uAE30\uC874 env, secrets, resources \uC124\uC815 \uC758\uB3C4\uB3C4 \uC720\uC9C0\uD55C\uB2E4",
+      ".apps-source.json\uC758 \uAE30\uC900 \uCEE4\uBC0B\uC744 \uACE0\uCE58\uAC70\uB098 forceNewRevision\uC73C\uB85C \uCDA9\uB3CC\uC744 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uB2E4\uC2DC \uCDA9\uB3CC\uD558\uBA74 \uCD5C\uC2E0 \uC18C\uC2A4\uB85C \uAC19\uC740 \uC808\uCC28\uB97C \uBC18\uBCF5\uD558\uB418 \uC5F0\uC18D 3\uD68C\uBA74 \uC9C4\uD589 \uC0C1\uD669\uACFC \uB3D9\uC2DC \uC218\uC815 \uC0C1\uD669\uC744 \uBCF4\uACE0\uD55C\uB2E4",
+      "\uBC30\uD3EC\uAC00 \uB05D\uB098\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC870\uC6D0 \uBCC0\uACBD\uC744 \uD569\uCCD0 \uBC30\uD3EC\uD55C \uAC83\uACFC \uCD5C\uC2E0 \uD3F4\uB354 \uACBD\uB85C\uB97C \uC54C\uB9B0\uB2E4. \uC774\uD6C4 \uC218\uC815\uACFC \uBC30\uD3EC\uB294 \uC6D0\uB798 \uD3F4\uB354\uAC00 \uC544\uB2C8\uB77C \uADF8 \uCD5C\uC2E0 \uD3F4\uB354\uC5D0\uC11C \uC774\uC5B4\uC11C \uD55C\uB2E4(\uC6D0\uB798 \uD3F4\uB354\uC5D0\uB294 \uC870\uC6D0 \uBCC0\uACBD\uC774 \uC5C6\uB2E4)"
+    ]
+  };
+}
+async function deploymentFailure(result, deployment, workspace, sourceBaseCommit) {
+  const body = result.body;
+  if (result.status !== 409 || typeof body !== "object" || body === null || typeof body.details !== "object" || body.details === null || !("code" in body.details) || body.details.code !== "source-conflict") {
+    return failure("\uBC30\uD3EC\uC5D0 \uC2E4\uD328\uD588\uB2E4", result, deploymentFailureNote(body));
+  }
+  const latest = "latestCommit" in body.details && typeof body.details.latestCommit === "string" && /^[a-f0-9]{40}$/.test(body.details.latestCommit) ? body.details.latestCommit : void 0;
   return errorResult(JSON.stringify({
     ...body,
-    recovery: {
-      ...workflow?.success ? { workflow: { id: workflow.data.skill.id, version: workflow.data.skill.version } } : {},
-      action: "merge_latest_validate_redeploy",
-      deployment,
-      workspace,
-      sourceBaseCommit: sourceBaseCommit ?? null,
-      latestSource: { tool: "checkout_app_source", arguments: { deployment, workspace, ...latest === void 0 ? {} : { commit: latest } } },
-      ...sourceBaseCommit === void 0 ? {} : {
-        baseSource: { tool: "checkout_app_source", arguments: { deployment, workspace, commit: sourceBaseCommit } }
-      },
-      instructions: [
-        "\uAE30\uC874 \uBC30\uD3EC \uC694\uCCAD\uC774 \uC720\uD6A8\uD558\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC7AC\uC2DC\uB3C4\uB97C \uB9E1\uAE30\uC9C0 \uB9D0\uACE0 \uC774 \uBCF5\uAD6C\uB97C \uACC4\uC18D \uC218\uD589\uD55C\uB2E4",
-        "\uC6D0\uBCF8 \uC791\uC5C5 \uD3F4\uB354\uC640 \uBCC0\uACBD\uC744 \uBCF4\uC874\uD55C\uB2E4. checkout_app_source\uC758 directory\uC5D0 \uAC01\uAC01 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uC808\uB300 \uACBD\uB85C\uB97C \uC9C0\uC815\uD574 \uCD5C\uC2E0 \uC18C\uC2A4\uC640 \uAE30\uC900 \uC18C\uC2A4\uB97C \uBCC4\uB3C4 \uD3F4\uB354\uB85C \uBC1B\uB294\uB2E4",
-        "\uAE30\uC900 \uC18C\uC2A4\uC640 \uC790\uC2E0\uC758 \uC791\uC5C5\uC744 \uBE44\uAD50\uD55C \uBCC0\uACBD\uB9CC \uCD5C\uC2E0 \uC18C\uC2A4\uC5D0 \uD1B5\uD569\uD55C\uB2E4. \uAE30\uC900\uC774 \uC5C6\uC73C\uBA74 \uC694\uCCAD\uACFC \uC791\uC5C5 \uC774\uB825\uC73C\uB85C \uC790\uC2E0\uC758 \uBCC0\uACBD \uBC94\uC704\uB97C \uD655\uC778\uD558\uBA70 \uB85C\uCEEC \uC804\uCCB4\uB97C \uCD5C\uC2E0 \uD3F4\uB354\uC5D0 \uB36E\uC5B4\uC4F0\uC9C0 \uC54A\uB294\uB2E4",
-        "\uAC19\uC740 \uC904\uC758 \uCDA9\uB3CC\uB3C4 \uC591\uCABD \uC758\uB3C4\uB97C \uC720\uC9C0\uD560 \uC218 \uC788\uC73C\uBA74 \uC9C1\uC811 \uD574\uACB0\uD55C\uB2E4. \uC11C\uB85C \uC591\uB9BD\uD560 \uC218 \uC5C6\uB294 \uC694\uAD6C\uC0AC\uD56D\uC774\uB098 \uBCC0\uACBD \uBC94\uC704\uB97C \uD655\uC815\uD560 \uC218 \uC5C6\uB294 \uACBD\uC6B0\uC5D0\uB9CC \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD310\uB2E8\uC744 \uC694\uCCAD\uD55C\uB2E4",
-        "\uCD5C\uC2E0 \uC18C\uC2A4\uB97C \uBC1B\uC740 \uD3F4\uB354\uC5D0 \uD1B5\uD569\uD558\uACE0 \uADF8 \uD3F4\uB354\uC5D0\uC11C \uAE30\uB2A5\uACFC \uBE4C\uB4DC\uB97C \uD655\uC778\uD55C\uB2E4. validate_project\uB97C \uD1B5\uACFC\uD55C \uB4A4 \uADF8 \uD3F4\uB354 \uACBD\uB85C\uC640 \uAC19\uC740 deployment \uC774\uB984, workspace\uB85C deploy_project\uB97C \uD638\uCD9C\uD55C\uB2E4. \uAE30\uC900 \uCEE4\uBC0B\uC740 \uADF8 \uD3F4\uB354\uC758 .apps-source.json\uC5D0\uC11C \uC790\uB3D9\uC73C\uB85C \uBCF4\uB0B8\uB2E4. \uAE30\uC874 env, secrets, resources \uC124\uC815 \uC758\uB3C4\uB3C4 \uC720\uC9C0\uD55C\uB2E4",
-        ".apps-source.json\uC758 \uAE30\uC900 \uCEE4\uBC0B\uC744 \uACE0\uCE58\uAC70\uB098 forceNewRevision\uC73C\uB85C \uCDA9\uB3CC\uC744 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uB2E4\uC2DC \uCDA9\uB3CC\uD558\uBA74 \uCD5C\uC2E0 \uC18C\uC2A4\uB85C \uAC19\uC740 \uC808\uCC28\uB97C \uBC18\uBCF5\uD558\uB418 \uC5F0\uC18D 3\uD68C\uBA74 \uC9C4\uD589 \uC0C1\uD669\uACFC \uB3D9\uC2DC \uC218\uC815 \uC0C1\uD669\uC744 \uBCF4\uACE0\uD55C\uB2E4"
-      ]
-    }
+    recovery: await sourceRecovery({ deployment, workspace, sourceBaseCommit, latest, trigger: "source-conflict" })
+  }, null, 2));
+}
+var TeamSourceStatus = external_exports.object({
+  workspaceType: external_exports.enum(["personal", "team"]),
+  latestCommit: external_exports.string().regex(/^[a-f0-9]{40}$/).nullable(),
+  teamChanged: external_exports.boolean(),
+  changedSince: external_exports.object({ base: external_exports.string(), commits: external_exports.array(external_exports.object({ id: external_exports.string(), title: external_exports.string() })), files: external_exports.array(external_exports.string()), truncated: external_exports.boolean() }).optional()
+});
+async function teamChangesBeforeDeploy(deployment, workspace, base) {
+  if (workspace === void 0) return void 0;
+  const status = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}/source-status${base === void 0 ? "" : `?base=${base}`}`, { signal: AbortSignal.timeout(8e3), redirect: "error", cache: "no-store" }, workspace);
+  const parsed = status.ok ? TeamSourceStatus.safeParse(status.body) : null;
+  if (parsed === null || !parsed.success || parsed.data.workspaceType !== "team" || !parsed.data.teamChanged) return void 0;
+  const { latestCommit, changedSince } = parsed.data;
+  const files = changedSince === void 0 ? "" : changedSince.files.slice(0, 20).join(", ") + (changedSince.files.length > 20 ? ` \uC678 ${changedSince.files.length - 20}\uAC1C` : "");
+  return errorResult(JSON.stringify({
+    \uBC30\uD3EC\uB428: false,
+    \uBC30\uD3EC_\uBCF4\uB958: true,
+    \uC774\uC720: `\uAE30\uC900 \uCEE4\uBC0B \uB4A4\uC5D0 \uC870\uC6D0\uC774 \uBA3C\uC800 \uBC30\uD3EC\uD55C \uBCC0\uACBD\uC774 \uC788\uB2E4${changedSince === void 0 ? "" : `(\uCEE4\uBC0B ${changedSince.commits.length}\uAC1C, \uD30C\uC77C ${changedSince.files.length}\uAC1C: ${files})`}. \uC11C\uBC84\uAC00 \uC790\uB3D9\uC73C\uB85C \uD569\uCCD0 \uBC30\uD3EC\uD558\uBA74 \uC774 \uD3F4\uB354\uC5D0\uC11C \uC2E4\uD589\uD574 \uBCF4\uC9C0 \uC54A\uC740 \uCF54\uB4DC\uAC00 \uB098\uAC00\uBBC0\uB85C \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uB2E4. \uC544\uB798 recovery \uC808\uCC28\uB85C \uCD5C\uC2E0 \uC18C\uC2A4\uC5D0 \uC790\uC2E0\uC758 \uBCC0\uACBD\uB9CC \uD1B5\uD569\uD558\uACE0 \uD655\uC778\uD55C \uB4A4 \uADF8 \uD3F4\uB354\uC5D0\uC11C \uBC30\uD3EC\uD55C\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uB2E4\uC2DC \uC2B9\uC778\uC744 \uBB3B\uC9C0 \uC54A\uB294\uB2E4`,
+    latestCommit,
+    ...changedSince === void 0 ? {} : { changedSince },
+    recovery: await sourceRecovery({ deployment, workspace, sourceBaseCommit: base, latest: latestCommit ?? void 0, trigger: "team-changes" })
   }, null, 2));
 }
 var toolSettings = toolsConfig();
@@ -39324,7 +39396,7 @@ groupServer("base").registerTool("get_plugin_skill", {
 var PUBLIC_AI_GATEWAY_UNAVAILABLE = '\uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uC571\uC6A9 AI \uD658\uACBD\uC744 \uC4F0\uB824\uBA74 Apps \uB85C\uADF8\uC778\uC774 \uD544\uC694\uD558\uB2E4(\uACF5\uAC1C \uB9C8\uCF13\uD50C\uB808\uC774\uC2A4 \uC124\uCE58, \uB85C\uADF8\uC778 \uC5C6\uC74C). \uC0AC\uC6A9\uC790\uAC00 \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uAD50\uC721 \uCC38\uAC00\uC790\uC774\uBA74 start_apps_login\uACFC complete_apps_login\uC73C\uB85C \uD55C \uBC88 \uB85C\uADF8\uC778\uD55C \uB4A4 \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uACC4\uC815\uC774 \uC5C6\uC73C\uBA74 \uB85C\uADF8\uC778\uC744 \uBC18\uBCF5\uD558\uC9C0 \uC54A\uACE0 build-ai-feature \uC2A4\uD0AC\uC758 "\uC571\uC6A9 AI \uD658\uACBD\uC774 \uC5C6\uC744 \uB54C" \uC808\uCC28\uB85C \uC9C4\uD589\uD55C\uB2E4: \uC0AC\uC6A9\uC790\uAC00 \uAC00\uC9C4 AI \uC81C\uACF5\uC790 API \uD0A4\uB97C Git\uC5D0\uC11C \uC81C\uC678\uD55C .env.local\uC5D0 \uC0AC\uC6A9\uC790\uAC00 \uC9C1\uC811 \uB123\uACE0 \uC11C\uBC84\uC5D0\uC11C\uB9CC \uC77D\uB294\uB2E4. Claude \uAD6C\uB3C5(Pro, Max) \uB85C\uADF8\uC778\uC740 \uC571 \uC11C\uBC84\uAC00 \uBD80\uB97C API \uD0A4\uAC00 \uC544\uB2C8\uB2E4.';
 groupServer("mcp-apps").registerTool("get_ai_gateway", {
   title: "\uC0B0\uCD9C\uBB3C AI \uD658\uACBD\uACFC \uBAA8\uB378 \uD655\uC778",
-  description: "AI\uB85C \uC694\uCCAD\uD558\uACE0 \uC751\uB2F5\uD558\uB294 \uAE30\uB2A5, \uCC57\uBD07, \uC694\uC57D \uB4F1 \uC0B0\uCD9C\uBB3C AI \uAE30\uB2A5 \uAD6C\uD604\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uAC00 \uD5C8\uBE0C(hub.aible-campus.com)\uC5D0\uC11C \uC815\uD55C \uC571\uC6A9 AI \uD658\uACBD\uACFC \uD604\uC7AC \uBAA8\uB378 \uBAA9\uB85D\uC744 \uD655\uC778\uD558\uBA70 API \uD0A4\uB294 \uBC18\uD658\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC9C0\uC6D0 \uBAA8\uB378\uC740 \uC774 \uACB0\uACFC\uB85C \uC548\uB0B4\uD558\uACE0 \uACE0\uC815 \uBAA9\uB85D\uC744 \uC57D\uC18D\uD558\uC9C0 \uC54A\uB294\uB2E4. \uBAA9\uB85D\uC5D0 \uC788\uC5B4\uB3C4 \uBAA8\uB4E0 API\uB97C \uC9C0\uC6D0\uD558\uC9C0\uB294 \uC54A\uC73C\uBA70 \uBAA9\uB85D \uD655\uC778\uC740 \uC2E4\uC81C \uC751\uB2F5 \uAC80\uC99D\uC774 \uC544\uB2C8\uB2E4. \uBC30\uD3EC \uB300\uC0C1\uC774 \uC5C6\uC73C\uBA74 workspace\uB97C \uC0DD\uB7B5\uD574 \uC870\uD68C\uD574\uB3C4 \uB418\uACE0 \uC774 \uC870\uD68C\uB97C \uBC30\uD3EC \uB300\uC0C1 \uC120\uD0DD\uC73C\uB85C \uAE30\uB85D\uD558\uC9C0 \uC54A\uB294\uB2E4.",
+  description: "AI\uB85C \uC694\uCCAD\uD558\uACE0 \uC751\uB2F5\uD558\uB294 \uAE30\uB2A5, \uCC57\uBD07, \uC694\uC57D \uB4F1 \uC0B0\uCD9C\uBB3C AI \uAE30\uB2A5 \uAD6C\uD604\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uAD50\uC721 \uB2F4\uB2F9\uC790\uAC00 \uD5C8\uBE0C(hub.aible-campus.com)\uC5D0\uC11C \uC815\uD55C \uC571\uC6A9 AI \uD658\uACBD\uACFC \uD604\uC7AC \uBAA8\uB378 \uBAA9\uB85D\uC744 \uD655\uC778\uD558\uBA70 API \uD0A4\uB294 \uBC18\uD658\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC9C0\uC6D0 \uBAA8\uB378\uC740 \uC774 \uACB0\uACFC\uB85C \uC548\uB0B4\uD558\uACE0 \uACE0\uC815 \uBAA9\uB85D\uC744 \uC57D\uC18D\uD558\uC9C0 \uC54A\uB294\uB2E4. \uBAA9\uB85D\uC5D0 \uC788\uC5B4\uB3C4 \uBAA8\uB4E0 API\uB97C \uC9C0\uC6D0\uD558\uC9C0\uB294 \uC54A\uC73C\uBA70 \uBAA9\uB85D \uD655\uC778\uC740 \uC2E4\uC81C \uC751\uB2F5 \uAC80\uC99D\uC774 \uC544\uB2C8\uB2E4. \uBC30\uD3EC \uB300\uC0C1\uC774 \uC5C6\uC73C\uBA74 workspace\uB97C \uC0DD\uB7B5\uD574 \uC870\uD68C\uD574\uB3C4 \uB418\uACE0 \uC774 \uC870\uD68C\uB97C \uBC30\uD3EC \uB300\uC0C1 \uC120\uD0DD\uC73C\uB85C \uAE30\uB85D\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571\uC6A9 AI \uD0A4\uB294 IP\uAC00 \uC81C\uD55C\uB3FC \uBC30\uD3EC\uB41C \uC571\uC5D0\uC11C\uB9CC AI\uB97C \uBD80\uB97C \uC218 \uC788\uB2E4. \uB85C\uCEEC \uC2E4\uD589\uC740 403 ip_not_allowed\uB85C \uAC70\uBD80\uB418\uBBC0\uB85C AI \uC751\uB2F5\uC740 \uB85C\uCEEC\uC5D0\uC11C \uD655\uC778\uD558\uB824 \uD558\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uBC30\uD3EC\uB97C \uC694\uCCAD\uD588\uC744 \uB54C \uBC30\uD3EC\uD574\uC11C \uD655\uC778\uD55C\uB2E4(\uC694\uCCAD\uC774 \uC5C6\uC73C\uBA74 \uBC30\uD3EC\uD560\uC9C0 \uD55C \uBC88 \uBB3B\uB294\uB2E4). \uC774 \uC870\uD68C\uB294 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4.",
   inputSchema: { workspace: WorkspaceInputSchema },
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
 }, async ({ workspace }) => {
@@ -39334,11 +39406,11 @@ groupServer("mcp-apps").registerTool("get_ai_gateway", {
   }
   if (!result.ok) return errorResult(`\uC0B0\uCD9C\uBB3C AI \uD658\uACBD \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4 (\uC0C1\uD0DC ${result.status}). 0 \uB610\uB294 401\uC774\uBA74 Apps \uB85C\uADF8\uC778\uC744 \uD655\uC778\uD558\uACE0 403\uC774\uBA74 workspace \uAD8C\uD55C, 503\uC774\uBA74 \uC6B4\uC601 \uD658\uACBD \uC5F0\uACB0\uC744 \uD655\uC778\uD558\uC2ED\uC2DC\uC624. \uBAA8\uB378 \uBAA9\uB85D\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4\uACE0 \uC54C\uB9AC\uACE0, AI \uC5F0\uACB0 \uAE30\uB2A5\uC774 \uC5C6\uB2E4\uAC70\uB098 \uC678\uBD80 API \uD0A4\uB97C \uC9C1\uC811 \uC900\uBE44\uD574\uC57C \uD55C\uB2E4\uACE0 \uC548\uB0B4\uD558\uC9C0 \uC54A\uB294\uB2E4.`);
   const parsed = external_exports.object({ environment: external_exports.object({ id: external_exports.string().uuid(), name: external_exports.string() }), baseUrl: external_exports.literal("https://gw.letsur.ai/v1"), models: external_exports.array(external_exports.string()), documentationUrl: external_exports.string() }).safeParse(result.body);
-  return parsed.success ? textResult(parsed.data) : errorResult("AI \uD658\uACBD \uC751\uB2F5 \uD615\uC2DD\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
+  return parsed.success ? textResult({ ...parsed.data, \uB85C\uCEEC_\uC2E4\uD589_\uC548\uB0B4: LOCAL_AI_NOTICE }) : errorResult("AI \uD658\uACBD \uC751\uB2F5 \uD615\uC2DD\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.");
 });
 groupServer("mcp-apps").registerTool("configure_ai_gateway", {
   title: "\uD504\uB85C\uC81D\uD2B8\uC5D0 \uC0B0\uCD9C\uBB3C AI \uC124\uC815 \uC5F0\uACB0",
-  description: "AI \uAE30\uB2A5 \uAD6C\uD604\uC744 \uC704\uD574 \uC571\uC6A9 AI \uD658\uACBD\uC758 \uCD5C\uC2E0 \uD0A4\uB97C MCP \uB0B4\uBD80\uC5D0\uC11C \uBC1B\uC544 \uD504\uB85C\uC81D\uD2B8 .env.apps-ai\uC5D0 \uC800\uC7A5\uD569\uB2C8\uB2E4. \uBAA8\uB378\uC740 get_ai_gateway \uACB0\uACFC\uC5D0\uC11C \uC120\uD0DD\uD569\uB2C8\uB2E4. \uD0A4\uB97C \uC751\uB2F5\uC5D0 \uCD9C\uB825\uD558\uC9C0 \uC54A\uC73C\uBA70 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C API \uD0A4\uB098 \uC6B4\uC601 \uD654\uBA74 \uC815\uBCF4\uB97C \uBC1B\uC9C0 \uC54A\uB294\uB2E4. \uC0C8\uB85C \uBC1B\uC740 \uD3F4\uB354\uC774\uAC70\uB098 \uC6B4\uC601\uC9C4\uC774 \uD0A4\uB97C \uBC14\uAFBC \uB4A4\uC5D0\uB294 \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uACB0\uACFC\uC758 localEnv\uB97C validate_project\uC640 deploy_project\uC5D0 \uADF8\uB300\uB85C \uB123\uB294\uB2E4. Claude \uB370\uC2A4\uD06C\uD1B1 \uC790\uCCB4 \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC124\uC815\uC740 \uBC14\uAFB8\uC9C0 \uC54A\uB294\uB2E4.",
+  description: "AI \uAE30\uB2A5 \uAD6C\uD604\uC744 \uC704\uD574 \uC571\uC6A9 AI \uD658\uACBD\uC758 \uCD5C\uC2E0 \uD0A4\uB97C MCP \uB0B4\uBD80\uC5D0\uC11C \uBC1B\uC544 \uD504\uB85C\uC81D\uD2B8 .env.apps-ai\uC5D0 \uC800\uC7A5\uD569\uB2C8\uB2E4. \uBAA8\uB378\uC740 get_ai_gateway \uACB0\uACFC\uC5D0\uC11C \uC120\uD0DD\uD569\uB2C8\uB2E4. \uD0A4\uB97C \uC751\uB2F5\uC5D0 \uCD9C\uB825\uD558\uC9C0 \uC54A\uC73C\uBA70 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C API \uD0A4\uB098 \uC6B4\uC601 \uD654\uBA74 \uC815\uBCF4\uB97C \uBC1B\uC9C0 \uC54A\uB294\uB2E4. \uC0C8\uB85C \uBC1B\uC740 \uD3F4\uB354\uC774\uAC70\uB098 \uC6B4\uC601\uC9C4\uC774 \uD0A4\uB97C \uBC14\uAFBC \uB4A4\uC5D0\uB294 \uB2E4\uC2DC \uBD80\uB978\uB2E4. \uACB0\uACFC\uC758 localEnv\uB97C validate_project\uC640 deploy_project\uC5D0 \uADF8\uB300\uB85C \uB123\uB294\uB2E4. \uC774 \uD0A4\uB294 IP\uAC00 \uC81C\uD55C\uB3FC \uBC30\uD3EC\uB41C \uC571\uC5D0\uC11C\uB9CC \uB3D9\uC791\uD55C\uB2E4. \uB85C\uCEEC\uC5D0\uC11C \uC571\uC744 \uC2E4\uD589\uD558\uBA74 AI \uD638\uCD9C\uC774 403 ip_not_allowed\uB85C \uAC70\uBD80\uB418\uBBC0\uB85C AI \uC751\uB2F5\uC744 \uB85C\uCEEC\uC5D0\uC11C \uD655\uC778\uD558\uB824 \uD558\uC9C0 \uC54A\uACE0 \uD654\uBA74\uACFC \uB098\uBA38\uC9C0 \uAE30\uB2A5\uB9CC \uB85C\uCEEC\uC5D0\uC11C \uD655\uC778\uD55C\uB2E4. AI \uC751\uB2F5\uC740 \uC0AC\uC6A9\uC790\uAC00 \uBC30\uD3EC\uB97C \uC694\uCCAD\uD588\uC744 \uB54C \uBC30\uD3EC\uD574\uC11C \uD655\uC778\uD558\uACE0, \uC694\uCCAD\uC774 \uC5C6\uC73C\uBA74 \uBC30\uD3EC\uD560\uC9C0 \uD55C \uBC88 \uBB3B\uB294\uB2E4. Claude \uB370\uC2A4\uD06C\uD1B1 \uC790\uCCB4 \uAC8C\uC774\uD2B8\uC6E8\uC774 \uC124\uC815\uC740 \uBC14\uAFB8\uC9C0 \uC54A\uB294\uB2E4.",
   inputSchema: { path: external_exports.string().min(1), model: external_exports.string().min(1).max(200), workspace: WorkspaceInputSchema },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
 }, async ({ path: projectPath, model, workspace }) => {
@@ -39353,7 +39425,7 @@ groupServer("mcp-apps").registerTool("configure_ai_gateway", {
 });
 groupServer("mcp-apps").registerTool("verify_ai_gateway", {
   title: "\uC0B0\uCD9C\uBB3C AI \uC694\uCCAD\uACFC \uC751\uB2F5 \uAC80\uC99D",
-  description: "\uD504\uB85C\uC81D\uD2B8 .env.apps-ai\uB97C \uB0B4\uBD80\uC5D0\uC11C \uC77D\uC5B4 \uC9E7\uC740 \uC2E4\uC81C AI \uC694\uCCAD\uC744 \uD55C \uBC88 \uBCF4\uB0C5\uB2C8\uB2E4. \uC18C\uB7C9\uC758 \uC0AC\uC6A9\uB7C9\uC774 \uBC1C\uC0DD\uD569\uB2C8\uB2E4. \uD0A4\uC640 \uC751\uB2F5 \uC6D0\uBB38\uC740 \uCD9C\uB825\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC0B0\uCD9C\uBB3C \uC11C\uBC84 \uD1B5\uD569 \uAC80\uC99D\uC774\uB098 \uBC30\uD3EC\uB97C \uB300\uC2E0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  description: "\uD504\uB85C\uC81D\uD2B8 .env.apps-ai\uB97C \uB0B4\uBD80\uC5D0\uC11C \uC77D\uC5B4 \uC9E7\uC740 \uC2E4\uC81C AI \uC694\uCCAD\uC744 \uD55C \uBC88 \uBCF4\uB0C5\uB2C8\uB2E4. \uC18C\uB7C9\uC758 \uC0AC\uC6A9\uB7C9\uC774 \uBC1C\uC0DD\uD569\uB2C8\uB2E4. \uD0A4\uC640 \uC751\uB2F5 \uC6D0\uBB38\uC740 \uCD9C\uB825\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC0B0\uCD9C\uBB3C \uC11C\uBC84 \uD1B5\uD569 \uAC80\uC99D\uC774\uB098 \uBC30\uD3EC\uB97C \uB300\uC2E0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC571\uC6A9 AI \uD0A4\uB294 IP\uAC00 \uC81C\uD55C\uB3FC \uC0AC\uC6A9\uC790 PC\uC5D0\uC11C \uBCF4\uB0B8 \uC774 \uC694\uCCAD\uC740 403 ip_not_allowed\uB85C \uAC70\uBD80\uB420 \uC218 \uC788\uACE0, \uADF8 \uACB0\uACFC\uB294 \uD0A4\uB098 \uC571\uC758 \uC624\uB958\uAC00 \uC544\uB2C8\uB2E4. \uAC70\uBD80\uB418\uBA74 \uB2E4\uC2DC \uBD80\uB974\uAC70\uB098 \uC6D0\uC778\uC744 \uCC3E\uC73C\uB824 \uD558\uC9C0 \uC54A\uB294\uB2E4. AI \uAE30\uB2A5\uC740 \uC0AC\uC6A9\uC790\uAC00 \uBC30\uD3EC\uB97C \uC694\uCCAD\uD588\uC744 \uB54C \uBC30\uD3EC\uD574\uC11C \uD655\uC778\uD558\uACE0, \uC694\uCCAD\uC774 \uC5C6\uC73C\uBA74 \uBC30\uD3EC\uD560\uC9C0 \uD55C \uBC88 \uBB3B\uB294\uB2E4.",
   inputSchema: { path: external_exports.string().min(1) },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
 }, async ({ path: projectPath }) => {
@@ -39365,7 +39437,7 @@ groupServer("mcp-apps").registerTool("verify_ai_gateway", {
 });
 groupServer("mcp-image").registerTool("generate_image", {
   title: "\uC774\uBBF8\uC9C0 \uB9CC\uB4E4\uAE30",
-  description: "\uC0AC\uC6A9\uC790\uAC00 \uB300\uD654\uC5D0\uC11C \uC774\uBBF8\uC9C0, \uADF8\uB9BC, \uC0AC\uC9C4, \uB85C\uACE0, \uC544\uC774\uCF58, \uC77C\uB7EC\uC2A4\uD2B8, \uD3EC\uC2A4\uD130\uB098 \uC0BD\uD654\uB97C \uB9CC\uB4E4\uC5B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uB3C4\uAD6C\uB85C \uB9CC\uB4E0\uB2E4. \uD074\uB85C\uB4DC\uC5D0\uB294 \uC774\uBBF8\uC9C0 \uC0DD\uC131 \uBAA8\uB378\uC774 \uC5C6\uC73C\uBBC0\uB85C \uC9C1\uC811 \uADF8\uB9AC\uAC70\uB098 SVG, HTML, \uCF54\uB4DC\uB85C \uB300\uC2E0 \uB9CC\uB4E4\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBC29\uC2DD\uC744 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uADF8\uB807\uAC8C \uD55C\uB2E4. \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uD5C8\uBE0C\uC758 \uC571\uC6A9 AI \uC774\uBBF8\uC9C0 \uBAA8\uB378\uC744 \uC11C\uBC84\uAC00 \uC120\uD0DD\uD574 \uBD80\uB974\uBA70 API \uD0A4\uB294 \uD544\uC694 \uC5C6\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4. \uB9CC\uB4E0 \uC774\uBBF8\uC9C0\uB294 \uACB0\uACFC\uC5D0 \uBC14\uB85C \uBCF4\uC774\uACE0 \uC800\uC7A5 \uD3F4\uB354\uC5D0 \uC0C8 \uD30C\uC77C\uB85C \uC800\uC7A5\uB41C\uB2E4. \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8\uC5D0 \uB9CC\uB4E4 \uC218 \uC788\uB294 \uC7A5\uC218\uAC00 \uC815\uD574\uC838 \uC788\uACE0 \uD55C \uBC88\uC5D0 \uD55C \uC7A5\uC529 \uB9CC\uB4E0\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD558\uACE0 \uB2E4\uB978 \uC774\uBBF8\uC9C0 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571 \uC548\uC5D0 \uC774\uBBF8\uC9C0 \uC0DD\uC131 \uAE30\uB2A5\uC744 \uB123\uB294 \uC694\uCCAD\uC740 \uC774 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C build-ai-feature \uC2A4\uD0AC\uC744 \uB530\uB978\uB2E4." + mediaToolNote(toolSettings?.image, "\uC7A5", "\uC774\uBBF8\uC9C0"),
+  description: "\uC0AC\uC6A9\uC790\uAC00 \uB300\uD654\uC5D0\uC11C \uC774\uBBF8\uC9C0, \uADF8\uB9BC, \uC0AC\uC9C4, \uB85C\uACE0, \uC544\uC774\uCF58, \uC77C\uB7EC\uC2A4\uD2B8, \uD3EC\uC2A4\uD130\uB098 \uC0BD\uD654\uB97C \uB9CC\uB4E4\uC5B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uB3C4\uAD6C\uB85C \uB9CC\uB4E0\uB2E4. \uD074\uB85C\uB4DC\uC5D0\uB294 \uC774\uBBF8\uC9C0 \uC0DD\uC131 \uBAA8\uB378\uC774 \uC5C6\uC73C\uBBC0\uB85C \uC9C1\uC811 \uADF8\uB9AC\uAC70\uB098 SVG, HTML, \uCF54\uB4DC\uB85C \uB300\uC2E0 \uB9CC\uB4E4\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBC29\uC2DD\uC744 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uADF8\uB807\uAC8C \uD55C\uB2E4. \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uD5C8\uBE0C\uC758 \uC571\uC6A9 AI \uC774\uBBF8\uC9C0 \uBAA8\uB378\uC744 \uC11C\uBC84\uAC00 \uC120\uD0DD\uD574 \uBD80\uB974\uBA70 API \uD0A4\uB294 \uD544\uC694 \uC5C6\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4. \uB9CC\uB4E0 \uC774\uBBF8\uC9C0\uB294 \uACB0\uACFC\uC5D0 \uBC14\uB85C \uBCF4\uC774\uACE0 \uC800\uC7A5 \uD3F4\uB354\uC5D0 \uC0C8 \uD30C\uC77C\uB85C \uC800\uC7A5\uB41C\uB2E4. \uD55C \uBC88\uC5D0 \uD55C \uC7A5\uC529 \uB9CC\uB4E0\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD558\uACE0 \uB2E4\uB978 \uC774\uBBF8\uC9C0 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571 \uC548\uC5D0 \uC774\uBBF8\uC9C0 \uC0DD\uC131 \uAE30\uB2A5\uC744 \uB123\uB294 \uC694\uCCAD\uC740 \uC774 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C build-ai-feature \uC2A4\uD0AC\uC744 \uB530\uB978\uB2E4." + mediaToolNote(toolSettings?.image, "\uC774\uBBF8\uC9C0"),
   inputSchema: {
     prompt: external_exports.string().trim().min(1).max(IMAGE_PROMPT_MAX_LENGTH).describe(`\uB9CC\uB4E4 \uC774\uBBF8\uC9C0 \uC124\uBA85(\uCD5C\uB300 ${IMAGE_PROMPT_MAX_LENGTH}\uC790). \uC0AC\uC6A9\uC790 \uC694\uCCAD\uC758 \uB300\uC0C1, \uBD84\uC704\uAE30, \uC0C9, \uAD6C\uB3C4, \uC774\uBBF8\uC9C0 \uC548 \uAE00\uC790\uB97C \uBE60\uC9D0\uC5C6\uC774 \uAD6C\uCCB4\uC801\uC73C\uB85C \uC801\uB294\uB2E4`),
     size: external_exports.enum(IMAGE_SIZES).optional().describe("\uAC00\uB85Cx\uC138\uB85C \uD53D\uC140. \uC815\uC0AC\uAC01\uD615 1024x1024(\uAE30\uBCF8), \uAC00\uB85C\uD615 1536x1024, \uC138\uB85C\uD615 1024x1536. \uC0AC\uC6A9\uC790\uAC00 \uBE44\uC728\uC744 \uB9D0\uD588\uC744 \uB54C\uB9CC \uC120\uD0DD\uD55C\uB2E4"),
@@ -39393,26 +39465,18 @@ groupServer("mcp-image").registerTool("generate_image", {
     const file2 = await saveImage(target, prompt, image);
     saved = { \uC800\uC7A5\uD55C_\uD30C\uC77C: file2, \uD30C\uC77C_\uB9C1\uD06C: fileLink(file2) };
   } catch (error51) {
-    saved = { \uC800\uC7A5_\uC2E4\uD328: `${target}\uC5D0 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}. \uC774\uBBF8\uC9C0\uB294 \uC704\uC5D0 \uBCF4\uC778\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uC4F8 \uC218 \uC788\uB294 \uD3F4\uB354\uB85C \uB2E4\uC2DC \uB9CC\uB4E0\uB2E4(\uD558\uB8E8 \uC7A5\uC218\uAC00 \uD55C \uC7A5 \uB354 \uBE60\uC9C4\uB2E4)` };
+    saved = { \uC800\uC7A5_\uC2E4\uD328: `${target}\uC5D0 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uB2E4: ${error51 instanceof Error ? error51.message : String(error51)}. \uC774\uBBF8\uC9C0\uB294 \uC704\uC5D0 \uBCF4\uC778\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 \uC4F8 \uC218 \uC788\uB294 \uD3F4\uB354\uB85C \uB2E4\uC2DC \uB9CC\uB4E0\uB2E4.` };
   }
   return {
     content: [
       { type: "image", data: image.imageBase64, mimeType: image.mimeType },
-      { type: "text", text: JSON.stringify({
-        ...saved,
-        \uBAA8\uB378: image.model,
-        \uD06C\uAE30: image.size,
-        \uC624\uB298_\uB0A8\uC740_\uC7A5\uC218: image.remainingToday,
-        ...image.dailyLimit === void 0 ? {} : { \uD558\uB8E8_\uD55C\uB3C4: image.dailyLimit },
-        ...image.resetsAt === void 0 ? {} : { \uD55C\uB3C4_\uCD08\uAE30\uD654_\uC2DC\uAC01: `${koreanTime(image.resetsAt)}(\uD55C\uAD6D \uC2DC\uAC04)` },
-        \uC548\uB0B4: `${LINK_NOTE} \uC624\uB298 \uB0A8\uC740 \uC7A5\uC218\uB3C4 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4. \uB2E4\uC2DC \uB9CC\uB4E4\uBA74 \uD558\uB8E8 \uC7A5\uC218\uAC00 \uD55C \uC7A5\uC529 \uBE60\uC9C4\uB2E4.`
-      }, null, 2) }
+      { type: "text", text: JSON.stringify({ ...saved, \uBAA8\uB378: image.model, \uD06C\uAE30: image.size, \uC548\uB0B4: LINK_NOTE }, null, 2) }
     ]
   };
 });
 groupServer("mcp-video").registerTool("generate_video", {
   title: "\uC601\uC0C1 \uB9CC\uB4E4\uAE30",
-  description: `\uC0AC\uC6A9\uC790\uAC00 \uB300\uD654\uC5D0\uC11C \uC601\uC0C1, \uB3D9\uC601\uC0C1, \uC9E7\uC740 \uD074\uB9BD, \uBAA8\uC158 \uC601\uC0C1\uC744 \uB9CC\uB4E4\uC5B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uB3C4\uAD6C\uB85C \uC811\uC218\uD55C\uB2E4. \uD074\uB85C\uB4DC\uC5D0\uB294 \uC601\uC0C1 \uC0DD\uC131 \uBAA8\uB378\uC774 \uC5C6\uC73C\uBBC0\uB85C \uCF54\uB4DC\uB098 \uC560\uB2C8\uBA54\uC774\uC158 HTML\uB85C \uB300\uC2E0 \uB9CC\uB4E4\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBC29\uC2DD\uC744 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uADF8\uB807\uAC8C \uD55C\uB2E4. \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uD5C8\uBE0C\uC758 \uC571\uC6A9 AI \uC601\uC0C1 \uBAA8\uB378\uC744 \uC11C\uBC84\uAC00 \uC120\uD0DD\uD574 \uBD80\uB974\uBA70 API \uD0A4\uB294 \uD544\uC694 \uC5C6\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4. \uC601\uC0C1\uC740 \uB9CC\uB4DC\uB294 \uB370 \uBA87 \uBD84\uC774 \uAC78\uB824\uC11C \uC774 \uB3C4\uAD6C\uB294 \uC791\uC5C5\uB9CC \uC811\uC218\uD558\uACE0 \uAE30\uB2E4\uB9AC\uC9C0 \uC54A\uB294\uB2E4. \uC811\uC218\uD558\uBA74 \uACE7\uBC14\uB85C video_status\uB97C \uC791\uC5C5 ID\uB85C \uBD80\uB978\uB2E4. video_status\uAC00 \uD55C \uBC88\uC5D0 \uCD5C\uB300 ${VIDEO_WAIT_MAX_SECONDS}\uCD08\uAE4C\uC9C0 \uC11C\uBC84\uC5D0\uC11C \uC644\uC131\uC744 \uAE30\uB2E4\uB824 \uC8FC\uACE0 \uC644\uC131\uB418\uBA74 \uBC14\uB85C \uC791\uC5C5 \uD3F4\uB354 videos\uC5D0 \uC800\uC7A5\uD558\uBA70, \uC544\uC9C1\uC774\uBA74 \uAC19\uC740 \uB3C4\uAD6C\uB97C \uBC14\uB85C \uB2E4\uC2DC \uBD80\uB974\uB77C\uACE0 \uC54C\uB824 \uC900\uB2E4. Bash sleep\uC774\uB098 \uC258 \uB300\uAE30, \uC9C1\uC811 \uC2DC\uAC04 \uAC04\uACA9 \uB450\uAE30\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uB78C\uB9C8\uB2E4 \uD558\uB8E8\uC5D0 \uB9CC\uB4E4 \uC218 \uC788\uB294 \uAC1C\uC218\uAC00 \uC815\uD574\uC838 \uC788\uACE0 \uD55C \uBC88\uC5D0 \uD55C \uAC1C\uC529 \uB9CC\uB4E0\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD558\uACE0 \uB2E4\uB978 \uC601\uC0C1 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571 \uC548\uC5D0 \uC601\uC0C1 \uC0DD\uC131 \uAE30\uB2A5\uC744 \uB123\uB294 \uC694\uCCAD\uC740 \uC774 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C build-ai-feature \uC2A4\uD0AC\uC744 \uB530\uB978\uB2E4.` + mediaToolNote(toolSettings?.video, "\uAC1C", "\uC601\uC0C1"),
+  description: `\uC0AC\uC6A9\uC790\uAC00 \uB300\uD654\uC5D0\uC11C \uC601\uC0C1, \uB3D9\uC601\uC0C1, \uC9E7\uC740 \uD074\uB9BD, \uBAA8\uC158 \uC601\uC0C1\uC744 \uB9CC\uB4E4\uC5B4 \uB2EC\uB77C\uACE0 \uD558\uBA74 \uC774 \uB3C4\uAD6C\uB85C \uC811\uC218\uD55C\uB2E4. \uD074\uB85C\uB4DC\uC5D0\uB294 \uC601\uC0C1 \uC0DD\uC131 \uBAA8\uB378\uC774 \uC5C6\uC73C\uBBC0\uB85C \uCF54\uB4DC\uB098 \uC560\uB2C8\uBA54\uC774\uC158 HTML\uB85C \uB300\uC2E0 \uB9CC\uB4E4\uC9C0 \uC54A\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uADF8 \uBC29\uC2DD\uC744 \uC694\uCCAD\uD588\uC744 \uB54C\uB9CC \uADF8\uB807\uAC8C \uD55C\uB2E4. \uC5D0\uC774\uBE14\uCEA0\uD37C\uC2A4 \uD5C8\uBE0C\uC758 \uC571\uC6A9 AI \uC601\uC0C1 \uBAA8\uB378\uC744 \uC11C\uBC84\uAC00 \uC120\uD0DD\uD574 \uBD80\uB974\uBA70 API \uD0A4\uB294 \uD544\uC694 \uC5C6\uACE0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uB294\uB2E4. \uC601\uC0C1\uC740 \uB9CC\uB4DC\uB294 \uB370 \uBA87 \uBD84\uC774 \uAC78\uB824\uC11C \uC774 \uB3C4\uAD6C\uB294 \uC791\uC5C5\uB9CC \uC811\uC218\uD558\uACE0 \uAE30\uB2E4\uB9AC\uC9C0 \uC54A\uB294\uB2E4. \uC811\uC218\uD558\uBA74 \uACE7\uBC14\uB85C video_status\uB97C \uC791\uC5C5 ID\uB85C \uBD80\uB978\uB2E4. video_status\uAC00 \uD55C \uBC88\uC5D0 \uCD5C\uB300 ${VIDEO_WAIT_MAX_SECONDS}\uCD08\uAE4C\uC9C0 \uC11C\uBC84\uC5D0\uC11C \uC644\uC131\uC744 \uAE30\uB2E4\uB824 \uC8FC\uACE0 \uC644\uC131\uB418\uBA74 \uBC14\uB85C \uC791\uC5C5 \uD3F4\uB354 videos\uC5D0 \uC800\uC7A5\uD558\uBA70, \uC544\uC9C1\uC774\uBA74 \uAC19\uC740 \uB3C4\uAD6C\uB97C \uBC14\uB85C \uB2E4\uC2DC \uBD80\uB974\uB77C\uACE0 \uC54C\uB824 \uC900\uB2E4. Bash sleep\uC774\uB098 \uC258 \uB300\uAE30, \uC9C1\uC811 \uC2DC\uAC04 \uAC04\uACA9 \uB450\uAE30\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uD55C \uBC88\uC5D0 \uD55C \uAC1C\uC529 \uB9CC\uB4E0\uB2E4. \uC624\uB958\uAC00 \uB098\uBA74 \uACB0\uACFC \uBB38\uAD6C\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uADF8\uB300\uB85C \uC804\uD558\uACE0 \uB2E4\uB978 \uC601\uC0C1 \uC11C\uBE44\uC2A4\uB098 API \uD0A4\uB85C \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC571 \uC548\uC5D0 \uC601\uC0C1 \uC0DD\uC131 \uAE30\uB2A5\uC744 \uB123\uB294 \uC694\uCCAD\uC740 \uC774 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C build-ai-feature \uC2A4\uD0AC\uC744 \uB530\uB978\uB2E4.` + mediaToolNote(toolSettings?.video, "\uC601\uC0C1"),
   inputSchema: {
     prompt: external_exports.string().trim().min(1).max(VIDEO_PROMPT_MAX_LENGTH).describe(`\uB9CC\uB4E4 \uC601\uC0C1 \uC124\uBA85(\uCD5C\uB300 ${VIDEO_PROMPT_MAX_LENGTH}\uC790). \uC0AC\uC6A9\uC790 \uC694\uCCAD\uC758 \uB300\uC0C1, \uC6C0\uC9C1\uC784, \uCE74\uBA54\uB77C, \uBD84\uC704\uAE30, \uC0C9\uC744 \uBE60\uC9D0\uC5C6\uC774 \uAD6C\uCCB4\uC801\uC73C\uB85C \uC801\uB294\uB2E4`),
     durationSeconds: external_exports.number().int().min(VIDEO_DURATION_MIN).max(VIDEO_DURATION_MAX).optional().describe(`\uC601\uC0C1 \uAE38\uC774(\uCD08, ${VIDEO_DURATION_MIN}\uC5D0\uC11C ${VIDEO_DURATION_MAX}). \uC0AC\uC6A9\uC790\uAC00 \uAE38\uC774\uB97C \uB9D0\uD588\uC744 \uB54C\uB9CC \uB123\uB294\uB2E4. \uC0DD\uB7B5\uD558\uBA74 \uC11C\uBC84\uAC00 \uC815\uD55C \uAE30\uBCF8 \uAE38\uC774\uB85C \uB9CC\uB4E0\uB2E4`),
@@ -39442,8 +39506,7 @@ groupServer("mcp-video").registerTool("generate_video", {
     \uAE38\uC774_\uCD08: job.durationSeconds,
     \uD574\uC0C1\uB3C4: job.resolution,
     \uD654\uBA74_\uBE44\uC728: job.aspectRatio,
-    ...videoLimitFacts(job),
-    \uC548\uB0B4: `\uC601\uC0C1\uC740 \uC811\uC218\uB9CC \uB410\uACE0 \uC544\uC9C1 \uD30C\uC77C\uC774 \uC5C6\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC791\uC5C5 ID, \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uC640 \uD55C\uB3C4\uAC00 \uB2E4\uC2DC \uCC44\uC6CC\uC9C0\uB294 \uC2DC\uAC01\uC744 \uC54C\uB9AC\uACE0 \uBA87 \uBD84 \uAC78\uB9B0\uB2E4\uACE0 \uB9D0\uD55C \uB4A4, \uAE30\uB2E4\uB9AC\uC9C0 \uB9D0\uACE0 \uC9C0\uAE08 \uBC14\uB85C video_status\uB97C \uC791\uC5C5 ID(${job.id})\uB85C \uBD80\uB978\uB2E4. video_status\uAC00 \uD55C \uBC88\uC5D0 \uCD5C\uB300 ${VIDEO_WAIT_MAX_SECONDS}\uCD08 \uC11C\uBC84\uC5D0\uC11C \uAE30\uB2E4\uB9AC\uB2E4 \uC644\uC131\uB418\uBA74 \uBC14\uB85C \uC800\uC7A5\uD558\uACE0, \uC544\uC9C1\uC774\uBA74 \uAC19\uC740 \uB3C4\uAD6C\uB97C \uBC14\uB85C \uB2E4\uC2DC \uBD80\uB974\uB77C\uACE0 \uC54C\uB824 \uC900\uB2E4. Bash sleep, \uC258 \uB300\uAE30, \uC2DC\uAC04 \uAC04\uACA9 \uB450\uAE30\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. ${VIDEO_JOB_TIMEOUT_MINUTES}\uBD84 \uC548\uC5D0 \uB05D\uB098\uC9C0 \uC54A\uC73C\uBA74 \uC11C\uBC84\uAC00 \uC2E4\uD328\uB85C \uCC98\uB9AC\uD558\uACE0 \uC624\uB298 \uAC1C\uC218\uB97C \uB3CC\uB824\uC900\uB2E4. \uC0C8 \uC601\uC0C1\uC744 \uB610 \uC811\uC218\uD558\uC9C0 \uC54A\uB294\uB2E4.`
+    \uC548\uB0B4: `\uC601\uC0C1\uC740 \uC811\uC218\uB9CC \uB410\uACE0 \uC544\uC9C1 \uD30C\uC77C\uC774 \uC5C6\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC791\uC5C5 ID\uB97C \uC54C\uB9AC\uACE0 \uBA87 \uBD84 \uAC78\uB9B0\uB2E4\uACE0 \uB9D0\uD55C \uB4A4, \uAE30\uB2E4\uB9AC\uC9C0 \uB9D0\uACE0 \uC9C0\uAE08 \uBC14\uB85C video_status\uB97C \uC791\uC5C5 ID(${job.id})\uB85C \uBD80\uB978\uB2E4. video_status\uAC00 \uD55C \uBC88\uC5D0 \uCD5C\uB300 ${VIDEO_WAIT_MAX_SECONDS}\uCD08 \uC11C\uBC84\uC5D0\uC11C \uAE30\uB2E4\uB9AC\uB2E4 \uC644\uC131\uB418\uBA74 \uBC14\uB85C \uC800\uC7A5\uD558\uACE0, \uC544\uC9C1\uC774\uBA74 \uAC19\uC740 \uB3C4\uAD6C\uB97C \uBC14\uB85C \uB2E4\uC2DC \uBD80\uB974\uB77C\uACE0 \uC54C\uB824 \uC900\uB2E4. Bash sleep, \uC258 \uB300\uAE30, \uC2DC\uAC04 \uAC04\uACA9 \uB450\uAE30\uB294 \uC4F0\uC9C0 \uC54A\uB294\uB2E4. ${VIDEO_JOB_TIMEOUT_MINUTES}\uBD84 \uC548\uC5D0 \uB05D\uB098\uC9C0 \uC54A\uC73C\uBA74 \uC11C\uBC84\uAC00 \uC2E4\uD328\uB85C \uCC98\uB9AC\uD55C\uB2E4. \uC0C8 \uC601\uC0C1\uC744 \uB610 \uC811\uC218\uD558\uC9C0 \uC54A\uB294\uB2E4.`
   });
 });
 groupServer("mcp-video").registerTool("video_status", {
@@ -39463,13 +39526,13 @@ groupServer("mcp-video").registerTool("video_status", {
   const parsed = VideoStatusResult.safeParse(result.body);
   if (!parsed.success) return errorResult("\uC601\uC0C1 \uC0C1\uD0DC \uC751\uB2F5 \uD615\uC2DD\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uD50C\uB7EC\uADF8\uC778\uC744 \uCD5C\uC2E0 \uBC84\uC804\uC73C\uB85C \uAC31\uC2E0\uD588\uB294\uC9C0 manage-apps-plugin \uC9C0\uCE68\uC73C\uB85C \uD655\uC778\uD55C\uB2E4.");
   const job = parsed.data;
-  const common = { \uC791\uC5C5_ID: job.id, \uBAA8\uB378: job.model, \uC9C0\uB09C_\uC2DC\uAC04: elapsedText(job.elapsedSeconds), ...videoLimitFacts(job) };
+  const common = { \uC791\uC5C5_ID: job.id, \uBAA8\uB378: job.model, \uC9C0\uB09C_\uC2DC\uAC04: elapsedText(job.elapsedSeconds) };
   if (job.status === "failed") {
     return errorResult(JSON.stringify({
       ...common,
       \uC0C1\uD0DC: "\uC2E4\uD328",
       \uC2E4\uD328_\uC774\uC720: job.failure ?? "\uC601\uC0C1\uC744 \uB9CC\uB4E4\uC9C0 \uBABB\uD588\uC5B4\uC694.",
-      \uC548\uB0B4: "\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC2E4\uD328 \uC774\uC720\uC640 \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uB97C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4. \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uB9CC\uB4E4\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 generate_video\uB85C \uC0C8\uB85C \uC811\uC218\uD55C\uB2E4."
+      \uC548\uB0B4: "\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC2E4\uD328 \uC774\uC720\uB97C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4. \uC790\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uB9CC\uB4E4\uC9C0 \uC54A\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 generate_video\uB85C \uC0C8\uB85C \uC811\uC218\uD55C\uB2E4."
     }, null, 2));
   }
   if (job.status === "succeeded" && job.download === null && job.failure !== null) {
@@ -39477,7 +39540,7 @@ groupServer("mcp-video").registerTool("video_status", {
       ...common,
       \uC0C1\uD0DC: "\uC644\uC131\uB410\uC9C0\uB9CC \uD30C\uC77C\uC744 \uC904 \uC218 \uC5C6\uC74C",
       \uC774\uC720: job.failure,
-      \uC548\uB0B4: "\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC774\uC720\uB97C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4. \uC774\uC720\uAC00 '\uB2E4\uC2DC \uD655\uC778\uD558\uC138\uC694'\uB77C\uBA74 video_status\uB97C \uD55C \uBC88 \uB354 \uBD80\uB974\uACE0, \uBCF4\uAD00 \uAE30\uAC04\uC774 \uC9C0\uB0AC\uB2E4\uBA74 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD560 \uB54C\uB9CC generate_video\uB85C \uC0C8\uB85C \uB9CC\uB4E0\uB2E4(\uC624\uB298 \uAC1C\uC218\uAC00 \uBE60\uC9C4\uB2E4)."
+      \uC548\uB0B4: "\uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC774\uC720\uB97C \uADF8\uB300\uB85C \uC804\uD55C\uB2E4. \uC774\uC720\uAC00 '\uB2E4\uC2DC \uD655\uC778\uD558\uC138\uC694'\uB77C\uBA74 video_status\uB97C \uD55C \uBC88 \uB354 \uBD80\uB974\uACE0, \uBCF4\uAD00 \uAE30\uAC04\uC774 \uC9C0\uB0AC\uB2E4\uBA74 \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD560 \uB54C\uB9CC generate_video\uB85C \uC0C8\uB85C \uB9CC\uB4E0\uB2E4."
     }, null, 2));
   }
   if (job.status !== "succeeded" || job.download === null) {
@@ -39512,7 +39575,7 @@ groupServer("mcp-video").registerTool("video_status", {
       \uAE38\uC774_\uCD08: job.durationSeconds,
       \uD574\uC0C1\uB3C4: job.resolution,
       \uD654\uBA74_\uBE44\uC728: job.aspectRatio,
-      \uC548\uB0B4: `${LINK_NOTE} \uD30C\uC77C \uD06C\uAE30\uC640 \uC624\uB298 \uB0A8\uC740 \uAC1C\uC218\uB3C4 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4. \uC0C8 \uC601\uC0C1\uC744 \uB9CC\uB4E4\uBA74 \uD558\uB8E8 \uAC1C\uC218\uAC00 \uD558\uB098\uC529 \uBE60\uC9C4\uB2E4.`
+      \uC548\uB0B4: `${LINK_NOTE} \uD30C\uC77C \uD06C\uAE30\uB3C4 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC54C\uB9B0\uB2E4.`
     });
   } catch (error51) {
     const reason = error51 instanceof Error ? error51.message : String(error51);
@@ -39520,7 +39583,7 @@ groupServer("mcp-video").registerTool("video_status", {
       ...common,
       \uC0C1\uD0DC: "\uC644\uC131\uB428, \uC800\uC7A5\uD558\uC9C0 \uBABB\uD568",
       \uC800\uC7A5_\uC2E4\uD328: `${target}\uC5D0 \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uB2E4: ${reason}`,
-      \uC548\uB0B4: "\uC601\uC0C1\uC740 \uC644\uC131\uB3FC \uC11C\uBC84\uC5D0 \uC788\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uB2E4\uACE0 \uC54C\uB9AC\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 video_status\uB97C \uAC19\uC740 \uC791\uC5C5 ID\uB85C \uB2E4\uC2DC \uBD80\uB978\uB2E4(\uC0C8 \uB2E4\uC6B4\uB85C\uB4DC \uC8FC\uC18C\uB85C \uB2E4\uC2DC \uBC1B\uB294\uB2E4). \uB2E4\uB978 \uD3F4\uB354\uB97C \uC6D0\uD558\uBA74 directory\uB97C \uBC14\uAFD4 \uBD80\uB978\uB2E4. \uC0C8\uB85C \uC811\uC218\uD558\uC9C0 \uC54A\uC73C\uBBC0\uB85C \uC624\uB298 \uAC1C\uC218\uB294 \uB354 \uBE60\uC9C0\uC9C0 \uC54A\uB294\uB2E4."
+      \uC548\uB0B4: "\uC601\uC0C1\uC740 \uC644\uC131\uB3FC \uC11C\uBC84\uC5D0 \uC788\uB2E4. \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uB2E4\uACE0 \uC54C\uB9AC\uACE0, \uC0AC\uC6A9\uC790\uAC00 \uC6D0\uD558\uBA74 video_status\uB97C \uAC19\uC740 \uC791\uC5C5 ID\uB85C \uB2E4\uC2DC \uBD80\uB978\uB2E4(\uC0C8 \uB2E4\uC6B4\uB85C\uB4DC \uC8FC\uC18C\uB85C \uB2E4\uC2DC \uBC1B\uB294\uB2E4). \uB2E4\uB978 \uD3F4\uB354\uB97C \uC6D0\uD558\uBA74 directory\uB97C \uBC14\uAFD4 \uBD80\uB978\uB2E4."
     }, null, 2));
   }
 });
@@ -39711,8 +39774,8 @@ groupServer("mcp-apps").registerTool(
       ),
       education: external_exports.string().optional().describe("\uC0C8 \uAC1C\uC778 \uC571\uC744 \uBC30\uD3EC\uD560 \uAD50\uC721 ID(list_educations\uC758 id). \uBC30\uD3EC\uD560 \uC218 \uC788\uB294 \uAD50\uC721\uC774 \uB458 \uC774\uC0C1\uC774\uBA74 list_educations \uBAA9\uB85D\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 \uACE0\uB978 \uAD50\uC721\uC744 \uB123\uB294\uB2E4. \uD558\uB098\uBFD0\uC774\uBA74 \uCC38\uAC00\uC790\uB294 \uC0DD\uB7B5\uD558\uACE0(\uAD50\uC721 \uC774\uB984\uC774\uB098 \uCD94\uCE21\uD55C ID\uB97C \uB123\uC9C0 \uC54A\uB294\uB2E4. \uC11C\uBC84\uAC00 \uADF8 \uAD50\uC721\uC744 \uC790\uB3D9\uC73C\uB85C \uACE0\uB978\uB2E4), \uC6B4\uC601\uC9C4\uC740 \uADF8 \uAD50\uC721\uC744 \uB123\uB294\uB2E4. education-required\uB85C \uAC70\uC808\uB418\uBA74 \uC751\uB2F5\uC758 \uAD50\uC721 \uBAA9\uB85D\uC5D0\uC11C \uACE0\uB974\uAC8C \uD55C\uB2E4. \uAE30\uC874 \uC571 \uC7AC\uBC30\uD3EC\uC640 \uC870 \uC571\uC740 \uC571\uACFC \uC870\uC758 \uAD50\uC721\uC744 \uB530\uB974\uBBC0\uB85C \uC0DD\uB7B5\uD55C\uB2E4. \uC694\uCCAD\uC774\uB098 .aiblecampus-deploy.json\uC5D0 \uC815\uD574\uC9C4 \uAD50\uC721\uC774 \uC788\uC73C\uBA74 \uADF8 \uAD50\uC721\uC744 \uC4F4\uB2E4. \uC6B4\uC601\uC9C4\uC740 apps_whoami\uC758 canManagePluginSettings\uAC00 true\uC778 \uACC4\uC815\uC774\uB2E4"),
       organization: external_exports.string().optional().describe("\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658 \uD544\uB4DC. \uC0C8 \uD638\uCD9C\uC5D0\uC11C\uB294 \uC0DD\uB7B5\uD558\uACE0 \uAD50\uC721\uC740 education\uC73C\uB85C \uC9C0\uC815\uD55C\uB2E4"),
-      workspace: external_exports.string().min(1).describe('apps_whoami\uB85C \uD655\uC778\uD55C \uB300\uC0C1 \uACF5\uAC04(\uAC1C\uC778 \uB610\uB294 \uC870)\uC758 UUID \uB610\uB294 slug. \uC694\uCCAD\uACFC \uD504\uB85C\uC81D\uD2B8\uC758 .aiblecampus-deploy.json\uC744 \uD655\uC778\uD55C\uB2E4. \uB300\uC0C1 \uACF5\uAC04\uC774 \uBD88\uBD84\uBA85\uD558\uBA74 \uCD94\uCE21\uD558\uC9C0 \uB9D0\uACE0 "\uAC1C\uC778 \uC0B0\uCD9C\uBB3C \uBC30\uD3EC"\uC640 "\uC870 \uC0B0\uCD9C\uBB3C \uBC30\uD3EC(\uC870 \uC774\uB984)" \uC911 \uBB34\uC5C7\uC778\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uB294\uB2E4. \uC870 \uB300\uC0C1\uC744 \uC694\uCCAD\uBC1B\uC558\uC73C\uBA74 \uAC1C\uC778 \uACF5\uAC04\uC73C\uB85C \uBC14\uAFB8\uC9C0 \uC54A\uB294\uB2E4'),
-      newApp: external_exports.boolean().optional().describe("\uC774\uBBF8 \uB2E4\uB978 \uC571\uC73C\uB85C \uBC30\uD3EC\uD55C \uD3F4\uB354\uB97C \uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC571\uC73C\uB85C \uBC30\uD3EC\uD560 \uB54C\uB9CC true. \uAC19\uC740 \uC774\uB984 \uC571\uC774 \uC788\uB2E4\uB294 \uC624\uB958\uC5D0\uC11C \uC0AC\uC6A9\uC790\uAC00 '\uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC571'\uC744 \uACE0\uB978 \uACBD\uC6B0\uC5D0\uB9CC \uC4F0\uACE0 \uC0C8 name\uC744 \uD568\uAED8 \uB123\uB294\uB2E4. \uADF8 \uC774\uB984\uC758 \uC571\uC774 \uC774\uBBF8 \uC788\uC73C\uBA74 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4. \uD3F4\uB354\uB97C \uBCF5\uC0AC\uD574 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4")
+      workspace: external_exports.string().min(1).optional().describe('\uB300\uC0C1 \uACF5\uAC04\uC758 UUID \uB610\uB294 slug. \uC0DD\uB7B5\uD558\uBA74 \uAC1C\uC778 \uC571\uC774\uB2E4(\uAE30\uBCF8). \uC870 \uC571\uC740 \uC0AC\uC6A9\uC790\uAC00 \uC694\uCCAD\uC5D0\uC11C "\uC870 \uC571"\uC774\uB098 \uC870 \uC774\uB984\uC744 \uBA85\uC2DC\uD588\uAC70\uB098 \uC778\uACC4 \uAE30\uB85D(.aiblecampus-deploy.json)\uC5D0 \uC815\uD574\uC9C4 \uACBD\uC6B0\uC5D0\uB9CC apps_whoami\uB85C \uD655\uC778\uD55C \uC870 UUID\uB97C \uB123\uB294\uB2E4. \uAC1C\uC778\uC778\uC9C0 \uC870\uC778\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uACE0, \uC18C\uC18D \uC870\uAC00 \uD558\uB098\uBFD0\uC774\uC5B4\uB3C4 \uC870\uB97C \uACE0\uB974\uAC70\uB098 \uCD94\uCE21\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC774\uBBF8 \uC870 \uC571\uC778 \uC571\uC744 \uAC31\uC2E0\uD560 \uB54C \uD3F4\uB354 \uAE30\uB85D(.apps-source.json)\uC5D0 \uADF8 \uC571\uC758 \uACF5\uAC04\uC774 \uC788\uC73C\uBA74 \uC0DD\uB7B5\uD574\uB3C4 \uB3C4\uAD6C\uAC00 \uC774\uC5B4\uBC1B\uC544 \uC18C\uC720\uB97C \uC720\uC9C0\uD558\uACE0, \uAE30\uB85D\uC774 \uC5C6\uC73C\uBA74 \uC0AC\uC6A9\uC790\uAC00 \uC870 \uC571 \uAC31\uC2E0\uC774\uB77C\uACE0 \uB9D0\uD588\uC744 \uB54C\uB9CC \uC870 UUID\uB97C \uB123\uB294\uB2E4. \uD3F4\uB354 \uAE30\uB85D\uC774 \uC870 \uC571\uC778\uB370 \uC0AC\uC6A9\uC790\uAC00 \uAC1C\uC778 \uC571\uC73C\uB85C \uC62C\uB9AC\uB77C\uACE0 \uBA85\uC2DC\uD588\uC73C\uBA74 workspace\uB97C \uC0DD\uB7B5\uD558\uACE0 newApp\uC744 true\uB85C \uBC30\uD3EC\uD55C\uB2E4'),
+      newApp: external_exports.boolean().optional().describe("\uC774\uBBF8 \uB2E4\uB978 \uC571\uC73C\uB85C \uBC30\uD3EC\uD55C \uD3F4\uB354\uB97C \uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC571\uC73C\uB85C \uBC30\uD3EC\uD560 \uB54C\uB9CC true. \uAC19\uC740 \uC774\uB984 \uC571\uC774 \uC788\uB2E4\uB294 \uC624\uB958\uC5D0\uC11C \uC0AC\uC6A9\uC790\uAC00 '\uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC571'\uC744 \uACE0\uB978 \uACBD\uC6B0\uC5D0\uB9CC \uC4F0\uACE0 \uC0C8 name\uC744 \uD568\uAED8 \uB123\uB294\uB2E4. \uC870 \uC571\uC5D0 \uC5F0\uACB0\uB41C \uD3F4\uB354\uB97C \uC0AC\uC6A9\uC790\uAC00 \uAC1C\uC778 \uC571\uC73C\uB85C \uC62C\uB9AC\uB77C\uACE0 \uD588\uC744 \uB54C\uB3C4 true\uC774\uBA70 \uC774\uB54C\uB294 \uC774\uB984\uC774 \uAC19\uC544\uB3C4 \uB41C\uB2E4(\uD3F4\uB354\uB294 \uC0C8 \uC571\uC73C\uB85C \uB2E4\uC2DC \uC5F0\uACB0\uB41C\uB2E4). \uADF8 \uC774\uB984\uC758 \uC571\uC774 \uB300\uC0C1 \uACF5\uAC04\uC5D0 \uC774\uBBF8 \uC788\uC73C\uBA74 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4. \uD3F4\uB354\uB97C \uBCF5\uC0AC\uD574 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4")
     },
     annotations: {
       readOnlyHint: false,
@@ -39731,7 +39794,7 @@ groupServer("mcp-apps").registerTool(
     localEnv,
     resources,
     forceNewRevision,
-    workspace,
+    workspace: requestedWorkspace,
     education,
     organization: legacyOrganization,
     displayName,
@@ -39741,6 +39804,7 @@ groupServer("mcp-apps").registerTool(
     newApp
   }, extra) => {
     const startedAt = Date.now();
+    let workspace = requestedWorkspace;
     const writeup = galleryWriteup(gallery);
     if (education && legacyOrganization && education !== legacyOrganization) return errorResult("\uAD50\uC721\uC740 \uD55C \uBC88\uB9CC \uC9C0\uC815\uD55C\uB2E4");
     const organization = education ?? legacyOrganization;
@@ -39826,6 +39890,18 @@ groupServer("mcp-apps").registerTool(
       );
     }
     const deploymentName = toDeploymentName(name ?? path14.basename(projectPath));
+    if (newApp !== true) {
+      const recorded = await readSourceState(projectPath).catch(() => void 0);
+      if (recorded !== void 0 && recorded.api === apiBase() && recorded.deployment === deploymentName) {
+        if (workspace === void 0) {
+          if (recorded.workspace !== null) workspace = recorded.workspace;
+        } else if (recorded.workspace === null) {
+          const me2 = await callApi("/v1/me");
+          const personal = me2.ok ? external_exports.object({ workspace: external_exports.object({ id: external_exports.string(), slug: external_exports.string() }) }).safeParse(me2.body) : null;
+          if (personal?.success === true && (personal.data.workspace.id === workspace || personal.data.workspace.slug === workspace)) workspace = void 0;
+        }
+      }
+    }
     let movedFrom;
     if (newApp !== true) {
       try {
@@ -39855,6 +39931,10 @@ groupServer("mcp-apps").registerTool(
       const existing = await callApi(`/v1/deployments/${encodeURIComponent(deploymentName)}`, {}, workspace);
       if (existing.ok) return errorResult(`\uC774 \uACF5\uAC04\uC5D0 '${deploymentName}' \uC571\uC774 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4. \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC0C8 \uC571\uC774\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uB2E4\uB978 \uC774\uB984\uC744 \uBC1B\uC544 \uB2E4\uC2DC \uBC30\uD3EC\uD558\uACE0, \uADF8 \uC571\uC744 \uAC31\uC2E0\uD558\uB824\uBA74 newApp \uC5C6\uC774 \uBC30\uD3EC\uD569\uB2C8\uB2E4.`);
       if (existing.status !== 404) return failure("\uAC19\uC740 \uC774\uB984 \uC571\uC774 \uC788\uB294\uC9C0 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uB2E4", existing);
+    }
+    if (newApp !== true) {
+      const held = await teamChangesBeforeDeploy(deploymentName, workspace, base);
+      if (held !== void 0) return held;
     }
     let tarball;
     try {
@@ -41026,7 +41106,7 @@ groupServer("base").registerTool(
   "apps_whoami",
   {
     title: "Apps \uC5F0\uACB0 \uD655\uC778",
-    description: "Apps \uC8FC\uC18C\uC640 \uD1A0\uD070 \uC124\uC815\uC774 \uC62C\uBC14\uB978\uC9C0 \uD655\uC778\uD55C\uB2E4. \uBC30\uD3EC\uAC00 \uC778\uC99D \uBB38\uC81C\uB85C \uC2E4\uD328\uD560 \uB54C \uBA3C\uC800 \uBD80\uB978\uB2E4. \uAC1C\uC778 \uACF5\uAC04\uACFC \uC18C\uC18D \uC870\uC758 UUID\uC640 \uBC30\uD3EC \uAD8C\uD55C\uC744 \uD655\uC778\uD55C\uB2E4. \uC870 \uC774\uB984\uC740 \uACB0\uACFC\uC758 name\uC744 \uADF8\uB300\uB85C \uC4F0\uACE0 \uAD50\uC721\uBA85\uC744 \uBD99\uC774\uC9C0 \uC54A\uB294\uB2E4. \uC870\uAC00 workspaces\uC5D0 \uC5C6\uACE0 unavailableWorkspaces\uC5D0 reason team-deploy-off\uB85C \uC788\uC73C\uBA74 \uC870 \uBC30\uC815\uC774 \uD480\uB9B0 \uAC83\uC774 \uC544\uB2C8\uB2E4. \uACB0\uACFC\uC758 \uC870\uBC30\uD3EC\uC548\uB0B4\uB300\uB85C \uADF8 \uAD50\uC721\uC740 \uC870 \uBC30\uD3EC\uB97C \uAEBC \uB450\uC5B4 \uAC1C\uC778 \uACF5\uAC04\uC5D0 \uBC30\uD3EC\uD55C\uB2E4\uACE0 \uC548\uB0B4\uD55C\uB2E4.",
+    description: "Apps \uC8FC\uC18C\uC640 \uD1A0\uD070 \uC124\uC815\uC774 \uC62C\uBC14\uB978\uC9C0 \uD655\uC778\uD55C\uB2E4. \uBC30\uD3EC\uAC00 \uC778\uC99D \uBB38\uC81C\uB85C \uC2E4\uD328\uD560 \uB54C \uBA3C\uC800 \uBD80\uB978\uB2E4. \uAC1C\uC778 \uACF5\uAC04\uACFC \uC18C\uC18D \uC870\uC758 UUID\uC640 \uBC30\uD3EC \uAD8C\uD55C\uC744 \uD655\uC778\uD55C\uB2E4. \uBC30\uD3EC \uB300\uC0C1\uC758 \uAE30\uBCF8\uC740 \uAC1C\uC778 \uC571\uC774\uB77C \uBC30\uD3EC \uC804\uC5D0 \uC774 \uB3C4\uAD6C\uB85C \uACF5\uAC04\uC744 \uACE0\uB97C \uD544\uC694\uAC00 \uC5C6\uB2E4. \uACB0\uACFC\uC758 \uC870\uB294 \uC0AC\uC6A9\uC790\uAC00 \uC870 \uC571\uC744 \uBA85\uC2DC\uD588\uC744 \uB54C\uB9CC workspace\uC5D0 \uB123\uACE0, \uC18C\uC18D \uC870\uAC00 \uD558\uB098\uBFD0\uC774\uC5B4\uB3C4 \uC870\uB97C \uACE0\uB974\uAC70\uB098 \uCD94\uCE21\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC870 \uC774\uB984\uC740 \uACB0\uACFC\uC758 name\uC744 \uADF8\uB300\uB85C \uC4F0\uACE0 \uAD50\uC721\uBA85\uC744 \uBD99\uC774\uC9C0 \uC54A\uB294\uB2E4. \uC870\uAC00 workspaces\uC5D0 \uC5C6\uACE0 unavailableWorkspaces\uC5D0 reason team-deploy-off\uB85C \uC788\uC73C\uBA74 \uC870 \uBC30\uC815\uC774 \uD480\uB9B0 \uAC83\uC774 \uC544\uB2C8\uB2E4. \uACB0\uACFC\uC758 \uC870\uBC30\uD3EC\uC548\uB0B4\uB300\uB85C \uADF8 \uAD50\uC721\uC740 \uC870 \uBC30\uD3EC\uB97C \uAEBC \uB450\uC5B4 \uAC1C\uC778 \uACF5\uAC04\uC5D0 \uBC30\uD3EC\uD55C\uB2E4\uACE0 \uC548\uB0B4\uD55C\uB2E4.",
     inputSchema: { workspace: WorkspaceInputSchema },
     annotations: {
       readOnlyHint: true,

@@ -51,6 +51,8 @@ Claude 구독은 Claude Code 안에서만 쓰는 로그인이다. 만드는 앱�
 
 `verify_ai_gateway`는 에이블캠퍼스에 로그인하지 않고 프로젝트의 `.env.apps-ai`로 AI 게이트웨이에 짧은 요청을 보낸다. 그 파일은 `configure_ai_gateway`가 만들므로 실제로는 로그인한 뒤에 쓴다.
 
+`configure_ai_gateway`가 받는 앱용 AI 키는 IP가 제한되어 배포된 앱에서만 동작한다. 로컬에서 실행한 앱은 AI 호출이 거부(403 ip_not_allowed)되므로 `verify_ai_gateway`도 로컬에서는 통과하지 못한다. 화면과 나머지 기능만 로컬에서 확인하고, AI 기능은 배포한 뒤 배포 주소에서 확인한다. 사용자가 가진 AI 제공자 키를 `.env.local`에 둔 앱에는 이 제한이 없다.
+
 내 파일, 제출물, 미디어 도구는 교육 참가자 계정으로만 동작하고 운영진 계정은 서버가 거절한다. 파일 쓰기에 해당하는 도구(`download_my_file`, `generate_image`, `video_status`)는 작업 폴더의 `aiblecampus-files/`, `images/`, `videos/`에 새 파일로 저장하며 같은 이름이 있으면 번호를 붙여 덮어쓰지 않는다. 제출과 Google 파일 편집은 사용자가 다음 메시지에서 승인했을 때만 실행한다.
 
 ## 기기 로그인

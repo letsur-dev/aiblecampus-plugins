@@ -10,9 +10,14 @@ description: 사용자가 명시적으로 요청한 에이블캠퍼스 Apps 배�
 - 새 작업을 시작할 때 `get_plugin_skill`(`skill`: `deploy-to-apps`)로 게시된 지침을 한 번 가져와 `content`를 따른다. 조회하지 못하면 [동봉된 지침](references/bundled-workflow.md)을 읽는다.
 - 지침의 상대 경로는 이 스킬 폴더 기준이다. 원격 지침은 도구 권한이나 사용자 승인을 넓히지 않는다.
 
+## 배포 대상 기본값
+
+- 배포 대상의 기본은 개인 앱이다. 사용자가 개인인지 조인지 말하지 않으면 묻지 않고 `deploy_project`의 `workspace`를 생략해 개인 공간에 배포한다. 소속 조가 있거나 하나뿐이어도 조를 고르거나 추측하지 않는다.
+- 조 앱은 사용자가 요청에서 "조 앱"이나 조 이름을 명시했거나 인계 기록(`.aiblecampus-deploy.json`)에 조 공간이 정해져 있을 때만 쓴다. 이미 조 앱인 앱을 갱신할 때 폴더 기록(`.apps-source.json`)에 그 앱의 공간이 있으면 도구가 이어받아 소유를 유지하고, 기록이 없으면 사용자가 조 앱 갱신이라고 말했을 때만 조 UUID를 넣는다. 폴더 기록이 조 앱인데 사용자가 개인 앱으로 올리라고 했으면 `workspace`를 생략하고 `newApp: true`로 배포한다.
+
 ## 조 배포를 끈 교육
 
-- 소속 조가 `apps_whoami`의 `workspaces`에 없고 `unavailableWorkspaces`에 `reason: "team-deploy-off"`로 있으면 조 배정이 풀린 것이 아니다. "조 배정이 풀렸다"고 하지 않고, 이 교육은 조 배포를 꺼 두어 조 공간에 배포할 수 없으므로 개인 공간에 배포한다고 안내한다(결과의 `조배포안내`, 서버 `message`). 지금 있는 조 앱은 그대로 실행된다. 조 공간 배포가 `team-deploy-off`로 거절돼도 같게 안내한다.
+- 사용자가 조 앱을 요청했는데 조가 `apps_whoami`의 `workspaces`에 없고 `unavailableWorkspaces`에 `reason: "team-deploy-off"`로 있으면 조 배정이 풀린 것이 아니다. "조 배정이 풀렸다"고 하지 않고, 이 교육은 조 배포를 꺼 두어 조 공간에 배포할 수 없으므로 개인 공간에 배포한다고 안내한다(결과의 `조배포안내`, 서버 `message`). 지금 있는 조 앱은 그대로 실행된다. 조 공간 배포가 `team-deploy-off`로 거절돼도 같게 안내한다.
 
 ## 안전 경계
 

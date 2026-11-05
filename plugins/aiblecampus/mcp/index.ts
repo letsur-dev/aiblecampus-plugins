@@ -3,9 +3,9 @@ import { DOWNLOAD_DEFAULT_DIRECTORY, DownloadError, downloadDirectory, saveDownl
 import { appMeta, GALLERY_SECTION_MAX, GALLERY_SECTIONS, GALLERY_SUMMARY_MAX, galleryWriteup } from "./app-meta.ts";
 import { DeletionConfirmations } from "./delete-confirmation.ts";
 import { checkPublicAccess } from "./public-access.ts";
-import { AiSetupError, configureAiGateway, verifyAiGateway } from "./ai-gateway.ts";
+import { AiSetupError, configureAiGateway, LOCAL_AI_NOTICE, verifyAiGateway } from "./ai-gateway.ts";
 import { GeneratedImage, IMAGE_PROMPT_MAX_LENGTH, IMAGE_SIZES, imageDirectory, saveImage } from "./generate-image.ts";
-import { AcceptedVideo, VIDEO_ASPECT_RATIOS, VIDEO_DURATION_MAX, VIDEO_DURATION_MIN, VIDEO_JOB_TIMEOUT_MINUTES, VIDEO_PROMPT_MAX_LENGTH, VIDEO_RESOLUTIONS, VIDEO_WAIT_MAX_SECONDS, VideoDownloadError, VideoStatusResult, elapsedText, saveVideo, videoDirectory, videoExtension, videoFileStem, videoLimitFacts } from "./generate-video.ts";
+import { AcceptedVideo, VIDEO_ASPECT_RATIOS, VIDEO_DURATION_MAX, VIDEO_DURATION_MIN, VIDEO_JOB_TIMEOUT_MINUTES, VIDEO_PROMPT_MAX_LENGTH, VIDEO_RESOLUTIONS, VIDEO_WAIT_MAX_SECONDS, VideoDownloadError, VideoStatusResult, elapsedText, saveVideo, videoDirectory, videoExtension, videoFileStem } from "./generate-video.ts";
 import { fileLink, LINK_NOTE } from "./file-link.ts";
 import { koreanTime, mediaFailureText } from "./media-failure.ts";
 import {
@@ -62,7 +62,7 @@ import type { ServerNotification, ServerRequest } from "@modelcontextprotocol/sd
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.51.1";
+export const PLUGIN_VERSION = "0.53.0";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -154,7 +154,7 @@ const WorkspaceInputSchema = z
   .min(1)
   .optional()
   .describe(
-    "apps_whoami로 확인한 대상 공간(개인 또는 조)의 UUID 또는 slug. 생략하면 서버가 개인 공간으로 처리한다. 대상 공간이 불분명하면 추측하지 말고 사용자에게 묻는다. 조 대상을 요청받았으면 생략하거나 개인 공간으로 바꾸지 않는다. 한 작업의 모든 도구에 같은 값을 넣는다",
+    "대상 공간의 UUID 또는 slug. 기본은 개인 공간이므로 생략한다(서버가 개인 공간으로 처리한다). 조 공간은 사용자가 요청에서 \"조 앱\"이나 조 이름을 명시했거나 인계 기록(.aiblecampus-deploy.json)에 정해져 있을 때만 apps_whoami로 확인한 조 UUID를 넣는다. 소속 조가 있거나 하나뿐이라는 이유로 조를 고르거나 추측하지 않고, 개인인지 조인지 사용자에게 묻지도 않는다. 조 앱 작업에서는 한 작업의 모든 도구에 같은 값을 넣는다",
   );
 
 const EnvironmentKeySchema = z
@@ -424,8 +424,8 @@ type MovedApp = { id: string; name: string; slug: string };
  * 호출 계정이 볼 수 있는 공간(scope=all)의 같은 이름 앱 중 회차 커밋(sourceCommit)에 기록의 기준 커밋이 있는 앱 하나만 같은 앱으로 본다.
  * 기록의 공간에 그 앱이 그대로 있거나, 찾지 못하거나, 둘 이상이면 undefined다(기존 판정대로 막는다). 권한은 서버가 공간마다 그대로 본다
  */
-async function movedAppWorkspace(state: SourceState, deployment: string, workspace: string): Promise<MovedApp | undefined> {
-  if (state.workspace === workspace) {
+async function movedAppWorkspace(state: SourceState, deployment: string, workspace: string | undefined): Promise<MovedApp | undefined> {
+  if (state.workspace === (workspace ?? null)) {
     // 평소 갱신. 기록의 공간에 앱이 있으면(404가 아니면) 더 찾지 않는다
     const here = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}`, {}, workspace);
     if (here.status !== 404) return undefined;
@@ -541,9 +541,41 @@ async function completePendingDeploy(revisionId: string | undefined, sourceCommi
 }
 
 /**
- * 소스 충돌은 같은 배포 요청 안에서 agent가 통합 후 복구한다.
- * 서버가 latestCommit(충돌을 판정한 기본 브랜치 커밋)을 주면 최신 소스를 그 커밋으로 받게 해 판정과 같은 코드에 통합한다(0.38.0).
- * changedSince(기준 뒤 커밋과 파일)는 응답 본문에 그대로 남는다
+ * 소스 통합 복구 지시(recovery). 두 곳이 같은 절차를 쓴다: (1) 서버가 409 source-conflict로 거절했을 때, (2) 조 앱 배포 직전 확인에서
+ * 기준 커밋 뒤 조원 변경이 있다고 나왔을 때(0.53.0). 서버가 latestCommit(판정한 기본 브랜치 커밋)을 주면 최신 소스를 그 커밋으로 받게 해
+ * 판정과 같은 코드에 통합한다(0.38.0). 게시된 지침 본문은 싣지 않고 판만 남긴다
+ */
+async function sourceRecovery(input: { deployment: string; workspace: string | undefined; sourceBaseCommit: string | undefined; latest: string | undefined; trigger: "source-conflict" | "team-changes" }) {
+  const { deployment, workspace, sourceBaseCommit, latest, trigger } = input;
+  const workflowResult = await callApi("/v1/plugin-skills/deploy-to-apps", { signal: AbortSignal.timeout(8_000), redirect: "error", cache: "no-store" });
+  const workflow = workflowResult.ok ? z.object({ schemaVersion: z.literal(1), skill: z.object({
+    id: z.literal("deploy-to-apps"), content: z.string().min(1).max(100_000), version: z.number().int().positive(),
+  }) }).safeParse(workflowResult.body) : null;
+  return {
+    ...(workflow?.success ? { workflow: { id: workflow.data.skill.id, version: workflow.data.skill.version } } : {}),
+    action: "merge_latest_validate_redeploy",
+    trigger,
+    deployment,
+    workspace,
+    sourceBaseCommit: sourceBaseCommit ?? null,
+    latestSource: { tool: "checkout_app_source", arguments: { deployment, workspace, ...(latest === undefined ? {} : { commit: latest }) } },
+    ...(sourceBaseCommit === undefined ? {} : {
+      baseSource: { tool: "checkout_app_source", arguments: { deployment, workspace, commit: sourceBaseCommit } },
+    }),
+    instructions: [
+      "기존 배포 요청이 유효하면 사용자에게 재시도나 재승인을 맡기지 말고 이 복구를 계속 수행한다",
+      "원본 작업 폴더와 변경을 보존한다. checkout_app_source의 directory에 각각 존재하지 않는 절대 경로를 지정해 최신 소스와 기준 소스를 별도 폴더로 받는다",
+      "기준 소스와 자신의 작업을 비교한 변경만 최신 소스에 통합한다. 기준이 없으면 요청과 작업 이력으로 자신의 변경 범위를 확인하며 로컬 전체를 최신 폴더에 덮어쓰지 않는다",
+      "같은 줄의 충돌도 양쪽 의도를 유지할 수 있으면 직접 해결한다. 서로 양립할 수 없는 요구사항이나 변경 범위를 확정할 수 없는 경우에만 사용자에게 판단을 요청한다",
+      "최신 소스를 받은 폴더에 통합하고 그 폴더에서 기능과 빌드를 확인한다. validate_project를 통과한 뒤 그 폴더 경로와 같은 deployment 이름, workspace로 deploy_project를 호출한다. 기준 커밋은 그 폴더의 .apps-source.json에서 자동으로 보낸다. 기존 env, secrets, resources 설정 의도도 유지한다",
+      ".apps-source.json의 기준 커밋을 고치거나 forceNewRevision으로 충돌을 우회하지 않는다. 다시 충돌하면 최신 소스로 같은 절차를 반복하되 연속 3회면 진행 상황과 동시 수정 상황을 보고한다",
+      "배포가 끝나면 사용자에게 조원 변경을 합쳐 배포한 것과 최신 폴더 경로를 알린다. 이후 수정과 배포는 원래 폴더가 아니라 그 최신 폴더에서 이어서 한다(원래 폴더에는 조원 변경이 없다)",
+    ],
+  };
+}
+
+/**
+ * 소스 충돌은 같은 배포 요청 안에서 agent가 통합 후 복구한다. changedSince(기준 뒤 커밋과 파일)는 응답 본문에 그대로 남는다
  */
 async function deploymentFailure(result: ApiResult, deployment: string, workspace: string | undefined, sourceBaseCommit: string | undefined) {
   const body = result.body;
@@ -555,31 +587,39 @@ async function deploymentFailure(result: ApiResult, deployment: string, workspac
   const latest = "latestCommit" in body.details && typeof body.details.latestCommit === "string" && /^[a-f0-9]{40}$/.test(body.details.latestCommit)
     ? body.details.latestCommit
     : undefined;
-  const workflowResult = await callApi("/v1/plugin-skills/deploy-to-apps", { signal: AbortSignal.timeout(8_000), redirect: "error", cache: "no-store" });
-  const workflow = workflowResult.ok ? z.object({ schemaVersion: z.literal(1), skill: z.object({
-    id: z.literal("deploy-to-apps"), content: z.string().min(1).max(100_000), version: z.number().int().positive(),
-  }) }).safeParse(workflowResult.body) : null;
   return errorResult(JSON.stringify({
     ...body,
-    recovery: {
-      ...(workflow?.success ? { workflow: { id: workflow.data.skill.id, version: workflow.data.skill.version } } : {}),
-      action: "merge_latest_validate_redeploy",
-      deployment,
-      workspace,
-      sourceBaseCommit: sourceBaseCommit ?? null,
-      latestSource: { tool: "checkout_app_source", arguments: { deployment, workspace, ...(latest === undefined ? {} : { commit: latest }) } },
-      ...(sourceBaseCommit === undefined ? {} : {
-        baseSource: { tool: "checkout_app_source", arguments: { deployment, workspace, commit: sourceBaseCommit } },
-      }),
-      instructions: [
-        "기존 배포 요청이 유효하면 사용자에게 재시도를 맡기지 말고 이 복구를 계속 수행한다",
-        "원본 작업 폴더와 변경을 보존한다. checkout_app_source의 directory에 각각 존재하지 않는 절대 경로를 지정해 최신 소스와 기준 소스를 별도 폴더로 받는다",
-        "기준 소스와 자신의 작업을 비교한 변경만 최신 소스에 통합한다. 기준이 없으면 요청과 작업 이력으로 자신의 변경 범위를 확인하며 로컬 전체를 최신 폴더에 덮어쓰지 않는다",
-        "같은 줄의 충돌도 양쪽 의도를 유지할 수 있으면 직접 해결한다. 서로 양립할 수 없는 요구사항이나 변경 범위를 확정할 수 없는 경우에만 사용자에게 판단을 요청한다",
-        "최신 소스를 받은 폴더에 통합하고 그 폴더에서 기능과 빌드를 확인한다. validate_project를 통과한 뒤 그 폴더 경로와 같은 deployment 이름, workspace로 deploy_project를 호출한다. 기준 커밋은 그 폴더의 .apps-source.json에서 자동으로 보낸다. 기존 env, secrets, resources 설정 의도도 유지한다",
-        ".apps-source.json의 기준 커밋을 고치거나 forceNewRevision으로 충돌을 우회하지 않는다. 다시 충돌하면 최신 소스로 같은 절차를 반복하되 연속 3회면 진행 상황과 동시 수정 상황을 보고한다",
-      ],
-    },
+    recovery: await sourceRecovery({ deployment, workspace, sourceBaseCommit, latest, trigger: "source-conflict" }),
+  }, null, 2));
+}
+
+const TeamSourceStatus = z.object({
+  workspaceType: z.enum(["personal", "team"]),
+  latestCommit: z.string().regex(/^[a-f0-9]{40}$/).nullable(),
+  teamChanged: z.boolean(),
+  changedSince: z.object({ base: z.string(), commits: z.array(z.object({ id: z.string(), title: z.string() })), files: z.array(z.string()), truncated: z.boolean() }).optional(),
+});
+
+/**
+ * 조 앱 배포 직전 확인(0.53.0). 서버에 기준 커밋(.apps-source.json) 뒤 조원 커밋이 있는지 묻고, 있으면 서버 자동 병합에 맡기지 않고
+ * 충돌 복구와 같은 통합 절차(sourceRecovery)를 도구 결과로 돌려준다. 이 폴더에서 실행해 보지 않은 병합 코드가 배포되는 것을 막는다.
+ * 개인 앱, 새 앱, 앱이 아직 없는 공간, 옛 서버(경로 없음), 확인 실패는 undefined(그대로 배포)다. 서버의 자동 병합과 409 판정이 안전망이다
+ */
+async function teamChangesBeforeDeploy(deployment: string, workspace: string | undefined, base: string | undefined) {
+  if (workspace === undefined) return undefined;
+  const status = await callApi(`/v1/deployments/${encodeURIComponent(deployment)}/source-status${base === undefined ? "" : `?base=${base}`}`, { signal: AbortSignal.timeout(8_000), redirect: "error", cache: "no-store" }, workspace);
+  const parsed = status.ok ? TeamSourceStatus.safeParse(status.body) : null;
+  if (parsed === null || !parsed.success || parsed.data.workspaceType !== "team" || !parsed.data.teamChanged) return undefined;
+  const { latestCommit, changedSince } = parsed.data;
+  const files = changedSince === undefined ? "" : changedSince.files.slice(0, 20).join(", ") + (changedSince.files.length > 20 ? ` 외 ${changedSince.files.length - 20}개` : "");
+  return errorResult(JSON.stringify({
+    배포됨: false,
+    배포_보류: true,
+    이유: `기준 커밋 뒤에 조원이 먼저 배포한 변경이 있다${changedSince === undefined ? "" : `(커밋 ${changedSince.commits.length}개, 파일 ${changedSince.files.length}개: ${files})`}. ` +
+      "서버가 자동으로 합쳐 배포하면 이 폴더에서 실행해 보지 않은 코드가 나가므로 배포하지 않았다. 아래 recovery 절차로 최신 소스에 자신의 변경만 통합하고 확인한 뒤 그 폴더에서 배포한다. 사용자에게 다시 승인을 묻지 않는다",
+    latestCommit,
+    ...(changedSince === undefined ? {} : { changedSince }),
+    recovery: await sourceRecovery({ deployment, workspace, sourceBaseCommit: base, latest: latestCommit ?? undefined, trigger: "team-changes" }),
   }, null, 2));
 }
 
@@ -633,7 +673,7 @@ export const PUBLIC_AI_GATEWAY_UNAVAILABLE =
 
 groupServer("mcp-apps").registerTool("get_ai_gateway", {
   title: "산출물 AI 환경과 모델 확인",
-  description: "AI로 요청하고 응답하는 기능, 챗봇, 요약 등 산출물 AI 기능 구현에 사용합니다. 교육 담당자가 허브(hub.aible-campus.com)에서 정한 앱용 AI 환경과 현재 모델 목록을 확인하며 API 키는 반환하지 않습니다. 지원 모델은 이 결과로 안내하고 고정 목록을 약속하지 않는다. 목록에 있어도 모든 API를 지원하지는 않으며 목록 확인은 실제 응답 검증이 아니다. 배포 대상이 없으면 workspace를 생략해 조회해도 되고 이 조회를 배포 대상 선택으로 기록하지 않는다.",
+  description: "AI로 요청하고 응답하는 기능, 챗봇, 요약 등 산출물 AI 기능 구현에 사용합니다. 교육 담당자가 허브(hub.aible-campus.com)에서 정한 앱용 AI 환경과 현재 모델 목록을 확인하며 API 키는 반환하지 않습니다. 지원 모델은 이 결과로 안내하고 고정 목록을 약속하지 않는다. 목록에 있어도 모든 API를 지원하지는 않으며 목록 확인은 실제 응답 검증이 아니다. 배포 대상이 없으면 workspace를 생략해 조회해도 되고 이 조회를 배포 대상 선택으로 기록하지 않는다. 앱용 AI 키는 IP가 제한돼 배포된 앱에서만 AI를 부를 수 있다. 로컬 실행은 403 ip_not_allowed로 거부되므로 AI 응답은 로컬에서 확인하려 하지 않고, 사용자가 배포를 요청했을 때 배포해서 확인한다(요청이 없으면 배포할지 한 번 묻는다). 이 조회는 배포하지 않는다.",
   inputSchema: { workspace: WorkspaceInputSchema },
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
 }, async ({ workspace }) => {
@@ -643,12 +683,12 @@ groupServer("mcp-apps").registerTool("get_ai_gateway", {
   }
   if (!result.ok) return errorResult(`산출물 AI 환경 조회에 실패했습니다 (상태 ${result.status}). 0 또는 401이면 Apps 로그인을 확인하고 403이면 workspace 권한, 503이면 운영 환경 연결을 확인하십시오. 모델 목록을 확인하지 못했다고 알리고, AI 연결 기능이 없다거나 외부 API 키를 직접 준비해야 한다고 안내하지 않는다.`);
   const parsed = z.object({ environment: z.object({ id: z.string().uuid(), name: z.string() }), baseUrl: z.literal("https://gw.letsur.ai/v1"), models: z.array(z.string()), documentationUrl: z.string() }).safeParse(result.body);
-  return parsed.success ? textResult(parsed.data) : errorResult("AI 환경 응답 형식을 확인하지 못했습니다.");
+  return parsed.success ? textResult({ ...parsed.data, 로컬_실행_안내: LOCAL_AI_NOTICE }) : errorResult("AI 환경 응답 형식을 확인하지 못했습니다.");
 });
 
 groupServer("mcp-apps").registerTool("configure_ai_gateway", {
   title: "프로젝트에 산출물 AI 설정 연결",
-  description: "AI 기능 구현을 위해 앱용 AI 환경의 최신 키를 MCP 내부에서 받아 프로젝트 .env.apps-ai에 저장합니다. 모델은 get_ai_gateway 결과에서 선택합니다. 키를 응답에 출력하지 않으며 배포하지 않습니다. 사용자에게 API 키나 운영 화면 정보를 받지 않는다. 새로 받은 폴더이거나 운영진이 키를 바꾼 뒤에는 다시 부른다. 결과의 localEnv를 validate_project와 deploy_project에 그대로 넣는다. Claude 데스크톱 자체 게이트웨이 설정은 바꾸지 않는다.",
+  description: "AI 기능 구현을 위해 앱용 AI 환경의 최신 키를 MCP 내부에서 받아 프로젝트 .env.apps-ai에 저장합니다. 모델은 get_ai_gateway 결과에서 선택합니다. 키를 응답에 출력하지 않으며 배포하지 않습니다. 사용자에게 API 키나 운영 화면 정보를 받지 않는다. 새로 받은 폴더이거나 운영진이 키를 바꾼 뒤에는 다시 부른다. 결과의 localEnv를 validate_project와 deploy_project에 그대로 넣는다. 이 키는 IP가 제한돼 배포된 앱에서만 동작한다. 로컬에서 앱을 실행하면 AI 호출이 403 ip_not_allowed로 거부되므로 AI 응답을 로컬에서 확인하려 하지 않고 화면과 나머지 기능만 로컬에서 확인한다. AI 응답은 사용자가 배포를 요청했을 때 배포해서 확인하고, 요청이 없으면 배포할지 한 번 묻는다. Claude 데스크톱 자체 게이트웨이 설정은 바꾸지 않는다.",
   inputSchema: { path: z.string().min(1), model: z.string().min(1).max(200), workspace: WorkspaceInputSchema },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
 }, async ({ path: projectPath, model, workspace }) => {
@@ -661,7 +701,7 @@ groupServer("mcp-apps").registerTool("configure_ai_gateway", {
 
 groupServer("mcp-apps").registerTool("verify_ai_gateway", {
   title: "산출물 AI 요청과 응답 검증",
-  description: "프로젝트 .env.apps-ai를 내부에서 읽어 짧은 실제 AI 요청을 한 번 보냅니다. 소량의 사용량이 발생합니다. 키와 응답 원문은 출력하지 않습니다. 산출물 서버 통합 검증이나 배포를 대신하지 않습니다.",
+  description: "프로젝트 .env.apps-ai를 내부에서 읽어 짧은 실제 AI 요청을 한 번 보냅니다. 소량의 사용량이 발생합니다. 키와 응답 원문은 출력하지 않습니다. 산출물 서버 통합 검증이나 배포를 대신하지 않습니다. 앱용 AI 키는 IP가 제한돼 사용자 PC에서 보낸 이 요청은 403 ip_not_allowed로 거부될 수 있고, 그 결과는 키나 앱의 오류가 아니다. 거부되면 다시 부르거나 원인을 찾으려 하지 않는다. AI 기능은 사용자가 배포를 요청했을 때 배포해서 확인하고, 요청이 없으면 배포할지 한 번 묻는다.",
   inputSchema: { path: z.string().min(1) },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
 }, async ({ path: projectPath }) => {
@@ -671,7 +711,7 @@ groupServer("mcp-apps").registerTool("verify_ai_gateway", {
 
 groupServer("mcp-image").registerTool("generate_image", {
   title: "이미지 만들기",
-  description: "사용자가 대화에서 이미지, 그림, 사진, 로고, 아이콘, 일러스트, 포스터나 삽화를 만들어 달라고 하면 이 도구로 만든다. 클로드에는 이미지 생성 모델이 없으므로 직접 그리거나 SVG, HTML, 코드로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 이미지 모델을 서버가 선택해 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 만든 이미지는 결과에 바로 보이고 저장 폴더에 새 파일로 저장된다. 사람마다 하루에 만들 수 있는 장수가 정해져 있고 한 번에 한 장씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 이미지 서비스나 API 키로 우회하지 않는다. 앱 안에 이미지 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다." + mediaToolNote(toolSettings?.image, "장", "이미지"),
+  description: "사용자가 대화에서 이미지, 그림, 사진, 로고, 아이콘, 일러스트, 포스터나 삽화를 만들어 달라고 하면 이 도구로 만든다. 클로드에는 이미지 생성 모델이 없으므로 직접 그리거나 SVG, HTML, 코드로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 이미지 모델을 서버가 선택해 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 만든 이미지는 결과에 바로 보이고 저장 폴더에 새 파일로 저장된다. 한 번에 한 장씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 이미지 서비스나 API 키로 우회하지 않는다. 앱 안에 이미지 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다." + mediaToolNote(toolSettings?.image, "이미지"),
   inputSchema: {
     prompt: z.string().trim().min(1).max(IMAGE_PROMPT_MAX_LENGTH).describe(`만들 이미지 설명(최대 ${IMAGE_PROMPT_MAX_LENGTH}자). 사용자 요청의 대상, 분위기, 색, 구도, 이미지 안 글자를 빠짐없이 구체적으로 적는다`),
     size: z.enum(IMAGE_SIZES).optional().describe("가로x세로 픽셀. 정사각형 1024x1024(기본), 가로형 1536x1024, 세로형 1024x1536. 사용자가 비율을 말했을 때만 선택한다"),
@@ -696,22 +736,19 @@ groupServer("mcp-image").registerTool("generate_image", {
     const file = await saveImage(target, prompt, image);
     saved = { 저장한_파일: file, 파일_링크: fileLink(file) };
   } catch (error) {
-    saved = { 저장_실패: `${target}에 저장하지 못했다: ${error instanceof Error ? error.message : String(error)}. 이미지는 위에 보인다. 사용자가 원하면 쓸 수 있는 폴더로 다시 만든다(하루 장수가 한 장 더 빠진다)` };
+    saved = { 저장_실패: `${target}에 저장하지 못했다: ${error instanceof Error ? error.message : String(error)}. 이미지는 위에 보인다. 사용자가 원하면 쓸 수 있는 폴더로 다시 만든다.` };
   }
   return {
     content: [
       { type: "image" as const, data: image.imageBase64, mimeType: image.mimeType },
-      { type: "text" as const, text: JSON.stringify({ ...saved, 모델: image.model, 크기: image.size, 오늘_남은_장수: image.remainingToday,
-        ...(image.dailyLimit === undefined ? {} : { 하루_한도: image.dailyLimit }),
-        ...(image.resetsAt === undefined ? {} : { 한도_초기화_시각: `${koreanTime(image.resetsAt)}(한국 시간)` }),
-        안내: `${LINK_NOTE} 오늘 남은 장수도 사용자에게 알린다. 다시 만들면 하루 장수가 한 장씩 빠진다.` }, null, 2) },
+      { type: "text" as const, text: JSON.stringify({ ...saved, 모델: image.model, 크기: image.size, 안내: LINK_NOTE }, null, 2) },
     ],
   };
 });
 
 groupServer("mcp-video").registerTool("generate_video", {
   title: "영상 만들기",
-  description: `사용자가 대화에서 영상, 동영상, 짧은 클립, 모션 영상을 만들어 달라고 하면 이 도구로 접수한다. 클로드에는 영상 생성 모델이 없으므로 코드나 애니메이션 HTML로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 영상 모델을 서버가 선택해 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 영상은 만드는 데 몇 분이 걸려서 이 도구는 작업만 접수하고 기다리지 않는다. 접수하면 곧바로 video_status를 작업 ID로 부른다. video_status가 한 번에 최대 ${VIDEO_WAIT_MAX_SECONDS}초까지 서버에서 완성을 기다려 주고 완성되면 바로 작업 폴더 videos에 저장하며, 아직이면 같은 도구를 바로 다시 부르라고 알려 준다. Bash sleep이나 쉘 대기, 직접 시간 간격 두기는 쓰지 않는다. 사람마다 하루에 만들 수 있는 개수가 정해져 있고 한 번에 한 개씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 영상 서비스나 API 키로 우회하지 않는다. 앱 안에 영상 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다.` + mediaToolNote(toolSettings?.video, "개", "영상"),
+  description: `사용자가 대화에서 영상, 동영상, 짧은 클립, 모션 영상을 만들어 달라고 하면 이 도구로 접수한다. 클로드에는 영상 생성 모델이 없으므로 코드나 애니메이션 HTML로 대신 만들지 않고, 사용자가 그 방식을 요청했을 때만 그렇게 한다. 에이블캠퍼스 허브의 앱용 AI 영상 모델을 서버가 선택해 부르며 API 키는 필요 없고 사용자에게 묻지 않는다. 영상은 만드는 데 몇 분이 걸려서 이 도구는 작업만 접수하고 기다리지 않는다. 접수하면 곧바로 video_status를 작업 ID로 부른다. video_status가 한 번에 최대 ${VIDEO_WAIT_MAX_SECONDS}초까지 서버에서 완성을 기다려 주고 완성되면 바로 작업 폴더 videos에 저장하며, 아직이면 같은 도구를 바로 다시 부르라고 알려 준다. Bash sleep이나 쉘 대기, 직접 시간 간격 두기는 쓰지 않는다. 한 번에 한 개씩 만든다. 오류가 나면 결과 문구를 사용자에게 그대로 전하고 다른 영상 서비스나 API 키로 우회하지 않는다. 앱 안에 영상 생성 기능을 넣는 요청은 이 도구가 아니라 build-ai-feature 스킬을 따른다.` + mediaToolNote(toolSettings?.video, "영상"),
   inputSchema: {
     prompt: z.string().trim().min(1).max(VIDEO_PROMPT_MAX_LENGTH).describe(`만들 영상 설명(최대 ${VIDEO_PROMPT_MAX_LENGTH}자). 사용자 요청의 대상, 움직임, 카메라, 분위기, 색을 빠짐없이 구체적으로 적는다`),
     durationSeconds: z.number().int().min(VIDEO_DURATION_MIN).max(VIDEO_DURATION_MAX).optional().describe(`영상 길이(초, ${VIDEO_DURATION_MIN}에서 ${VIDEO_DURATION_MAX}). 사용자가 길이를 말했을 때만 넣는다. 생략하면 서버가 정한 기본 길이로 만든다`),
@@ -739,8 +776,7 @@ groupServer("mcp-video").registerTool("generate_video", {
     길이_초: job.durationSeconds,
     해상도: job.resolution,
     화면_비율: job.aspectRatio,
-    ...videoLimitFacts(job),
-    안내: `영상은 접수만 됐고 아직 파일이 없다. 사용자에게 작업 ID, 오늘 남은 개수와 한도가 다시 채워지는 시각을 알리고 몇 분 걸린다고 말한 뒤, 기다리지 말고 지금 바로 video_status를 작업 ID(${job.id})로 부른다. video_status가 한 번에 최대 ${VIDEO_WAIT_MAX_SECONDS}초 서버에서 기다리다 완성되면 바로 저장하고, 아직이면 같은 도구를 바로 다시 부르라고 알려 준다. Bash sleep, 쉘 대기, 시간 간격 두기는 쓰지 않는다. ${VIDEO_JOB_TIMEOUT_MINUTES}분 안에 끝나지 않으면 서버가 실패로 처리하고 오늘 개수를 돌려준다. 새 영상을 또 접수하지 않는다.`,
+    안내: `영상은 접수만 됐고 아직 파일이 없다. 사용자에게 작업 ID를 알리고 몇 분 걸린다고 말한 뒤, 기다리지 말고 지금 바로 video_status를 작업 ID(${job.id})로 부른다. video_status가 한 번에 최대 ${VIDEO_WAIT_MAX_SECONDS}초 서버에서 기다리다 완성되면 바로 저장하고, 아직이면 같은 도구를 바로 다시 부르라고 알려 준다. Bash sleep, 쉘 대기, 시간 간격 두기는 쓰지 않는다. ${VIDEO_JOB_TIMEOUT_MINUTES}분 안에 끝나지 않으면 서버가 실패로 처리한다. 새 영상을 또 접수하지 않는다.`,
   });
 });
 
@@ -761,13 +797,13 @@ groupServer("mcp-video").registerTool("video_status", {
   const parsed = VideoStatusResult.safeParse(result.body);
   if (!parsed.success) return errorResult("영상 상태 응답 형식을 확인하지 못했다. 플러그인을 최신 버전으로 갱신했는지 manage-apps-plugin 지침으로 확인한다.");
   const job = parsed.data;
-  const common = { 작업_ID: job.id, 모델: job.model, 지난_시간: elapsedText(job.elapsedSeconds), ...videoLimitFacts(job) };
+  const common = { 작업_ID: job.id, 모델: job.model, 지난_시간: elapsedText(job.elapsedSeconds) };
   if (job.status === "failed") {
     return errorResult(JSON.stringify({
       ...common,
       상태: "실패",
       실패_이유: job.failure ?? "영상을 만들지 못했어요.",
-      안내: "사용자에게 실패 이유와 오늘 남은 개수를 그대로 전한다. 자동으로 다시 만들지 않는다. 사용자가 원하면 generate_video로 새로 접수한다.",
+      안내: "사용자에게 실패 이유를 그대로 전한다. 자동으로 다시 만들지 않는다. 사용자가 원하면 generate_video로 새로 접수한다.",
     }, null, 2));
   }
   if (job.status === "succeeded" && job.download === null && job.failure !== null) {
@@ -775,7 +811,7 @@ groupServer("mcp-video").registerTool("video_status", {
       ...common,
       상태: "완성됐지만 파일을 줄 수 없음",
       이유: job.failure,
-      안내: "사용자에게 이유를 그대로 전한다. 이유가 '다시 확인하세요'라면 video_status를 한 번 더 부르고, 보관 기간이 지났다면 사용자가 원할 때만 generate_video로 새로 만든다(오늘 개수가 빠진다).",
+      안내: "사용자에게 이유를 그대로 전한다. 이유가 '다시 확인하세요'라면 video_status를 한 번 더 부르고, 보관 기간이 지났다면 사용자가 원할 때만 generate_video로 새로 만든다.",
     }, null, 2));
   }
   if (job.status !== "succeeded" || job.download === null) {
@@ -811,7 +847,7 @@ groupServer("mcp-video").registerTool("video_status", {
       길이_초: job.durationSeconds,
       해상도: job.resolution,
       화면_비율: job.aspectRatio,
-      안내: `${LINK_NOTE} 파일 크기와 오늘 남은 개수도 사용자에게 알린다. 새 영상을 만들면 하루 개수가 하나씩 빠진다.`,
+      안내: `${LINK_NOTE} 파일 크기도 사용자에게 알린다.`,
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
@@ -819,7 +855,7 @@ groupServer("mcp-video").registerTool("video_status", {
       ...common,
       상태: "완성됨, 저장하지 못함",
       저장_실패: `${target}에 저장하지 못했다: ${reason}`,
-      안내: "영상은 완성돼 서버에 있다. 사용자에게 저장하지 못했다고 알리고, 사용자가 원하면 video_status를 같은 작업 ID로 다시 부른다(새 다운로드 주소로 다시 받는다). 다른 폴더를 원하면 directory를 바꿔 부른다. 새로 접수하지 않으므로 오늘 개수는 더 빠지지 않는다.",
+      안내: "영상은 완성돼 서버에 있다. 사용자에게 저장하지 못했다고 알리고, 사용자가 원하면 video_status를 같은 작업 ID로 다시 부른다(새 다운로드 주소로 다시 받는다). 다른 폴더를 원하면 directory를 바꿔 부른다.",
     }, null, 2));
   }
 });
@@ -1085,11 +1121,11 @@ groupServer("mcp-apps").registerTool(
         ),
       education: z.string().optional().describe("새 개인 앱을 배포할 교육 ID(list_educations의 id). 배포할 수 있는 교육이 둘 이상이면 list_educations 목록을 사용자에게 보여 주고 고른 교육을 넣는다. 하나뿐이면 참가자는 생략하고(교육 이름이나 추측한 ID를 넣지 않는다. 서버가 그 교육을 자동으로 고른다), 운영진은 그 교육을 넣는다. education-required로 거절되면 응답의 교육 목록에서 고르게 한다. 기존 앱 재배포와 조 앱은 앱과 조의 교육을 따르므로 생략한다. 요청이나 .aiblecampus-deploy.json에 정해진 교육이 있으면 그 교육을 쓴다. 운영진은 apps_whoami의 canManagePluginSettings가 true인 계정이다"),
       organization: z.string().optional().describe("이전 클라이언트 호환 필드. 새 호출에서는 생략하고 교육은 education으로 지정한다"),
-      workspace: z.string().min(1).describe("apps_whoami로 확인한 대상 공간(개인 또는 조)의 UUID 또는 slug. 요청과 프로젝트의 .aiblecampus-deploy.json을 확인한다. 대상 공간이 불분명하면 추측하지 말고 \"개인 산출물 배포\"와 \"조 산출물 배포(조 이름)\" 중 무엇인지 사용자에게 묻는다. 조 대상을 요청받았으면 개인 공간으로 바꾸지 않는다"),
+      workspace: z.string().min(1).optional().describe("대상 공간의 UUID 또는 slug. 생략하면 개인 앱이다(기본). 조 앱은 사용자가 요청에서 \"조 앱\"이나 조 이름을 명시했거나 인계 기록(.aiblecampus-deploy.json)에 정해진 경우에만 apps_whoami로 확인한 조 UUID를 넣는다. 개인인지 조인지 사용자에게 묻지 않고, 소속 조가 하나뿐이어도 조를 고르거나 추측하지 않는다. 이미 조 앱인 앱을 갱신할 때 폴더 기록(.apps-source.json)에 그 앱의 공간이 있으면 생략해도 도구가 이어받아 소유를 유지하고, 기록이 없으면 사용자가 조 앱 갱신이라고 말했을 때만 조 UUID를 넣는다. 폴더 기록이 조 앱인데 사용자가 개인 앱으로 올리라고 명시했으면 workspace를 생략하고 newApp을 true로 배포한다"),
       newApp: z
         .boolean()
         .optional()
-        .describe("이미 다른 앱으로 배포한 폴더를 다른 이름의 새 앱으로 배포할 때만 true. 같은 이름 앱이 있다는 오류에서 사용자가 '다른 이름의 새 앱'을 고른 경우에만 쓰고 새 name을 함께 넣는다. 그 이름의 앱이 이미 있으면 배포하지 않는다. 폴더를 복사해 우회하지 않는다"),
+        .describe("이미 다른 앱으로 배포한 폴더를 다른 이름의 새 앱으로 배포할 때만 true. 같은 이름 앱이 있다는 오류에서 사용자가 '다른 이름의 새 앱'을 고른 경우에만 쓰고 새 name을 함께 넣는다. 조 앱에 연결된 폴더를 사용자가 개인 앱으로 올리라고 했을 때도 true이며 이때는 이름이 같아도 된다(폴더는 새 앱으로 다시 연결된다). 그 이름의 앱이 대상 공간에 이미 있으면 배포하지 않는다. 폴더를 복사해 우회하지 않는다"),
     },
     annotations: {
       readOnlyHint: false,
@@ -1108,7 +1144,7 @@ groupServer("mcp-apps").registerTool(
     localEnv,
     resources,
     forceNewRevision,
-    workspace,
+    workspace: requestedWorkspace,
     education,
     organization: legacyOrganization,
     displayName,
@@ -1118,6 +1154,7 @@ groupServer("mcp-apps").registerTool(
     newApp,
   }, extra) => {
     const startedAt = Date.now();
+    let workspace = requestedWorkspace;
     const writeup = galleryWriteup(gallery);
     if (education && legacyOrganization && education !== legacyOrganization) return errorResult("교육은 한 번만 지정한다");
     const organization = education ?? legacyOrganization;
@@ -1208,6 +1245,22 @@ groupServer("mcp-apps").registerTool(
 
     const deploymentName = toDeploymentName(name ?? path.basename(projectPath));
 
+    // 공간을 생략하면 개인 앱이다. 단 이 폴더가 같은 이름의 앱으로 받았거나 배포한 공간(조 앱 포함)이 기록(.apps-source.json)에 있으면 그 앱의 소유를 유지한다.
+    // 새 앱(newApp)은 이어받지 않는다. 기록이 깨졌으면 아래 소스 기준 확인이 같은 오류를 낸다
+    if (newApp !== true) {
+      const recorded = await readSourceState(projectPath).catch(() => undefined);
+      if (recorded !== undefined && recorded.api === apiBase() && recorded.deployment === deploymentName) {
+        if (workspace === undefined) {
+          if (recorded.workspace !== null) workspace = recorded.workspace;
+        } else if (recorded.workspace === null) {
+          // 기록이 개인 기본값(null)인데 개인 공간의 UUID나 slug를 명시했으면 같은 공간이다. 기록과 맞추려고 생략으로 바꾼다
+          const me = await callApi("/v1/me");
+          const personal = me.ok ? z.object({ workspace: z.object({ id: z.string(), slug: z.string() }) }).safeParse(me.body) : null;
+          if (personal?.success === true && (personal.data.workspace.id === workspace || personal.data.workspace.slug === workspace)) workspace = undefined;
+        }
+      }
+    }
+
     // 앱을 다른 공간으로 옮긴 뒤(app.move) 폴더 기록에 남은 옛 공간을 앱의 지금 공간으로 맞춘다(0.41.1, 2026-10-19 운영).
     // 요청한 공간이 앱의 지금 공간이면 그대로 갱신하고, 아니면(옛 공간으로 요청) 배포하지 않고 지금 공간을 알린다
     let movedFrom: string | null | undefined;
@@ -1243,6 +1296,12 @@ groupServer("mcp-apps").registerTool(
       const existing = await callApi(`/v1/deployments/${encodeURIComponent(deploymentName)}`, {}, workspace);
       if (existing.ok) return errorResult(`이 공간에 '${deploymentName}' 앱이 이미 있습니다. 배포하지 않았습니다. 새 앱이면 사용자에게 다른 이름을 받아 다시 배포하고, 그 앱을 갱신하려면 newApp 없이 배포합니다.`);
       if (existing.status !== 404) return failure("같은 이름 앱이 있는지 확인하지 못했다. 배포하지 않았다", existing);
+    }
+
+    // 조 앱이면 기준 커밋 뒤 조원 변경을 먼저 확인한다(0.53.0). 있으면 서버 자동 병합에 맡기지 않고 통합 절차(recovery)로 넘긴다
+    if (newApp !== true) {
+      const held = await teamChangesBeforeDeploy(deploymentName, workspace, base);
+      if (held !== undefined) return held;
     }
 
     let tarball: Buffer;
@@ -2497,7 +2556,7 @@ groupServer("base").registerTool(
   {
     title: "Apps 연결 확인",
     description:
-      "Apps 주소와 토큰 설정이 올바른지 확인한다. 배포가 인증 문제로 실패할 때 먼저 부른다. 개인 공간과 소속 조의 UUID와 배포 권한을 확인한다. 조 이름은 결과의 name을 그대로 쓰고 교육명을 붙이지 않는다. 조가 workspaces에 없고 unavailableWorkspaces에 reason team-deploy-off로 있으면 조 배정이 풀린 것이 아니다. 결과의 조배포안내대로 그 교육은 조 배포를 꺼 두어 개인 공간에 배포한다고 안내한다.",
+      "Apps 주소와 토큰 설정이 올바른지 확인한다. 배포가 인증 문제로 실패할 때 먼저 부른다. 개인 공간과 소속 조의 UUID와 배포 권한을 확인한다. 배포 대상의 기본은 개인 앱이라 배포 전에 이 도구로 공간을 고를 필요가 없다. 결과의 조는 사용자가 조 앱을 명시했을 때만 workspace에 넣고, 소속 조가 하나뿐이어도 조를 고르거나 추측하지 않는다. 조 이름은 결과의 name을 그대로 쓰고 교육명을 붙이지 않는다. 조가 workspaces에 없고 unavailableWorkspaces에 reason team-deploy-off로 있으면 조 배정이 풀린 것이 아니다. 결과의 조배포안내대로 그 교육은 조 배포를 꺼 두어 개인 공간에 배포한다고 안내한다.",
     inputSchema: { workspace: WorkspaceInputSchema },
     annotations: {
       readOnlyHint: true,
