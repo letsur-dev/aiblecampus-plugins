@@ -39002,7 +39002,7 @@ function failureFacts(prefix, result, note) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.53.0";
+var PLUGIN_VERSION = "0.53.1";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || hubCredential()?.apiBase || "https://api.aible-campus.com";
@@ -39042,6 +39042,7 @@ function deploymentFingerprint(input) {
       resources: input.resources ?? null,
       workspace: input.workspace ?? null,
       organization: input.organization ?? null,
+      ...input.teamConflict === void 0 ? {} : { teamConflict: input.teamConflict },
       sourceBaseCommit: input.sourceBaseCommit ?? null
     })
   ).digest("hex");
@@ -39195,10 +39196,15 @@ start_apps_login\uC73C\uB85C \uAE30\uAE30 \uB85C\uADF8\uC778\uC744 \uB2E4\uC2DC 
 }
 var QUEUE_NOTE = "\uC791\uC5C5 \uB300\uAE30\uC5F4\uC774\uB098 \uC2E4\uD589 \uACC4\uCE35 \uC6A9\uB7C9 \uBB38\uC81C\uB2E4. details.retryable\uC774 \uB2E4\uC2DC \uC2DC\uB3C4\uD560 \uC218 \uC788\uB294\uC9C0\uB97C \uB73B\uD55C\uB2E4. \uAE30\uC874 \uC571\uC740 \uACC4\uC18D \uC81C\uACF5\uB41C\uB2E4";
 var TLS_NOT_READY_NOTE = "\uACF5\uAC1C \uC8FC\uC18C \uC778\uC99D\uC11C\uAC00 \uC544\uC9C1 \uC900\uBE44\uB418\uC9C0 \uC54A\uC558\uB2E4. \uC571 \uCF54\uB4DC \uBB38\uC81C\uAC00 \uC544\uB2C8\uBA70 \uC9C4\uD589 \uC0C1\uD0DC\uB294 deployment_status\uB85C \uBCFC \uC218 \uC788\uB2E4";
+var TEAM_APP_CONFLICT_NOTE = "\uC774 \uC870\uB294 \uC870 \uC571 \uC218 1\uC744 \uBAA8\uB450 \uC368\uC11C \uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC870 \uC571\uC744 \uB9CC\uB4E4 \uC218 \uC5C6\uB2E4. details.choices\uAC00 \uC120\uD0DD\uC9C0(move-existing, replace, personal)\uC640 \uAC00\uB2A5 \uC5EC\uBD80(available, reason)\uC774\uACE0 details.existingApp\uC774 \uAE30\uC874 \uC870 \uC571\uC774\uB2E4. \uC120\uD0DD\uC740 onTeamConflict\uC640 teamConflictApp(details.existingApp.name)\uC73C\uB85C \uB2E4\uC2DC \uBC30\uD3EC\uD55C\uB2E4. personal\uC740 workspace\uB97C \uC0DD\uB7B5\uD55C \uC0C8 \uAC1C\uC778 \uC571 \uBC30\uD3EC\uB2E4";
+var TEAM_APP_NAME_NOTE = "\uC774 \uC870\uB294 \uC870 \uC571 \uC218\uB97C \uBAA8\uB450 \uC368\uC11C \uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC870 \uC571\uC744 \uB9CC\uB4E4 \uC218 \uC5C6\uB2E4. \uAE30\uC874 \uC870 \uC571\uC740 \uAC19\uC740 \uC774\uB984\uC73C\uB85C \uBC30\uD3EC\uD560 \uB54C\uB9CC \uAC31\uC2E0\uB41C\uB2E4. details.names\uAC00 \uAE30\uC874 \uC870 \uC571 \uC774\uB984\uC774\uB2E4";
 function deploymentFailureNote(body) {
   if (typeof body !== "object" || body === null) return void 0;
   const details = typeof body.details === "object" && body.details !== null ? body.details : {};
   if ("code" in details && details.code === "public-tls-not-ready") return TLS_NOT_READY_NOTE;
+  if ("code" in details && details.code === "app-limit-reached" && "scope" in details && details.scope === "team") {
+    return "choices" in details && Array.isArray(details.choices) ? TEAM_APP_CONFLICT_NOTE : TEAM_APP_NAME_NOTE;
+  }
   if (body.stage === "queue") return QUEUE_NOTE;
   return void 0;
 }
@@ -39285,7 +39291,7 @@ async function settleAccepted(accepted, input) {
       return { final: failure("\uBC30\uD3EC\uB294 \uC11C\uBC84\uC5D0\uC11C \uACC4\uC18D \uC9C4\uD589 \uC911\uC77C \uC218 \uC788\uC73C\uB098 \uC9C4\uD589 \uC0C1\uD0DC\uB97C \uC870\uD68C\uD558\uC9C0 \uBABB\uD588\uB2E4", outcome.result, `deployment_status\uB85C '${name}'\uC758 \uC0C1\uD0DC\uB97C \uD655\uC778\uD55C\uB2E4`) };
     case "pending":
       if (input.project !== void 0) {
-        await rememberPendingDeploy(info.revisionId, { projectPath: input.project.projectPath, api: apiBase(), deployment: input.project.deployment, workspace: input.workspace ?? null }).catch(() => void 0);
+        await rememberPendingDeploy(info.revisionId, { projectPath: input.project.projectPath, api: apiBase(), deployment: typeof info["name"] === "string" ? info["name"] : input.project.deployment, workspace: input.workspace ?? null }).catch(() => void 0);
       }
       return { final: inProgressResult({ name, deploymentId: info.deploymentId, revisionId: info.revisionId, number: info.revisionNumber, url: url2, state: outcome.state, elapsedMs: outcome.elapsedMs, workspace: input.workspace }) };
   }
@@ -39775,7 +39781,11 @@ groupServer("mcp-apps").registerTool(
       education: external_exports.string().optional().describe("\uC0C8 \uAC1C\uC778 \uC571\uC744 \uBC30\uD3EC\uD560 \uAD50\uC721 ID(list_educations\uC758 id). \uBC30\uD3EC\uD560 \uC218 \uC788\uB294 \uAD50\uC721\uC774 \uB458 \uC774\uC0C1\uC774\uBA74 list_educations \uBAA9\uB85D\uC744 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBCF4\uC5EC \uC8FC\uACE0 \uACE0\uB978 \uAD50\uC721\uC744 \uB123\uB294\uB2E4. \uD558\uB098\uBFD0\uC774\uBA74 \uCC38\uAC00\uC790\uB294 \uC0DD\uB7B5\uD558\uACE0(\uAD50\uC721 \uC774\uB984\uC774\uB098 \uCD94\uCE21\uD55C ID\uB97C \uB123\uC9C0 \uC54A\uB294\uB2E4. \uC11C\uBC84\uAC00 \uADF8 \uAD50\uC721\uC744 \uC790\uB3D9\uC73C\uB85C \uACE0\uB978\uB2E4), \uC6B4\uC601\uC9C4\uC740 \uADF8 \uAD50\uC721\uC744 \uB123\uB294\uB2E4. education-required\uB85C \uAC70\uC808\uB418\uBA74 \uC751\uB2F5\uC758 \uAD50\uC721 \uBAA9\uB85D\uC5D0\uC11C \uACE0\uB974\uAC8C \uD55C\uB2E4. \uAE30\uC874 \uC571 \uC7AC\uBC30\uD3EC\uC640 \uC870 \uC571\uC740 \uC571\uACFC \uC870\uC758 \uAD50\uC721\uC744 \uB530\uB974\uBBC0\uB85C \uC0DD\uB7B5\uD55C\uB2E4. \uC694\uCCAD\uC774\uB098 .aiblecampus-deploy.json\uC5D0 \uC815\uD574\uC9C4 \uAD50\uC721\uC774 \uC788\uC73C\uBA74 \uADF8 \uAD50\uC721\uC744 \uC4F4\uB2E4. \uC6B4\uC601\uC9C4\uC740 apps_whoami\uC758 canManagePluginSettings\uAC00 true\uC778 \uACC4\uC815\uC774\uB2E4"),
       organization: external_exports.string().optional().describe("\uC774\uC804 \uD074\uB77C\uC774\uC5B8\uD2B8 \uD638\uD658 \uD544\uB4DC. \uC0C8 \uD638\uCD9C\uC5D0\uC11C\uB294 \uC0DD\uB7B5\uD558\uACE0 \uAD50\uC721\uC740 education\uC73C\uB85C \uC9C0\uC815\uD55C\uB2E4"),
       workspace: external_exports.string().min(1).optional().describe('\uB300\uC0C1 \uACF5\uAC04\uC758 UUID \uB610\uB294 slug. \uC0DD\uB7B5\uD558\uBA74 \uAC1C\uC778 \uC571\uC774\uB2E4(\uAE30\uBCF8). \uC870 \uC571\uC740 \uC0AC\uC6A9\uC790\uAC00 \uC694\uCCAD\uC5D0\uC11C "\uC870 \uC571"\uC774\uB098 \uC870 \uC774\uB984\uC744 \uBA85\uC2DC\uD588\uAC70\uB098 \uC778\uACC4 \uAE30\uB85D(.aiblecampus-deploy.json)\uC5D0 \uC815\uD574\uC9C4 \uACBD\uC6B0\uC5D0\uB9CC apps_whoami\uB85C \uD655\uC778\uD55C \uC870 UUID\uB97C \uB123\uB294\uB2E4. \uAC1C\uC778\uC778\uC9C0 \uC870\uC778\uC9C0 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uC9C0 \uC54A\uACE0, \uC18C\uC18D \uC870\uAC00 \uD558\uB098\uBFD0\uC774\uC5B4\uB3C4 \uC870\uB97C \uACE0\uB974\uAC70\uB098 \uCD94\uCE21\uD558\uC9C0 \uC54A\uB294\uB2E4. \uC774\uBBF8 \uC870 \uC571\uC778 \uC571\uC744 \uAC31\uC2E0\uD560 \uB54C \uD3F4\uB354 \uAE30\uB85D(.apps-source.json)\uC5D0 \uADF8 \uC571\uC758 \uACF5\uAC04\uC774 \uC788\uC73C\uBA74 \uC0DD\uB7B5\uD574\uB3C4 \uB3C4\uAD6C\uAC00 \uC774\uC5B4\uBC1B\uC544 \uC18C\uC720\uB97C \uC720\uC9C0\uD558\uACE0, \uAE30\uB85D\uC774 \uC5C6\uC73C\uBA74 \uC0AC\uC6A9\uC790\uAC00 \uC870 \uC571 \uAC31\uC2E0\uC774\uB77C\uACE0 \uB9D0\uD588\uC744 \uB54C\uB9CC \uC870 UUID\uB97C \uB123\uB294\uB2E4. \uD3F4\uB354 \uAE30\uB85D\uC774 \uC870 \uC571\uC778\uB370 \uC0AC\uC6A9\uC790\uAC00 \uAC1C\uC778 \uC571\uC73C\uB85C \uC62C\uB9AC\uB77C\uACE0 \uBA85\uC2DC\uD588\uC73C\uBA74 workspace\uB97C \uC0DD\uB7B5\uD558\uACE0 newApp\uC744 true\uB85C \uBC30\uD3EC\uD55C\uB2E4'),
-      newApp: external_exports.boolean().optional().describe("\uC774\uBBF8 \uB2E4\uB978 \uC571\uC73C\uB85C \uBC30\uD3EC\uD55C \uD3F4\uB354\uB97C \uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC571\uC73C\uB85C \uBC30\uD3EC\uD560 \uB54C\uB9CC true. \uAC19\uC740 \uC774\uB984 \uC571\uC774 \uC788\uB2E4\uB294 \uC624\uB958\uC5D0\uC11C \uC0AC\uC6A9\uC790\uAC00 '\uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC571'\uC744 \uACE0\uB978 \uACBD\uC6B0\uC5D0\uB9CC \uC4F0\uACE0 \uC0C8 name\uC744 \uD568\uAED8 \uB123\uB294\uB2E4. \uC870 \uC571\uC5D0 \uC5F0\uACB0\uB41C \uD3F4\uB354\uB97C \uC0AC\uC6A9\uC790\uAC00 \uAC1C\uC778 \uC571\uC73C\uB85C \uC62C\uB9AC\uB77C\uACE0 \uD588\uC744 \uB54C\uB3C4 true\uC774\uBA70 \uC774\uB54C\uB294 \uC774\uB984\uC774 \uAC19\uC544\uB3C4 \uB41C\uB2E4(\uD3F4\uB354\uB294 \uC0C8 \uC571\uC73C\uB85C \uB2E4\uC2DC \uC5F0\uACB0\uB41C\uB2E4). \uADF8 \uC774\uB984\uC758 \uC571\uC774 \uB300\uC0C1 \uACF5\uAC04\uC5D0 \uC774\uBBF8 \uC788\uC73C\uBA74 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4. \uD3F4\uB354\uB97C \uBCF5\uC0AC\uD574 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4")
+      newApp: external_exports.boolean().optional().describe("\uC774\uBBF8 \uB2E4\uB978 \uC571\uC73C\uB85C \uBC30\uD3EC\uD55C \uD3F4\uB354\uB97C \uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC571\uC73C\uB85C \uBC30\uD3EC\uD560 \uB54C\uB9CC true. \uAC19\uC740 \uC774\uB984 \uC571\uC774 \uC788\uB2E4\uB294 \uC624\uB958\uC5D0\uC11C \uC0AC\uC6A9\uC790\uAC00 '\uB2E4\uB978 \uC774\uB984\uC758 \uC0C8 \uC571'\uC744 \uACE0\uB978 \uACBD\uC6B0\uC5D0\uB9CC \uC4F0\uACE0 \uC0C8 name\uC744 \uD568\uAED8 \uB123\uB294\uB2E4. \uC870 \uC571\uC5D0 \uC5F0\uACB0\uB41C \uD3F4\uB354\uB97C \uC0AC\uC6A9\uC790\uAC00 \uAC1C\uC778 \uC571\uC73C\uB85C \uC62C\uB9AC\uB77C\uACE0 \uD588\uC744 \uB54C\uB3C4 true\uC774\uBA70 \uC774\uB54C\uB294 \uC774\uB984\uC774 \uAC19\uC544\uB3C4 \uB41C\uB2E4(\uD3F4\uB354\uB294 \uC0C8 \uC571\uC73C\uB85C \uB2E4\uC2DC \uC5F0\uACB0\uB41C\uB2E4). \uADF8 \uC774\uB984\uC758 \uC571\uC774 \uB300\uC0C1 \uACF5\uAC04\uC5D0 \uC774\uBBF8 \uC788\uC73C\uBA74 \uBC30\uD3EC\uD558\uC9C0 \uC54A\uB294\uB2E4. \uD3F4\uB354\uB97C \uBCF5\uC0AC\uD574 \uC6B0\uD68C\uD558\uC9C0 \uC54A\uB294\uB2E4"),
+      onTeamConflict: external_exports.enum(["move-existing", "replace", "personal"]).optional().describe(
+        "\uC870 \uC571 \uC218 \uCDA9\uB3CC\uC758 \uC120\uD0DD. \uC870 \uC571 \uC218\uAC00 1\uC774\uACE0 \uC870 \uC571\uC774 \uC788\uC744 \uB54C \uB2E4\uB978 \uC774\uB984\uC73C\uB85C \uC870 \uC571\uC744 \uBC30\uD3EC\uD558\uBA74 409 app-limit-reached\uAC00 \uC624\uACE0 \uC751\uB2F5 details.choices(\uC120\uD0DD\uC9C0\uC640 \uAC00\uB2A5 \uC5EC\uBD80)\uC640 details.existingApp(\uAE30\uC874 \uC870 \uC571)\uC774 \uB2F4\uAE34\uB2E4. \uADF8 \uC120\uD0DD\uC9C0\uB97C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uBB3B\uACE0 \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB978 \uAC83\uB9CC \uB123\uB294\uB2E4. \uC0AC\uC6A9\uC790\uAC00 \uACE0\uB974\uAE30 \uC804\uC5D0\uB294 \uB123\uC9C0 \uC54A\uB294\uB2E4. move-existing: \uAE30\uC874 \uC870 \uC571\uC744 \uC6D0\uB798 \uBC30\uD3EC\uD55C \uC870\uC6D0\uC758 \uAC1C\uC778 \uC571\uC73C\uB85C \uC62E\uAE30\uACE0 \uC0C8 \uC571\uC744 \uC870 \uC571\uC73C\uB85C \uBC30\uD3EC\uD55C\uB2E4. replace: \uAE30\uC874 \uC870 \uC571\uC744 \uB36E\uC5B4\uC4F4\uB2E4(\uC8FC\uC18C \uC720\uC9C0, \uB0B4\uC6A9 \uAD50\uCCB4, \uC61B \uBC84\uC804\uC740 \uB418\uB3CC\uB9AC\uAE30\uC6A9\uC73C\uB85C \uB0A8\uACE0 \uC571 \uC774\uB984\uC740 \uAE30\uC874 \uC774\uB984\uC774\uB2E4). \uB2E4\uB978 \uC870\uC6D0\uC758 \uC791\uC5C5\uC744 \uB36E\uC73C\uBBC0\uB85C \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uD55C \uBC88 \uB354 \uD655\uC778\uD55C \uB4A4\uC5D0\uB9CC \uB123\uB294\uB2E4. personal: \uC0C8 \uC571\uC744 \uB0B4 \uAC1C\uC778 \uC571\uC73C\uB85C \uBC30\uD3EC\uD55C\uB2E4(workspace\uB97C \uC0DD\uB7B5\uD55C \uC0C8 \uAC1C\uC778 \uC571 \uBC30\uD3EC\uC640 \uAC19\uACE0 education\uC740 details.educationId\uB97C \uC4F4\uB2E4). available\uC774 false\uC778 \uC120\uD0DD\uC740 \uBB3B\uC9C0 \uC54A\uACE0 \uB123\uC9C0 \uC54A\uB294\uB2E4. move-existing, replace\uB294 teamConflictApp\uACFC \uD568\uAED8 \uB123\uB294\uB2E4"
+      ),
+      teamConflictApp: external_exports.string().min(2).max(40).optional().describe("onTeamConflict\uB97C \uC801\uC6A9\uD560 \uAE30\uC874 \uC870 \uC571 \uC774\uB984. 409 \uC751\uB2F5\uC758 details.existingApp.name\uC744 \uADF8\uB300\uB85C \uB123\uB294\uB2E4. onTeamConflict\uAC00 move-existing, replace\uC77C \uB54C \uD544\uC218\uB2E4. \uADF8\uC0AC\uC774 \uC870 \uC571\uC774 \uBC14\uB00C\uC5C8\uC73C\uBA74 \uC11C\uBC84\uAC00 \uC120\uD0DD\uC744 \uC801\uC6A9\uD558\uC9C0 \uC54A\uACE0 \uC120\uD0DD\uC9C0\uB97C \uB2E4\uC2DC \uC900\uB2E4")
     },
     annotations: {
       readOnlyHint: false,
@@ -39801,10 +39811,20 @@ groupServer("mcp-apps").registerTool(
     renameApp,
     changeSummary,
     gallery,
-    newApp
+    newApp,
+    onTeamConflict,
+    teamConflictApp
   }, extra) => {
     const startedAt = Date.now();
     let workspace = requestedWorkspace;
+    if ((onTeamConflict === "move-existing" || onTeamConflict === "replace") && teamConflictApp === void 0) {
+      return errorResult("onTeamConflict\uAC00 move-existing, replace\uC774\uBA74 teamConflictApp(409 details.existingApp.name)\uC774 \uD544\uC694\uD558\uB2E4");
+    }
+    if (onTeamConflict === "personal" && requestedWorkspace !== void 0) {
+      workspace = void 0;
+    }
+    const serverChoice = onTeamConflict === "move-existing" || onTeamConflict === "replace" ? onTeamConflict : void 0;
+    const freshApp = newApp === true || onTeamConflict === "personal";
     const writeup = galleryWriteup(gallery);
     if (education && legacyOrganization && education !== legacyOrganization) return errorResult("\uAD50\uC721\uC740 \uD55C \uBC88\uB9CC \uC9C0\uC815\uD55C\uB2E4");
     const organization = education ?? legacyOrganization;
@@ -39815,6 +39835,11 @@ groupServer("mcp-apps").registerTool(
       const deploymentName2 = toDeploymentName(
         name ?? gitRepoNameOf(projectPath)
       );
+      if (onTeamConflict === "personal") {
+        const existing = await callApi(`/v1/deployments/${encodeURIComponent(deploymentName2)}`, {}, workspace);
+        if (existing.ok) return errorResult(`\uC774 \uACF5\uAC04\uC5D0 '${deploymentName2}' \uC571\uC774 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4. \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC0C8 \uC571\uC774\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uB2E4\uB978 \uC774\uB984\uC744 \uBC1B\uC544 \uB2E4\uC2DC \uBC30\uD3EC\uD569\uB2C8\uB2E4.`);
+        if (existing.status !== 404) return failure("\uAC19\uC740 \uC774\uB984 \uC571\uC774 \uC788\uB294\uC9C0 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uB2E4", existing);
+      }
       let attempt2;
       try {
         attempt2 = await deploymentAttempt(
@@ -39829,7 +39854,8 @@ groupServer("mcp-apps").registerTool(
             env: env ?? {},
             secrets: secrets ?? {},
             resources,
-            workspace
+            workspace,
+            teamConflict: serverChoice === void 0 ? void 0 : `${serverChoice}:${teamConflictApp}`
           }),
           forceNewRevision ?? false,
           // git 소스는 fingerprint 에 커밋 내용이 없어, 같은 branch 에 새 커밋을
@@ -39856,7 +39882,8 @@ groupServer("mcp-apps").registerTool(
           ...resources === void 0 ? {} : { resources },
           idempotencyKey: attempt2.key,
           ...appMeta({ displayName, renameApp, changeSummary }),
-          ...writeup === void 0 ? {} : { gallery: writeup }
+          ...writeup === void 0 ? {} : { gallery: writeup },
+          ...serverChoice === void 0 ? {} : { onTeamConflict: serverChoice, teamConflictApp }
         })
       }, workspace);
       if (result2.status === 202) {
@@ -39890,7 +39917,7 @@ groupServer("mcp-apps").registerTool(
       );
     }
     const deploymentName = toDeploymentName(name ?? path14.basename(projectPath));
-    if (newApp !== true) {
+    if (!freshApp) {
       const recorded = await readSourceState(projectPath).catch(() => void 0);
       if (recorded !== void 0 && recorded.api === apiBase() && recorded.deployment === deploymentName) {
         if (workspace === void 0) {
@@ -39903,7 +39930,7 @@ groupServer("mcp-apps").registerTool(
       }
     }
     let movedFrom;
-    if (newApp !== true) {
+    if (!freshApp) {
       try {
         const state = await readSourceState(projectPath);
         const moved = state !== void 0 && state.api === apiBase() && state.deployment === deploymentName ? await movedAppWorkspace(state, deploymentName, workspace) : void 0;
@@ -39923,16 +39950,16 @@ groupServer("mcp-apps").registerTool(
     }
     let base;
     try {
-      base = await readSourceBase(projectPath, apiBase(), deploymentName, workspace, newApp === true);
+      base = await readSourceBase(projectPath, apiBase(), deploymentName, workspace, freshApp);
     } catch (error51) {
       return errorResult(error51 instanceof Error ? error51.message : "\uC18C\uC2A4 \uAE30\uC900\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4");
     }
-    if (newApp === true) {
+    if (freshApp) {
       const existing = await callApi(`/v1/deployments/${encodeURIComponent(deploymentName)}`, {}, workspace);
       if (existing.ok) return errorResult(`\uC774 \uACF5\uAC04\uC5D0 '${deploymentName}' \uC571\uC774 \uC774\uBBF8 \uC788\uC2B5\uB2C8\uB2E4. \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC0C8 \uC571\uC774\uBA74 \uC0AC\uC6A9\uC790\uC5D0\uAC8C \uB2E4\uB978 \uC774\uB984\uC744 \uBC1B\uC544 \uB2E4\uC2DC \uBC30\uD3EC\uD558\uACE0, \uADF8 \uC571\uC744 \uAC31\uC2E0\uD558\uB824\uBA74 newApp \uC5C6\uC774 \uBC30\uD3EC\uD569\uB2C8\uB2E4.`);
       if (existing.status !== 404) return failure("\uAC19\uC740 \uC774\uB984 \uC571\uC774 \uC788\uB294\uC9C0 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uB2E4. \uBC30\uD3EC\uD558\uC9C0 \uC54A\uC558\uB2E4", existing);
     }
-    if (newApp !== true) {
+    if (!freshApp) {
       const held = await teamChangesBeforeDeploy(deploymentName, workspace, base);
       if (held !== void 0) return held;
     }
@@ -39975,7 +40002,8 @@ groupServer("mcp-apps").registerTool(
           env: resolvedEnv,
           secrets: resolvedSecrets,
           resources,
-          workspace
+          workspace,
+          teamConflict: serverChoice === void 0 ? void 0 : `${serverChoice}:${teamConflictApp}`
         }),
         forceNewRevision ?? false
       );
@@ -39985,6 +40013,10 @@ groupServer("mcp-apps").registerTool(
       );
     }
     form.set("idempotencyKey", attempt.key);
+    if (serverChoice !== void 0) {
+      form.set("onTeamConflict", serverChoice);
+      form.set("teamConflictApp", teamConflictApp);
+    }
     let result = await callApi("/v1/deployments", {
       method: "POST",
       headers: RESPOND_ASYNC,
@@ -39997,9 +40029,10 @@ groupServer("mcp-apps").registerTool(
     }
     if (!result.ok) return deploymentFailure(result, deploymentName, workspace, base);
     const committed = typeof result.body === "object" && result.body !== null ? result.body.sourceCommit : null;
+    const deployedName = typeof result.body === "object" && result.body !== null && "name" in result.body && typeof result.body.name === "string" ? result.body.name : deploymentName;
     if (typeof committed === "string") {
       try {
-        await saveSourceBase(projectPath, apiBase(), deploymentName, workspace, committed);
+        await saveSourceBase(projectPath, apiBase(), deployedName, workspace, committed);
       } catch {
         return textResult({ \uBC30\uD3EC\uB428: true, sourceCommit: committed, \uC548\uB0B4: "\uBC30\uD3EC\uB294 \uC644\uB8CC\uB410\uC73C\uB098 \uB85C\uCEEC \uC18C\uC2A4 \uAE30\uC900\uC744 \uAE30\uB85D\uD558\uC9C0 \uBABB\uD588\uB2E4. \uB2E4\uC74C \uBC30\uD3EC \uC804\uC5D0 \uCD5C\uC2E0 \uC18C\uC2A4\uB97C \uD655\uC778\uD55C\uB2E4", \uACB0\uACFC: result.body });
       }
