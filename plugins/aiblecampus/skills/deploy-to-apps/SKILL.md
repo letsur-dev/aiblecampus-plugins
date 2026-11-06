@@ -14,6 +14,15 @@ description: 사용자가 명시적으로 요청한 에이블캠퍼스 Apps 배�
 
 - 배포 대상의 기본은 개인 앱이다. 사용자가 개인인지 조인지 말하지 않으면 묻지 않고 `deploy_project`의 `workspace`를 생략해 개인 공간에 배포한다. 소속 조가 있거나 하나뿐이어도 조를 고르거나 추측하지 않는다.
 - 조 앱은 사용자가 요청에서 "조 앱"이나 조 이름을 명시했거나 인계 기록(`.aiblecampus-deploy.json`)에 조 공간이 정해져 있을 때만 쓴다. 이미 조 앱인 앱을 갱신할 때 폴더 기록(`.apps-source.json`)에 그 앱의 공간이 있으면 도구가 이어받아 소유를 유지하고, 기록이 없으면 사용자가 조 앱 갱신이라고 말했을 때만 조 UUID를 넣는다. 폴더 기록이 조 앱인데 사용자가 개인 앱으로 올리라고 했으면 `workspace`를 생략하고 `newApp: true`로 배포한다.
+- 조 앱 수가 1이고 조 앱이 있으면 같은 이름일 때만 갱신된다. 다른 이름으로 배포하면 서버가 409 `app-limit-reached`와 선택지(`details.choices`)로 거절한다. 아래 "조 앱 수 충돌 선택"을 따르고 이름을 바꿔 다시 시도하지 않는다.
+
+## 조 앱 수 충돌 선택
+
+- 409 `details.choices`의 선택지를 사용자에게 한 번 묻는다. 문구는 짧은 명사형으로 쓴다: `move-existing` "기존 조 앱을 원래 배포자의 개인 앱으로 이동, 새 앱을 조 앱으로 배포"(기본), `replace` "기존 조 앱 덮어쓰기(주소 유지, 내용 교체)", `personal` "새 앱을 내 개인 앱으로 배포". `available`이 `false`인 선택은 묻지 않고 `reason`을 한 줄로 알린다.
+- 사용자가 고른 선택을 `onTeamConflict`와 `teamConflictApp`(`details.existingApp.name`)에 넣어 같은 소스로 다시 `deploy_project`를 부른다. `personal`은 `teamConflictApp` 없이 `workspace`를 생략하고 `education`에 `details.educationId`를 넣는다. 고르기 전에는 넣지 않는다.
+- `replace`는 기존 조 앱을 다른 조원이 배포했으면(`details.existingApp.deployedByYou`가 `false`) 호출 전에 한 번 더 확인한다. 옛 버전은 되돌리기용으로 남고 앱 이름은 기존 이름이다.
+- 응답 `details.changed`가 `true`면 그사이 조 앱이 바뀐 것이다. 선택을 적용하지 않았으니 새 `details.choices`로 다시 묻는다.
+- 배포 뒤 결과의 `이름`, `url`과 기존 조 앱의 이동 위치나 덮어쓰기를 한 줄로 알린다.
 
 ## 조 배포를 끈 교육
 

@@ -62,7 +62,7 @@ import type { ServerNotification, ServerRequest } from "@modelcontextprotocol/sd
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.53.0";
+export const PLUGIN_VERSION = "0.53.1";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -131,6 +131,8 @@ function deploymentFingerprint(input: {
   secrets: Record<string, string>;
   resources?: { cpus: number; memoryMb: number } | undefined;
   workspace?: string | undefined;
+  /** 조 앱 수 충돌의 선택. 선택 없이 거절된 요청과 같은 시도로 보지 않는다 */
+  teamConflict?: string | undefined;
 }): string {
   return createHash("sha256")
     .update(
@@ -143,6 +145,7 @@ function deploymentFingerprint(input: {
         resources: input.resources ?? null,
         workspace: input.workspace ?? null,
         organization: input.organization ?? null,
+        ...(input.teamConflict === undefined ? {} : { teamConflict: input.teamConflict }),
         sourceBaseCommit: input.sourceBaseCommit ?? null,
       }),
     )
@@ -389,12 +392,17 @@ function failure(prefix: string, result: ApiResult, note?: string): ReturnType<t
 // 실패 결과의 참고는 사실만 쓴다. 다음 행동은 deploy-to-apps 지침(deployment-contract.md "실패 단계")에 있다(0.42.1)
 const QUEUE_NOTE = "작업 대기열이나 실행 계층 용량 문제다. details.retryable이 다시 시도할 수 있는지를 뜻한다. 기존 앱은 계속 제공된다";
 const TLS_NOT_READY_NOTE = "공개 주소 인증서가 아직 준비되지 않았다. 앱 코드 문제가 아니며 진행 상태는 deployment_status로 볼 수 있다";
+const TEAM_APP_CONFLICT_NOTE = "이 조는 조 앱 수 1을 모두 써서 다른 이름의 새 조 앱을 만들 수 없다. details.choices가 선택지(move-existing, replace, personal)와 가능 여부(available, reason)이고 details.existingApp이 기존 조 앱이다. 선택은 onTeamConflict와 teamConflictApp(details.existingApp.name)으로 다시 배포한다. personal은 workspace를 생략한 새 개인 앱 배포다";
+const TEAM_APP_NAME_NOTE = "이 조는 조 앱 수를 모두 써서 다른 이름의 새 조 앱을 만들 수 없다. 기존 조 앱은 같은 이름으로 배포할 때만 갱신된다. details.names가 기존 조 앱 이름이다";
 
 /** 배포 실패 응답의 stage와 details.code에 맞는 참고 사실 */
 function deploymentFailureNote(body: ApiResult["body"]): string | undefined {
   if (typeof body !== "object" || body === null) return undefined;
   const details = typeof body.details === "object" && body.details !== null ? body.details : {};
   if ("code" in details && details.code === "public-tls-not-ready") return TLS_NOT_READY_NOTE;
+  if ("code" in details && details.code === "app-limit-reached" && "scope" in details && details.scope === "team") {
+    return "choices" in details && Array.isArray(details.choices) ? TEAM_APP_CONFLICT_NOTE : TEAM_APP_NAME_NOTE;
+  }
   if (body.stage === "queue") return QUEUE_NOTE;
   return undefined;
 }
@@ -521,7 +529,7 @@ async function settleAccepted(
       return { final: failure("배포는 서버에서 계속 진행 중일 수 있으나 진행 상태를 조회하지 못했다", outcome.result, `deployment_status로 '${name}'의 상태를 확인한다`) };
     case "pending":
       if (input.project !== undefined) {
-        await rememberPendingDeploy(info.revisionId, { projectPath: input.project.projectPath, api: apiBase(), deployment: input.project.deployment, workspace: input.workspace ?? null }).catch(() => undefined);
+        await rememberPendingDeploy(info.revisionId, { projectPath: input.project.projectPath, api: apiBase(), deployment: typeof info["name"] === "string" ? info["name"] : input.project.deployment, workspace: input.workspace ?? null }).catch(() => undefined);
       }
       return { final: inProgressResult({ name, deploymentId: info.deploymentId, revisionId: info.revisionId, number: info.revisionNumber, url, state: outcome.state, elapsedMs: outcome.elapsedMs, workspace: input.workspace }) };
   }
@@ -1126,6 +1134,18 @@ groupServer("mcp-apps").registerTool(
         .boolean()
         .optional()
         .describe("이미 다른 앱으로 배포한 폴더를 다른 이름의 새 앱으로 배포할 때만 true. 같은 이름 앱이 있다는 오류에서 사용자가 '다른 이름의 새 앱'을 고른 경우에만 쓰고 새 name을 함께 넣는다. 조 앱에 연결된 폴더를 사용자가 개인 앱으로 올리라고 했을 때도 true이며 이때는 이름이 같아도 된다(폴더는 새 앱으로 다시 연결된다). 그 이름의 앱이 대상 공간에 이미 있으면 배포하지 않는다. 폴더를 복사해 우회하지 않는다"),
+      onTeamConflict: z
+        .enum(["move-existing", "replace", "personal"])
+        .optional()
+        .describe(
+          "조 앱 수 충돌의 선택. 조 앱 수가 1이고 조 앱이 있을 때 다른 이름으로 조 앱을 배포하면 409 app-limit-reached가 오고 응답 details.choices(선택지와 가능 여부)와 details.existingApp(기존 조 앱)이 담긴다. 그 선택지를 사용자에게 묻고 사용자가 고른 것만 넣는다. 사용자가 고르기 전에는 넣지 않는다. move-existing: 기존 조 앱을 원래 배포한 조원의 개인 앱으로 옮기고 새 앱을 조 앱으로 배포한다. replace: 기존 조 앱을 덮어쓴다(주소 유지, 내용 교체, 옛 버전은 되돌리기용으로 남고 앱 이름은 기존 이름이다). 다른 조원의 작업을 덮으므로 사용자에게 한 번 더 확인한 뒤에만 넣는다. personal: 새 앱을 내 개인 앱으로 배포한다(workspace를 생략한 새 개인 앱 배포와 같고 education은 details.educationId를 쓴다). available이 false인 선택은 묻지 않고 넣지 않는다. move-existing, replace는 teamConflictApp과 함께 넣는다",
+        ),
+      teamConflictApp: z
+        .string()
+        .min(2)
+        .max(40)
+        .optional()
+        .describe("onTeamConflict를 적용할 기존 조 앱 이름. 409 응답의 details.existingApp.name을 그대로 넣는다. onTeamConflict가 move-existing, replace일 때 필수다. 그사이 조 앱이 바뀌었으면 서버가 선택을 적용하지 않고 선택지를 다시 준다"),
     },
     annotations: {
       readOnlyHint: false,
@@ -1152,9 +1172,20 @@ groupServer("mcp-apps").registerTool(
     changeSummary,
     gallery,
     newApp,
+    onTeamConflict,
+    teamConflictApp,
   }, extra) => {
     const startedAt = Date.now();
     let workspace = requestedWorkspace;
+    if ((onTeamConflict === "move-existing" || onTeamConflict === "replace") && teamConflictApp === undefined) {
+      return errorResult("onTeamConflict가 move-existing, replace이면 teamConflictApp(409 details.existingApp.name)이 필요하다");
+    }
+    if (onTeamConflict === "personal" && requestedWorkspace !== undefined) {
+      // 새 개인 앱으로 배포한다. 같은 이름의 개인 앱을 갱신하지 않는 새 앱(newApp)이고 폴더 기록의 조 공간을 이어받지 않는다
+      workspace = undefined;
+    }
+    const serverChoice = onTeamConflict === "move-existing" || onTeamConflict === "replace" ? onTeamConflict : undefined;
+    const freshApp = newApp === true || onTeamConflict === "personal";
     const writeup = galleryWriteup(gallery);
     if (education && legacyOrganization && education !== legacyOrganization) return errorResult("교육은 한 번만 지정한다");
     const organization = education ?? legacyOrganization;
@@ -1166,6 +1197,12 @@ groupServer("mcp-apps").registerTool(
       const deploymentName = toDeploymentName(
         name ?? gitRepoNameOf(projectPath),
       );
+      if (onTeamConflict === "personal") {
+        // 새 개인 앱 선택은 같은 이름의 개인 앱을 갱신하지 않는다
+        const existing = await callApi(`/v1/deployments/${encodeURIComponent(deploymentName)}`, {}, workspace);
+        if (existing.ok) return errorResult(`이 공간에 '${deploymentName}' 앱이 이미 있습니다. 배포하지 않았습니다. 새 앱이면 사용자에게 다른 이름을 받아 다시 배포합니다.`);
+        if (existing.status !== 404) return failure("같은 이름 앱이 있는지 확인하지 못했다. 배포하지 않았다", existing);
+      }
       let attempt: { key: string; recovered: boolean };
       try {
         attempt = await deploymentAttempt(
@@ -1181,6 +1218,7 @@ groupServer("mcp-apps").registerTool(
             secrets: secrets ?? {},
             resources,
             workspace,
+            teamConflict: serverChoice === undefined ? undefined : `${serverChoice}:${teamConflictApp}`,
           }),
           forceNewRevision ?? false,
           // git 소스는 fingerprint 에 커밋 내용이 없어, 같은 branch 에 새 커밋을
@@ -1208,6 +1246,7 @@ groupServer("mcp-apps").registerTool(
           idempotencyKey: attempt.key,
           ...appMeta({ displayName, renameApp, changeSummary }),
           ...(writeup === undefined ? {} : { gallery: writeup }),
+          ...(serverChoice === undefined ? {} : { onTeamConflict: serverChoice, teamConflictApp }),
         }),
       }, workspace);
       if (result.status === 202) {
@@ -1247,7 +1286,7 @@ groupServer("mcp-apps").registerTool(
 
     // 공간을 생략하면 개인 앱이다. 단 이 폴더가 같은 이름의 앱으로 받았거나 배포한 공간(조 앱 포함)이 기록(.apps-source.json)에 있으면 그 앱의 소유를 유지한다.
     // 새 앱(newApp)은 이어받지 않는다. 기록이 깨졌으면 아래 소스 기준 확인이 같은 오류를 낸다
-    if (newApp !== true) {
+    if (!freshApp) {
       const recorded = await readSourceState(projectPath).catch(() => undefined);
       if (recorded !== undefined && recorded.api === apiBase() && recorded.deployment === deploymentName) {
         if (workspace === undefined) {
@@ -1264,7 +1303,7 @@ groupServer("mcp-apps").registerTool(
     // 앱을 다른 공간으로 옮긴 뒤(app.move) 폴더 기록에 남은 옛 공간을 앱의 지금 공간으로 맞춘다(0.41.1, 2026-10-19 운영).
     // 요청한 공간이 앱의 지금 공간이면 그대로 갱신하고, 아니면(옛 공간으로 요청) 배포하지 않고 지금 공간을 알린다
     let movedFrom: string | null | undefined;
-    if (newApp !== true) {
+    if (!freshApp) {
       try {
         const state = await readSourceState(projectPath);
         const moved = state !== undefined && state.api === apiBase() && state.deployment === deploymentName
@@ -1289,9 +1328,9 @@ groupServer("mcp-apps").registerTool(
     // 기준 커밋은 checkout_app_source나 직전 배포가 프로젝트 폴더에 남긴 .apps-source.json에서만 읽는다(0.38.0).
     // 도구 입력으로 받으면 기준 값만 바꿔 조원 변경을 덮어쓸 수 있었다(2026-09 교육 D)
     let base: string | undefined;
-    try { base = await readSourceBase(projectPath, apiBase(), deploymentName, workspace, newApp === true); }
+    try { base = await readSourceBase(projectPath, apiBase(), deploymentName, workspace, freshApp); }
     catch (error) { return errorResult(error instanceof Error ? error.message : "소스 기준을 확인하지 못했다"); }
-    if (newApp === true) {
+    if (freshApp) {
       // 새 앱이라고 했는데 그 이름의 앱이 있으면 그 앱을 갱신하게 된다. 덮어쓰지 않고 다른 이름을 받게 한다
       const existing = await callApi(`/v1/deployments/${encodeURIComponent(deploymentName)}`, {}, workspace);
       if (existing.ok) return errorResult(`이 공간에 '${deploymentName}' 앱이 이미 있습니다. 배포하지 않았습니다. 새 앱이면 사용자에게 다른 이름을 받아 다시 배포하고, 그 앱을 갱신하려면 newApp 없이 배포합니다.`);
@@ -1299,7 +1338,7 @@ groupServer("mcp-apps").registerTool(
     }
 
     // 조 앱이면 기준 커밋 뒤 조원 변경을 먼저 확인한다(0.53.0). 있으면 서버 자동 병합에 맡기지 않고 통합 절차(recovery)로 넘긴다
-    if (newApp !== true) {
+    if (!freshApp) {
       const held = await teamChangesBeforeDeploy(deploymentName, workspace, base);
       if (held !== undefined) return held;
     }
@@ -1345,6 +1384,7 @@ groupServer("mcp-apps").registerTool(
           secrets: resolvedSecrets,
           resources,
           workspace,
+          teamConflict: serverChoice === undefined ? undefined : `${serverChoice}:${teamConflictApp}`,
         }),
         forceNewRevision ?? false,
       );
@@ -1354,6 +1394,10 @@ groupServer("mcp-apps").registerTool(
       );
     }
     form.set("idempotencyKey", attempt.key);
+    if (serverChoice !== undefined) {
+      form.set("onTeamConflict", serverChoice);
+      form.set("teamConflictApp", teamConflictApp!);
+    }
 
     let result = await callApi("/v1/deployments", {
       method: "POST",
@@ -1370,8 +1414,10 @@ groupServer("mcp-apps").registerTool(
     if (!result.ok) return deploymentFailure(result, deploymentName, workspace, base);
 
     const committed = typeof result.body === "object" && result.body !== null ? (result.body as { sourceCommit?: unknown }).sourceCommit : null;
+    // 조 앱 덮어쓰기(replace)는 앱 이름이 기존 조 앱 이름이다. 폴더 기록도 그 이름으로 남긴다
+    const deployedName = typeof result.body === "object" && result.body !== null && "name" in result.body && typeof result.body.name === "string" ? result.body.name : deploymentName;
     if (typeof committed === "string") {
-      try { await saveSourceBase(projectPath, apiBase(), deploymentName, workspace, committed); }
+      try { await saveSourceBase(projectPath, apiBase(), deployedName, workspace, committed); }
       catch { return textResult({ 배포됨: true, sourceCommit: committed, 안내: "배포는 완료됐으나 로컬 소스 기준을 기록하지 못했다. 다음 배포 전에 최신 소스를 확인한다", 결과: result.body }); }
     }
 
