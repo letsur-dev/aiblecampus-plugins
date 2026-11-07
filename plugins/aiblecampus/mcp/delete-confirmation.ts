@@ -15,7 +15,7 @@ const Pending = z.object({ fingerprint: z.string(), expiresAt: z.number() });
 const State = z.object({ version: z.literal(1), pending: z.record(z.string(), Pending) });
 type State = z.infer<typeof State>;
 
-/** 사람이 삭제 대상을 읽고 답하는 데 넉넉한 시간(2026-10-18 시뮬: 클로드가 묻고 답을 받는 사이에 만료됐다) */
+/** 사람이 삭제 대상을 읽고 답하는 데 넉넉한 시간. 클로드가 묻고 답을 받는 사이에 만료되지 않아야 한다 */
 export const CONFIRMATION_TTL_MS = 10 * 60_000;
 const CONFIRMATION_EXPIRED_MESSAGE =
   "삭제 확인 시간(10분)이 지나 삭제하지 않았습니다. 사용자에게 \"확인 시간이 지나 삭제하지 않았어요. 삭제하려면 다시 요청해 주세요\"라고 알리세요. 다시 요청하면 처음부터(확인값 없이) 미리보기를 받아 다시 확인합니다.";
@@ -29,7 +29,7 @@ function defaultFile(): string {
 
 /**
  * 삭제 확인값. 일회용이고 확인한 앱, 공간, 배포 상태, 계정, API에 묶인다.
- * 권한 0600 파일에 둔다. 클로드가 대화 차례마다 MCP 프로세스를 새로 띄워도 사람이 답하는 사이에 확인값이 사라지지 않는다(2026-10-18 시뮬 I-20, 10-20초 만에 만료)
+ * 권한 0600 파일에 둔다. 클로드가 대화 차례마다 MCP 프로세스를 새로 띄워도 사람이 답하는 사이에 확인값이 사라지지 않는다
  */
 export class DeletionConfirmations {
   private readonly now: () => number;

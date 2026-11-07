@@ -1,12 +1,7 @@
 /**
- * 파일 원본 내려받기(0.44.0, 2026-10-27). MCP 도구 `download_my_file`이 쓴다.
- *
- * - platform `GET /v1/personal/educations/:educationId/items/:itemId/download`의 본문 스트림을 사용자 PC 폴더에 새 파일로 쓴다. 통째로 메모리에 올리지 않는다
- * - 저장할 이름은 서버 응답 헤더 `x-hub-file-name`(퍼센트 인코딩)이다. 서버 값도 믿지 않고 마지막 이름 조각만 쓰며 제어 문자와 경로 구분자를 없앤다.
- *   그래서 저장 위치는 항상 고른 폴더 바로 아래 한 파일이다
- * - 있는 파일은 덮어쓰지 않는다(`wx`로 열고 EEXIST면 `이름 (2).확장자`처럼 번호를 붙인다). 한도 초과, 스트림 오류, 받은 크기와 content-length 불일치는
- *   만든 파일을 지우고 실패로 돌려준다
- * - 한도(`PERSONAL_DOWNLOAD_MAX_BYTES`)는 서버 계약을 옮긴 값이다(personal-files.ts). 같은 값인지는 단위 시험이 본다
+ * 도구 `download_my_file`. 서버 본문 스트림을 사용자 PC 폴더에 새 파일로 쓰며 통째로 메모리에 올리지 않고, 있는 파일은 덮어쓰지 않는다(`wx`로 열고 EEXIST면 번호를 붙인다).
+ * 저장 이름은 서버 응답 헤더 `x-hub-file-name`의 마지막 이름 조각만 쓰고 제어 문자와 경로 구분자를 없애, 저장 위치는 늘 고른 폴더 바로 아래 한 파일이다.
+ * 한도 초과, 스트림 오류, 받은 크기와 content-length 불일치는 만든 파일을 지우고 실패로 돌려준다. 한도는 서버 계약을 옮긴 값이고 단위 시험이 같은 값인지 본다(personal-files.ts).
  */
 import { createHash } from "node:crypto";
 import { mkdir, open, unlink, type FileHandle } from "node:fs/promises";

@@ -1,10 +1,7 @@
 /**
- * 이미지·영상 도구(generate_image, generate_video, video_status)의 실패 안내(0.48.0). 서버 거절 응답을 사용자가 이해하는 한국어 문장으로 바꾼다.
- *
- * - 서버 message를 그대로 전하고, 없으면 상태별 기본 문구를 쓴다
- * - 429 가운데 미디어 생성 한도 도달(서버 message "미디어 생성 한도 도달, 운영진 문의" 또는 옛 서버가 보내는 dailyLimit, remainingToday, resetsAt 칸이 있는 429)은 서버 message와 한도 칸을 모두 무시하고
- *   한도 도달 한 줄만 전한다. 참가자에게 한도 수치는 알리지 않는다. 그 밖의 429(서버의 요청 횟수 제한)는 서버 message를 그대로 전하고 잠시 뒤 다시 하라고 안내한다
- * - 키와 게이트웨이 원문은 서버가 넣지 않으므로 여기서도 그대로 옮기는 것은 message뿐이다
+ * 이미지·영상 도구의 실패 안내. 서버 거절 응답을 사용자가 이해하는 한국어 문장으로 바꾸며, 서버 message를 그대로 전하고 없으면 상태별 기본 문구를 쓴다.
+ * 미디어 생성 한도 도달 429(서버 message "미디어 생성 한도 도달, 운영진 문의" 또는 한도 칸이 있는 429)는 서버 message와 한도 칸을 모두 무시하고 한 줄만 전한다. 참가자에게 한도 수치는 알리지 않는다.
+ * 그 밖의 429(서버의 요청 횟수 제한)는 서버 message를 그대로 전하고 잠시 뒤 다시 하라고 안내한다. 키와 게이트웨이 원문은 옮기지 않는다.
  */
 import { z } from "zod";
 
@@ -28,7 +25,7 @@ function limitReached(status: number, body: z.infer<typeof MediaFailureBody>): b
 /** 429(미디어 생성 한도 도달)일 때 서버 message 대신 전하는 한 줄 */
 const LIMIT_REACHED = "미디어 생성 한도에 도달했다. 운영진에게 문의하도록 사용자에게 알린다.";
 
-/** ISO 시각을 한국 시간 `2026년 10월 30일 00:00`으로 쓴다. 읽지 못하면 받은 문자열 그대로다 */
+/** ISO 시각을 한국 시간 `YYYY년 M월 D일 HH:mm` 형식으로 쓴다. 읽지 못하면 받은 문자열 그대로다 */
 export function koreanTime(iso: string): string {
   const time = Date.parse(iso);
   if (!Number.isFinite(time)) return iso;

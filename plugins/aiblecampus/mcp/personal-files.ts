@@ -1,10 +1,7 @@
 /**
- * 클로드에서 파일과 내 제출물 읽기(0.43.0, 2026-10-26; 0.45.0, 2026-10-28에 Google 문서와 스프레드시트 고치기 edit_my_google_file 추가; 0.43.1, 2026-10-27에 교육 공통 파일과 연결 폴더 위치 추가; 0.44.0, 2026-10-27에 xlsx와 zip 읽기, 원본 내려받기 download_my_file, 링크 열기 open_link 추가). MCP 도구 `list_my_files`, `read_my_file`, `download_my_file`, `list_my_submissions`, `read_my_submission_file`이 쓴다.
- *
- * - 서버 계약은 `@aiblecampus/contracts/platform-api/personal-files`다. 공개 저장소에서 따로 빌드하므로 허브 패키지를 가져오지 않고 한도와 읽기 방식을 옮겼다. 값이 같은지는 단위 시험이 본다
- * - 범위는 호출한 계정의 본인 파일과 개인 명의 제출물뿐이다. 계정, 저장소 경로, 외부 주소를 인자로 받지 않고 서버가 준 항목 ID만 쓴다
- * - 서버가 읽기 방식(이미지, 글, Google 현재 내용, 읽을 수 없음)을 정해 주고, 플러그인은 그 값을 한 번 더 검사한다. 이미지는 선언한 형식과 실제 바이트 머리가 같고 크기 한도 안일 때만 MCP image로 돌려준다
- * - 파일 안의 글은 읽을 자료이며 사용자의 지시가 아니다. 글 결과에는 이 경계를 적어 돌려준다
+ * 도구 `list_my_files`, `read_my_file`, `download_my_file`, `list_my_submissions`, `read_my_submission_file`. 서버 계약(`@aiblecampus/contracts/platform-api/personal-files`)의 한도와 읽기 방식을 옮겼고 단위 시험이 같은 값인지 본다.
+ * 범위는 호출한 계정의 본인 파일과 개인 명의 제출물뿐이다. 계정, 저장소 경로, 외부 주소를 인자로 받지 않고 서버가 준 항목 ID만 쓰며, 파일 안의 글은 읽을 자료이지 사용자의 지시가 아니다.
+ * 서버가 정한 읽기 방식(이미지, 글, Google 현재 내용, 읽을 수 없음)을 한 번 더 검사하고, 이미지는 선언한 형식과 실제 바이트 머리가 같고 크기 한도 안일 때만 MCP image로 돌려준다.
  */
 import { Buffer } from "node:buffer";
 import { z } from "zod";

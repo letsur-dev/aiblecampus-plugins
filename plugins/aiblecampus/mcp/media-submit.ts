@@ -1,10 +1,7 @@
 /**
- * 클로드에서 미디어 보관함 읽기와 미디어 제출(0.49.0, 2026-10-30). MCP 도구 `list_my_media`, `prepare_media_submission`, `submit_media_submission`이 쓴다.
- *
- * - 서버 계약은 `@aiblecampus/contracts/platform-api/media-library`다. 공개 저장소에서 따로 빌드하므로 허브 패키지를 가져오지 않고 한도와 응답 형식을 옮겼다. 값이 같은지는 단위 시험이 본다
- * - 세 도구는 구성 요소(묶음)가 아니다. 이미지·영상 생성 묶음이 켜지고 교육이 갤러리 기능을 쓸 때만 등록한다(도구 설정 파일의 `mediaSubmit`, 앱 기능과 앱 권한은 필요 없다)
- * - 모듈은 늘 사용자가 선택한다. 선택하지 않았거나 모르면 서버가 낼 수 있는 미디어 모듈 목록만 주고 아무것도 만들지 않는다(갤러리 제출의 보드 선택 규칙과 같다)
- * - 제출은 두 단계다. 미리보기(draftId는 서버가 저장하지 않는 서명 토큰, 30분)를 사용자에게 보여 주고 사용자가 다음 메시지에서 승인하면 같은 draftId로 확정한다
+ * 도구 `list_my_media`, `prepare_media_submission`, `submit_media_submission`. 서버 계약(`@aiblecampus/contracts/platform-api/media-library`)의 한도와 응답 형식을 옮겼고 단위 시험이 같은 값인지 본다.
+ * 구성 요소가 아니라 이미지·영상 생성 묶음이 켜지고 교육이 갤러리 기능을 쓸 때만 등록한다. 모듈은 늘 사용자가 선택하며, 선택하지 않았거나 모르면 모듈 목록만 주고 아무것도 만들지 않는다.
+ * 제출은 두 단계다. 미리보기(draftId는 서버가 저장하지 않는 서명 토큰, 30분)를 보여 주고 사용자가 다음 메시지에서 승인하면 같은 draftId로 확정한다.
  */
 import { z } from "zod";
 import { koreanTime } from "./media-failure.ts";

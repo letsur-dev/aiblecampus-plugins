@@ -26303,7 +26303,7 @@ var ToolsConfigSchema = external_exports.strictObject({
   groups: external_exports.array(external_exports.enum(TOOL_GROUP_IDS)).max(TOOL_GROUP_IDS.length),
   image: MediaSummary,
   video: MediaSummary,
-  /** 미디어 제출 도구(list_my_media, prepare_media_submission, submit_media_submission)를 등록하는가(0.49.0). 구성 요소가 아닌 파생 묶음이라 groups에 없다 */
+  /** 미디어 제출 도구(list_my_media, prepare_media_submission, submit_media_submission)를 등록하는가. 구성 요소가 아닌 파생 묶음이라 groups에 없다 */
   mediaSubmit: external_exports.boolean()
 });
 function parseToolsConfig(raw) {
@@ -39002,7 +39002,7 @@ function failureFacts(prefix, result, note) {
 }
 
 // mcp/index.ts
-var PLUGIN_VERSION = "0.53.1";
+var PLUGIN_VERSION = "0.53.2";
 var deletionConfirmations = new DeletionConfirmations();
 function apiBase() {
   return appsEnv("API_URL") || hubCredential()?.apiBase || "https://api.aible-campus.com";
@@ -39384,7 +39384,7 @@ function groupServer(group) {
 groupServer("base").registerTool("get_plugin_skill", {
   title: "\uCD5C\uC2E0 Apps \uC2A4\uD0AC \uC9C0\uCE68 \uC870\uD68C",
   description: "Apps \uC2A4\uD0AC \uC791\uC5C5\uC744 \uC2DC\uC791\uD560 \uB54C \uD604\uC7AC \uAC8C\uC2DC\uB41C \uC138\uBD80 \uC9C0\uCE68\uC744 \uAC00\uC838\uC628\uB2E4. Claude \uB370\uC2A4\uD06C\uD1B1\uC758 Cowork\uC640 Code\uC5D0\uC11C \uB3D9\uC77C\uD558\uAC8C \uC0AC\uC6A9\uD55C\uB2E4. \uBC18\uD658\uB41C \uBC84\uC804\uC740 \uC774\uBC88 \uC791\uC5C5\uC5D0 \uC0AC\uC6A9\uD558\uACE0 \uC0C8 \uC791\uC5C5\uC5D0\uC11C\uB294 \uB2E4\uC2DC \uC870\uD68C\uD55C\uB2E4. \uC124\uCE58 \uBCC0\uACBD\uC774\uB098 \uBC30\uD3EC\uB294 \uC218\uD589\uD558\uC9C0 \uC54A\uB294\uB2E4.",
-  // 원본 그대로 넣은 스킬(frontend-design, eli5, ask-questions-if-underspecified)은 원격 지침을 받지 않는다(0.39.1). 서버는 옛 플러그인을 위해 계속 받는다
+  // 원본 그대로 넣은 스킬(frontend-design, eli5, ask-questions-if-underspecified)은 원격 지침을 받지 않는다. 서버는 옛 플러그인을 위해 계속 받는다
   inputSchema: { skill: external_exports.enum(["deploy-to-apps", "build-ai-feature", "manage-apps-plugin"]) },
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
 }, async ({ skill }) => {
@@ -41118,7 +41118,7 @@ groupServer("base").registerTool(
     apiUrl: apiBase(),
     // automatic: hub 마켓플레이스가 넣은 자동 연결 Credential을 쓴다. device-login: 기기 로그인(start_apps_login)을 쓴다
     authenticationMode: usableHubCredential(apiBase()) === null ? "device-login" : "automatic",
-    // hub: Claude 데스크톱이 hub 마켓플레이스에서 받은 판. public: 공개 마켓플레이스(Claude Code, Claude 구독 로그인 등). 설치와 갱신 절차가 다르다(0.40.1)
+    // hub: Claude 데스크톱이 hub 마켓플레이스에서 받은 버전. public: 공개 마켓플레이스(Claude Code, Claude 구독 로그인 등). 설치와 갱신 절차가 다르다
     distribution: pluginDistribution()
   })
 );

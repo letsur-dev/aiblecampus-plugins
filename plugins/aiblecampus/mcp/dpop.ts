@@ -1,5 +1,5 @@
 /**
- * 기기 로그인 DPoP 키(RFC 9449). 키는 P-256 개인 JWK로 기기 Credential 파일(device.json)에 남는다(0.38.0까지와 같은 모양).
+ * 기기 로그인 DPoP 키(RFC 9449). 키는 P-256 개인 JWK로 기기 Credential 파일(device.json)에 남는다.
  * - 토큰 요청(기기 코드 polling, refresh)의 proof는 openid-client가 만든다(dpopKeyPair로 넘긴다)
  * - api. 요청의 proof(ath 포함)는 jose로 서명한다. openid-client의 fetchProtectedResource는 multipart 업로드 본문(FormData)을 받지 않아 쓰지 않는다
  */

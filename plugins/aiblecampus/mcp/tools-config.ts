@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 /**
- * hub 마켓플레이스가 사람별 압축 파일에 넣은 도구 설정 파일(0.48.0). 플러그인 루트의 `aiblecampus-tools.json`이고 hub 자동 연결 파일(aiblecampus-credential.json)과 같은 자리다.
+ * hub 마켓플레이스가 사람별 압축 파일에 넣은 도구 설정 파일. 플러그인 루트의 `aiblecampus-tools.json`이고 hub 자동 연결 파일(aiblecampus-credential.json)과 같은 자리다.
  *
  * - 파일이 올바르면 `groups`에 든 도구 묶음의 도구와 기반 도구만 클로드에 등록한다. 꺼진 묶음의 도구는 도구 목록에 없다
  * - 파일이 없거나 형식이 틀리면(공개 저장소에서 받아 직접 쓰는 경우) 모든 도구를 등록한다. 서버(platform)가 꺼진 묶음 요청을 403으로 거절한다
@@ -29,7 +29,7 @@ const ToolsConfigSchema = z.strictObject({
   groups: z.array(z.enum(TOOL_GROUP_IDS)).max(TOOL_GROUP_IDS.length),
   image: MediaSummary,
   video: MediaSummary,
-  /** 미디어 제출 도구(list_my_media, prepare_media_submission, submit_media_submission)를 등록하는가(0.49.0). 구성 요소가 아닌 파생 묶음이라 groups에 없다 */
+  /** 미디어 제출 도구(list_my_media, prepare_media_submission, submit_media_submission)를 등록하는가. 구성 요소가 아닌 파생 묶음이라 groups에 없다 */
   mediaSubmit: z.boolean(),
 });
 export type ToolsConfig = z.infer<typeof ToolsConfigSchema>;
@@ -64,7 +64,7 @@ export function toolsConfig(file?: string): ToolsConfig | null {
 }
 
 /**
- * 이 번들을 띄운 MCP 서버 역할(2026-10-30, 플러그인 `aiblecampus`의 서버 `apps`, `files`, `media`). `.mcp.json`이 서버마다 `--server <역할>` 인자를 다르게 준다
+ * 이 번들을 띄운 MCP 서버 역할(플러그인 `aiblecampus`의 서버 `apps`, `files`, `media`). `.mcp.json`이 서버마다 `--server <역할>` 인자를 다르게 준다
  * (인자가 같은 서버는 클로드가 하나만 띄운다). 역할이 없으면(인자 없음: 공개 저장소에서 직접 쓰거나 옛 설정) 모든 묶음을 한 서버가 등록한다.
  * 역할별 묶음 표와 기반 도구를 두는 순서는 서버 계약(`PLUGIN_MCP_SERVERS`, `PLUGIN_MCP_SERVER_IDS`)을 옮겼고 값이 같은지는 단위 시험이 본다
  */

@@ -62,7 +62,7 @@ import type { ServerNotification, ServerRequest } from "@modelcontextprotocol/sd
 import { type ApiResult, failureFacts, type JsonRecord } from "./failure.ts";
 
 /** 모든 api. 요청의 `X-Apps-Plugin-Version` 값. 서버가 일별로 기록해 갱신 현황을 본다 */
-export const PLUGIN_VERSION = "0.53.1";
+export const PLUGIN_VERSION = "0.53.2";
 const deletionConfirmations = new DeletionConfirmations();
 
 /**
@@ -308,7 +308,7 @@ async function readApiResult(response: Response): Promise<ApiResult> {
   try {
     body = JSON.parse(text) as JsonRecord;
   } catch {
-    // 본문이 JSON 이 아니면 그대로 둔다. platform 성공 응답은 언제나 JSON이라 2xx인데 JSON이 아닌 본문은 실패로 본다(앞단의 HTML 페이지 등, 0.42.1)
+    // 본문이 JSON 이 아니면 그대로 둔다. platform 성공 응답은 언제나 JSON이라 2xx인데 JSON이 아닌 본문은 실패로 본다(앞단의 HTML 페이지 등)
     if (response.ok && text.trim() !== "") return { ok: false, status: response.status, body };
   }
   return { ok: response.ok, status: response.status, body };
@@ -389,7 +389,7 @@ function failure(prefix: string, result: ApiResult, note?: string): ReturnType<t
   return errorResult(JSON.stringify(failureFacts(prefix, result, note), null, 2));
 }
 
-// 실패 결과의 참고는 사실만 쓴다. 다음 행동은 deploy-to-apps 지침(deployment-contract.md "실패 단계")에 있다(0.42.1)
+// 실패 결과의 참고는 사실만 쓴다. 다음 행동은 deploy-to-apps 지침(deployment-contract.md "실패 단계")에 있다
 const QUEUE_NOTE = "작업 대기열이나 실행 계층 용량 문제다. details.retryable이 다시 시도할 수 있는지를 뜻한다. 기존 앱은 계속 제공된다";
 const TLS_NOT_READY_NOTE = "공개 주소 인증서가 아직 준비되지 않았다. 앱 코드 문제가 아니며 진행 상태는 deployment_status로 볼 수 있다";
 const TEAM_APP_CONFLICT_NOTE = "이 조는 조 앱 수 1을 모두 써서 다른 이름의 새 조 앱을 만들 수 없다. details.choices가 선택지(move-existing, replace, personal)와 가능 여부(available, reason)이고 details.existingApp이 기존 조 앱이다. 선택은 onTeamConflict와 teamConflictApp(details.existingApp.name)으로 다시 배포한다. personal은 workspace를 생략한 새 개인 앱 배포다";
@@ -408,7 +408,7 @@ function deploymentFailureNote(body: ApiResult["body"]): string | undefined {
 }
 
 /**
- * 서버가 조원 변경을 자동으로 합쳐 배포했을 때(0.38.0, 결정 6) 에이전트에게 줄 안내. 응답의 sourceMerge는 본문에 그대로 남는다.
+ * 서버가 조원 변경을 자동으로 합쳐 배포했을 때 에이전트에게 줄 안내. 응답의 sourceMerge는 본문에 그대로 남는다.
  * 배포한 코드에는 조원 변경이 들어 있지만 로컬 폴더에는 없다. 로컬 기준(.apps-source.json)은 업로드 원본 커밋이라 같은 폴더에서
  * 다시 배포해도 조원 변경을 지우지 않는다
  */
@@ -427,8 +427,8 @@ function mergeNotice(body: unknown): { 자동_병합?: string } {
 type MovedApp = { id: string; name: string; slug: string };
 
 /**
- * 폴더 기록(.apps-source.json)이 가리키는 같은 이름 앱이 기록의 공간을 떠나 다른 공간에 있으면 그 공간(0.41.1).
- * 운영자나 조원이 앱을 옮기면(app.move) 기록에는 옛 공간이 남아 첫 갱신 배포가 막혔다(2026-10-19 운영).
+ * 폴더 기록(.apps-source.json)이 가리키는 같은 이름 앱이 기록의 공간을 떠나 다른 공간에 있으면 그 공간.
+ * 운영자나 조원이 앱을 옮기면(app.move) 기록에는 옛 공간이 남아 첫 갱신 배포가 막힌다.
  * 호출 계정이 볼 수 있는 공간(scope=all)의 같은 이름 앱 중 회차 커밋(sourceCommit)에 기록의 기준 커밋이 있는 앱 하나만 같은 앱으로 본다.
  * 기록의 공간에 그 앱이 그대로 있거나, 찾지 못하거나, 둘 이상이면 undefined다(기존 판정대로 막는다). 권한은 서버가 공간마다 그대로 본다
  */
@@ -550,8 +550,8 @@ async function completePendingDeploy(revisionId: string | undefined, sourceCommi
 
 /**
  * 소스 통합 복구 지시(recovery). 두 곳이 같은 절차를 쓴다: (1) 서버가 409 source-conflict로 거절했을 때, (2) 조 앱 배포 직전 확인에서
- * 기준 커밋 뒤 조원 변경이 있다고 나왔을 때(0.53.0). 서버가 latestCommit(판정한 기본 브랜치 커밋)을 주면 최신 소스를 그 커밋으로 받게 해
- * 판정과 같은 코드에 통합한다(0.38.0). 게시된 지침 본문은 싣지 않고 판만 남긴다
+ * 기준 커밋 뒤 조원 변경이 있다고 나왔을 때. 서버가 latestCommit(판정한 기본 브랜치 커밋)을 주면 최신 소스를 그 커밋으로 받게 해
+ * 판정과 같은 코드에 통합한다. 게시된 지침 본문은 싣지 않고 버전만 남긴다
  */
 async function sourceRecovery(input: { deployment: string; workspace: string | undefined; sourceBaseCommit: string | undefined; latest: string | undefined; trigger: "source-conflict" | "team-changes" }) {
   const { deployment, workspace, sourceBaseCommit, latest, trigger } = input;
@@ -609,7 +609,7 @@ const TeamSourceStatus = z.object({
 });
 
 /**
- * 조 앱 배포 직전 확인(0.53.0). 서버에 기준 커밋(.apps-source.json) 뒤 조원 커밋이 있는지 묻고, 있으면 서버 자동 병합에 맡기지 않고
+ * 조 앱 배포 직전 확인. 서버에 기준 커밋(.apps-source.json) 뒤 조원 커밋이 있는지 묻고, 있으면 서버 자동 병합에 맡기지 않고
  * 충돌 복구와 같은 통합 절차(sourceRecovery)를 도구 결과로 돌려준다. 이 폴더에서 실행해 보지 않은 병합 코드가 배포되는 것을 막는다.
  * 개인 앱, 새 앱, 앱이 아직 없는 공간, 옛 서버(경로 없음), 확인 실패는 undefined(그대로 배포)다. 서버의 자동 병합과 409 판정이 안전망이다
  */
@@ -656,7 +656,7 @@ function groupServer(group: ToolGroup): Pick<McpServer, "registerTool"> {
 groupServer("base").registerTool("get_plugin_skill", {
   title: "최신 Apps 스킬 지침 조회",
   description: "Apps 스킬 작업을 시작할 때 현재 게시된 세부 지침을 가져온다. Claude 데스크톱의 Cowork와 Code에서 동일하게 사용한다. 반환된 버전은 이번 작업에 사용하고 새 작업에서는 다시 조회한다. 설치 변경이나 배포는 수행하지 않는다.",
-  // 원본 그대로 넣은 스킬(frontend-design, eli5, ask-questions-if-underspecified)은 원격 지침을 받지 않는다(0.39.1). 서버는 옛 플러그인을 위해 계속 받는다
+  // 원본 그대로 넣은 스킬(frontend-design, eli5, ask-questions-if-underspecified)은 원격 지침을 받지 않는다. 서버는 옛 플러그인을 위해 계속 받는다
   inputSchema: { skill: z.enum(["deploy-to-apps", "build-ai-feature", "manage-apps-plugin"]) },
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
 }, async ({ skill }) => {
@@ -670,7 +670,7 @@ groupServer("base").registerTool("get_plugin_skill", {
 });
 
 /**
- * 공개 마켓플레이스 설치(Claude Code, Claude 구독 로그인 등)에서 Apps 로그인이 없을 때의 get_ai_gateway 안내(0.40.1).
+ * 공개 마켓플레이스 설치(Claude Code, Claude 구독 로그인 등)에서 Apps 로그인이 없을 때의 get_ai_gateway 안내.
  * hub 설치(교육 참가자)는 외부 키를 권하지 않는 위 문구를 그대로 쓴다. 공개본 사용자는 에이블캠퍼스 계정이 없을 수 있어 막다른 길이 되지 않게 한다
  */
 export const PUBLIC_AI_GATEWAY_UNAVAILABLE =
@@ -1300,7 +1300,7 @@ groupServer("mcp-apps").registerTool(
       }
     }
 
-    // 앱을 다른 공간으로 옮긴 뒤(app.move) 폴더 기록에 남은 옛 공간을 앱의 지금 공간으로 맞춘다(0.41.1, 2026-10-19 운영).
+    // 앱을 다른 공간으로 옮긴 뒤(app.move) 폴더 기록에 남은 옛 공간을 앱의 지금 공간으로 맞춘다.
     // 요청한 공간이 앱의 지금 공간이면 그대로 갱신하고, 아니면(옛 공간으로 요청) 배포하지 않고 지금 공간을 알린다
     let movedFrom: string | null | undefined;
     if (!freshApp) {
@@ -1325,8 +1325,8 @@ groupServer("mcp-apps").registerTool(
       }
     }
 
-    // 기준 커밋은 checkout_app_source나 직전 배포가 프로젝트 폴더에 남긴 .apps-source.json에서만 읽는다(0.38.0).
-    // 도구 입력으로 받으면 기준 값만 바꿔 조원 변경을 덮어쓸 수 있었다(2026-09 교육 D)
+    // 기준 커밋은 checkout_app_source나 직전 배포가 프로젝트 폴더에 남긴 .apps-source.json에서만 읽는다.
+    // 도구 입력으로 받으면 기준 값만 바꿔 조원 변경을 덮어쓸 수 있다
     let base: string | undefined;
     try { base = await readSourceBase(projectPath, apiBase(), deploymentName, workspace, freshApp); }
     catch (error) { return errorResult(error instanceof Error ? error.message : "소스 기준을 확인하지 못했다"); }
@@ -1337,7 +1337,7 @@ groupServer("mcp-apps").registerTool(
       if (existing.status !== 404) return failure("같은 이름 앱이 있는지 확인하지 못했다. 배포하지 않았다", existing);
     }
 
-    // 조 앱이면 기준 커밋 뒤 조원 변경을 먼저 확인한다(0.53.0). 있으면 서버 자동 병합에 맡기지 않고 통합 절차(recovery)로 넘긴다
+    // 조 앱이면 기준 커밋 뒤 조원 변경을 먼저 확인한다. 있으면 서버 자동 병합에 맡기지 않고 통합 절차(recovery)로 넘긴다
     if (!freshApp) {
       const held = await teamChangesBeforeDeploy(deploymentName, workspace, base);
       if (held !== undefined) return held;
@@ -2574,13 +2574,13 @@ groupServer("base").registerTool(
     apiUrl: apiBase(),
     // automatic: hub 마켓플레이스가 넣은 자동 연결 Credential을 쓴다. device-login: 기기 로그인(start_apps_login)을 쓴다
     authenticationMode: usableHubCredential(apiBase()) === null ? "device-login" : "automatic",
-    // hub: Claude 데스크톱이 hub 마켓플레이스에서 받은 판. public: 공개 마켓플레이스(Claude Code, Claude 구독 로그인 등). 설치와 갱신 절차가 다르다(0.40.1)
+    // hub: Claude 데스크톱이 hub 마켓플레이스에서 받은 버전. public: 공개 마켓플레이스(Claude Code, Claude 구독 로그인 등). 설치와 갱신 절차가 다르다
     distribution: pluginDistribution(),
   }),
 );
 
 /**
- * 조 배포를 끈 교육의 조는 /v1/me의 workspaces에서 빠지고 unavailableWorkspaces에 온다(2026-10-19, 0.41.1).
+ * 조 배포를 끈 교육의 조는 /v1/me의 workspaces에서 빠지고 unavailableWorkspaces에 온다.
  * 에이전트가 조가 빠진 것을 "조 배정이 풀렸다"로 읽지 않도록 안내 문장을 붙인다. 필드가 없는 옛 서버면 null이다
  */
 function teamDeployOffNotice(value: unknown): string | null {
