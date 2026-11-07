@@ -1,5 +1,5 @@
 /**
- * 앱 표시 이름과 버전 설명(0.32.0). 한 줄로 다듬어 값이 있을 때만 보낸다. 멱등 지문에는 넣지 않는다
+ * 앱 표시 이름과 버전 설명. 한 줄로 다듬어 값이 있을 때만 보낸다. 멱등 지문에는 넣지 않는다
  * (응답이 끊긴 뒤 에이전트가 설명을 달리 적어 다시 보내도 같은 배포로 복구해야 한다)
  */
 export function appMeta(input: { displayName?: string | undefined; renameApp?: boolean | undefined; changeSummary?: string | undefined }): {
@@ -18,8 +18,8 @@ export function appMeta(input: { displayName?: string | undefined; renameApp?: b
 }
 
 /**
- * 갤러리 설명(0.34.0). 서버의 배포 요청 계약(`@aiblecampus/contracts/gallery` galleryWriteupSchema)의 섹션 칸과 한도를 그대로 옮겼다.
- * 칸 이름과 안내는 0.34.0 당시의 문구이고, 허브는 받은 칸을 정해진 소제목의 본문으로 바꾼다(2026-10-08)
+ * 갤러리 설명. 서버의 배포 요청 계약(`@aiblecampus/contracts/gallery` galleryWriteupSchema)의 섹션 칸과 한도를 그대로 옮겼다.
+ * 허브는 받은 칸을 정해진 소제목의 본문으로 바꾼다
  * (공개 저장소에서 따로 빌드하므로 허브 패키지를 가져오지 않는다. 칸과 한도가 같은지는 단위 시험이 본다)
  */
 export const GALLERY_SECTIONS = [

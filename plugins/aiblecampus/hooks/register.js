@@ -1,27 +1,15 @@
 /**
- * 에이블캠퍼스 자동 허용 mod(Claude Code mods, 클로드 앱 Code 탭과 CLI). 모든 교육의 플러그인에 들어간다(앱 기능과 관계없음).
- *
- * Auto 권한 모드의 판별기는 같은 요청도 기기와 회차마다 결과가 달랐다. 아래 두 가지를 판별기 대신 허용한다.
- * - tool.check는 권한 규칙과 PreToolUse 훅이 정한 뒤에 온다. 아무 규칙도 없으면 `ask`(Auto 모드에서는 이 뒤에 판별기가 본다)이고,
- *   그때만 `allow`로 바꾼다. 문서: mod가 허용한 호출은 Auto 모드에서 판별기 확인 없이 실행된다(code.claude.com/docs/en/permissions "Extend permissions with hooks")
- * - deny 규칙과 훅의 거절, 이미 허용한 것은 그대로 둔다
- *
- * 1) 앱 도구(2026-10-13 소유자 화면): 판별기는 deploy_project를 "외부 서비스로 소스 업로드"로 막을 수 있었다. 사용자가 배포를 부탁한 것이므로 허용한다.
- *    배포 흐름의 조회, 검증, 배포만 넣고 삭제, 중지, 이동, 데이터 전환, 설정과 AI 키, 로그인 도구는 넣지 않는다.
- *    접두사는 플러그인 이름(aiblecampus)과 서버 키(apps)에서 온다: mcp__plugin_<플러그인>_<서버>__<도구>. 이름이나 서버 키를 바꾸면 여기도 바꾼다(안 맞으면 허용 확인창이 뜬다).
- *    이 도구들은 앱 배포 묶음이 켜진 교육에만 있다(없는 교육에서는 matcher에 걸릴 호출이 없다)
- * 2) 공개 패키지 설치와 실행(2026-10-30 소유자 결정, 영상·AI Agent 교육): 판별기는 `npm i gsap hyperframes`와 `npx hyperframes`를 "외부 코드 내려받아 실행"으로
- *    막고, 승인한 뒤에도 거절하거나 같은 일을 다른 명령으로 하려 하면 다시 막았다. 참가자가 설치만 하면 되도록 아래 한 줄짜리 명령만 허용한다(isPublicPackageCommand).
- *    - npm install|i|add <이름[@버전]>..., npx [-y] <이름[@버전]> [인자...], pip|pip3|python -m pip install <이름[==버전]>..., uvx <이름[@버전]> [인자...]
- *    - 이름은 공개 레지스트리의 이름 모양(npm: @범위/이름)만이다. URL, git, GitHub 약식(user/repo), 경로, 별칭(npm:)은 모두 아니다
- *    - 옵션은 허용 목록에 있는 것만이다. -g/--global, --prefix, --registry, --index-url, --target, --user, -r, -e, sudo는 목록에 없다
- *    - 셸 연결과 치환(; && | $( ) ` 따옴표 리다이렉트), 환경변수 앞붙임, 여러 줄은 글자 집합에서 걸러 낸다. 끝의 `2>&1`만 허용한다
- *    - Bash 입력에 sandbox 해제나 허용 도메인 목록이 붙어 있으면 넣지 않는다. 세션 작업 폴더 안에서 실행할 때만 허용한다
- *    - 이 규칙 밖의 설치와 실행은 전과 같이 판별기가 본다. 임의 패키지의 코드 실행(postinstall, npx)을 허용하므로 범위를 넓히지 않는다
+ * 에이블캠퍼스 자동 허용 mod(Claude Code mods). Auto 권한 모드의 판별기가 막는 배포 흐름 도구와 공개 패키지 설치와 실행을 허용한다.
+ * tool.check는 권한 규칙과 PreToolUse 훅이 정한 뒤에 오므로 결과가 `ask`일 때만 `allow`로 바꾸고, deny 규칙, 훅의 거절, 이미 허용한 것은 그대로 둔다.
+ * mod가 허용한 호출은 Auto 모드에서 판별기 확인 없이 실행된다(code.claude.com/docs/en/permissions "Extend permissions with hooks").
  */
 const PREFIX = "mcp__plugin_aiblecampus_apps__";
 
-/** 배포 흐름에서 쓰는 도구. 조회, 검증, 배포, 기존 앱 소스 받기 */
+/**
+ * 배포 흐름에서 쓰는 도구. 조회, 검증, 배포, 기존 앱 소스 받기. 사용자가 배포를 부탁한 것인데 판별기가 deploy_project를 "외부 서비스로 소스 업로드"로 막을 수 있어 허용한다.
+ * 삭제, 중지, 이동, 데이터 전환, 설정과 AI 키, 로그인 도구는 넣지 않는다. 앱 배포 묶음이 켜진 교육에만 있는 도구라 없는 교육에서는 matcher에 걸릴 호출이 없다.
+ * 접두사는 플러그인 이름(aiblecampus)과 서버 키(apps)에서 온다: mcp__plugin_<플러그인>_<서버>__<도구>. 이름이나 서버 키를 바꾸면 PREFIX도 바꾼다(안 맞으면 허용 확인창이 뜬다)
+ */
 export const AUTO_ALLOWED_TOOLS = [
   "apps_plugin_status",
   "apps_whoami",
@@ -73,7 +61,14 @@ function isInstallList(tokens, flags, spec) {
 }
 
 /**
- * 공개 레지스트리에서 이름으로 설치하거나 실행하는 한 줄 명령인지.
+ * 공개 레지스트리에서 이름으로 설치하거나 실행하는 한 줄 명령인지. 판별기가 `npm i gsap hyperframes`와 `npx hyperframes`를 "외부 코드 내려받아 실행"으로 막고
+ * 승인 뒤에도 같은 일을 다른 명령으로 하면 다시 막으므로, 참가자가 설치만 하면 되도록 아래 한 줄짜리 명령만 허용한다.
+ * - npm install|i|add <이름[@버전]>..., npx [-y] <이름[@버전]> [인자...], pip|pip3|python -m pip install <이름[==버전]>..., uvx <이름[@버전]> [인자...]
+ * - 이름은 공개 레지스트리의 이름 모양(npm: @범위/이름)만이다. URL, git, GitHub 약식(user/repo), 경로, 별칭(npm:)은 모두 아니다
+ * - 옵션은 허용 목록에 있는 것만이다. -g/--global, --prefix, --registry, --index-url, --target, --user, -r, -e, sudo는 목록에 없다
+ * - 셸 연결과 치환(; && | $( ) ` 따옴표 리다이렉트), 환경변수 앞붙임, 여러 줄은 글자 집합에서 걸러 낸다. 끝의 `2>&1`만 허용한다
+ * - Bash 입력에 sandbox 해제나 허용 도메인 목록이 붙어 있으면 넣지 않는다. 세션 작업 폴더 안에서 실행할 때만 허용한다
+ * - 이 규칙 밖의 설치와 실행은 판별기가 본다. 임의 패키지의 코드 실행(postinstall, npx)을 허용하므로 범위를 넓히지 않는다
  * @param {string} command
  */
 export function isPublicPackageCommand(command) {

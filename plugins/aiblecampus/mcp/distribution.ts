@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { hubCredential } from "./hub-credential.ts";
 
 /**
- * 이 플러그인이 어디서 설치됐는지(0.40.1).
+ * 이 플러그인이 어디서 설치됐는지.
  *
  * - `hub`: hub 마켓플레이스(`aiblecampus`)가 사람별로 만든 압축 파일. 압축 파일 안 `plugin.json` 판에 `+hub.<12자리>`가 붙고(packages/domain/src/gateway/plugin-marketplace.ts),
  *   MCP 서버를 켠 교육이면 자동 연결 파일(aiblecampus-credential.json)도 있다. Claude 데스크톱이 에이블캠퍼스 로그인으로 받는다

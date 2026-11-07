@@ -19,7 +19,7 @@ type PendingAuthorization = {
   verificationUri: string;
   verificationUriComplete: string | null;
   intervalSeconds: number;
-  /** 0.38.1부터 쓰지 않는다(openid-client가 간격을 센다). 0.38.0으로 되돌린 프로세스가 같은 파일을 읽을 수 있게 남긴다 */
+  /** 지금은 쓰지 않는다(openid-client가 간격을 센다). 이전 버전 프로세스가 같은 파일을 읽을 수 있게 남긴다 */
   nextPollAt: number;
   expiresAt: number;
   privateJwk: JsonWebKey;
@@ -36,7 +36,7 @@ type StoredCredential = {
 type LocalState = {
   version: 1;
   apiBase: string;
-  /** Credential을 발급한 로그인 주소. 다르면(0.30.2의 auth.) 저장한 Credential을 버린다 */
+  /** Credential을 발급한 로그인 주소. 다르면 저장한 Credential을 버린다 */
   issuer?: string;
   credential: StoredCredential | null;
   pending: PendingAuthorization | null;
@@ -101,7 +101,7 @@ async function writeState(state: LocalState): Promise<void> {
   await rename(temporary, file);
 }
 
-/** 기본 로그인 주소. 0.31.0부터 `auth.` 대신 `login.`을 쓴다 */
+/** 기본 로그인 주소. `auth.`가 아니라 `login.`을 쓴다 */
 export const DEFAULT_IDENTITY_URL = "https://login.aible-campus.com";
 
 /** 로그인 주소. APPS_IDENTITY_URL, 같은 API 주소의 hub 자동 연결 파일의 issuer, API 주소의 `api.`를 `login.`으로 바꾼 값 순이다 */
@@ -136,7 +136,7 @@ function resourceIndicator(): string {
 }
 
 /**
- * 로그인(oidc-provider)과 이야기하는 openid-client 설정. 끝점은 discovery 없이 정해 둔다(요청 수와 주소가 0.38.0과 같다).
+ * 로그인(oidc-provider)과 이야기하는 openid-client 설정. 끝점은 discovery 없이 정해 둔다.
  * 공개 client라 client_id만 본문에 보낸다. http 로그인 주소(APPS_IDENTITY_URL로 정한 로컬 개발)는 그대로 허용한다
  */
 function oidcConfiguration(apiBase: string): oidc.Configuration {

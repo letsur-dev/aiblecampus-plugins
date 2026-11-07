@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /**
- * hub 마켓플레이스가 플러그인 압축 파일에 넣은 자동 연결 Credential(0.37.0).
+ * hub 마켓플레이스가 플러그인 압축 파일에 넣은 자동 연결 Credential.
  *
  * Claude 데스크톱이 에이블캠퍼스 로그인으로 hub 마켓플레이스에서 플러그인을 자동 설치하면 플러그인 루트에
  * `aiblecampus-credential.json`({ version: 1, token: "amc_..." 또는 참가자 화면 지정에 묶인 "amp_...", apiBase, issuer, expiresAt })이 있다.

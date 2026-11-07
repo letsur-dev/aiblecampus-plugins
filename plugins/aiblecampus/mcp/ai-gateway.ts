@@ -10,7 +10,7 @@ import { loadSelectedLocalEnv } from "./local-env.ts";
 export class AiSetupError extends Error {}
 
 /**
- * 앱용 AI 공용 키(hub_relay)는 NAT 고정 주소로 IP가 제한된다(docs/gateway-keys.md 5.1). 참가자 PC에서 앱을 로컬로 돌리면 렛서 게이트웨이가 403 ip_not_allowed로 거부한다.
+ * 앱용 AI 공용 키(hub_relay)는 NAT 고정 주소로 IP가 제한된다(docs/dev/gateway-keys.md). 참가자 PC에서 앱을 로컬로 돌리면 렛서 게이트웨이가 403 ip_not_allowed로 거부한다.
  * 도구 결과, 도구 설명과 스킬이 같은 사실과 행동 기준을 말하도록 이 문구를 한 곳에 둔다. 클로드에게 주는 지시문이다
  */
 export const LOCAL_AI_NOTICE =

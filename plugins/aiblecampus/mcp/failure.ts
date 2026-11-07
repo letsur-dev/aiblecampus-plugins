@@ -1,9 +1,7 @@
 /**
- * 실패 응답을 도구 결과로 바꾼다(0.42.1).
- * - 결과는 사실만 담은 짧은 JSON이다(실패, 상태, 원인, 응답, 참고). 모델 행동을 지시하는 문장을 넣지 않는다.
- *   0.42.0까지는 404 결과 끝에 지시문을 붙였고 클로드가 이것을 도구 응답에 끼워 넣은 지시로 보고 사용자에게 경고했다(2026-10-21 클로드앱 실기 D2)
- * - JSON 본문은 아래 필드만 옮긴다. stage, details는 deploy-to-apps 지침(deployment-contract.md)이, educations는 education-required 거절에서 고를 교육 목록으로 읽는다
- * - JSON이 아닌 본문(HTML 오류 페이지 등)은 넣지 않고 길이만 적는다. 0.42.0까지는 `api.` 앞단의 404 HTML 전체가 도구 결과에 들어갔다
+ * 실패 응답을 도구 결과로 바꾼다. 결과는 사실만 담은 짧은 JSON이고, 모델 행동을 지시하는 문장을 넣으면 클로드가 도구 응답에 끼워 넣은 지시로 보고 사용자에게 경고한다.
+ * JSON 본문은 아래 필드만 옮긴다. stage, details는 deploy-to-apps 지침(deployment-contract.md)이, educations는 education-required 거절에서 고를 교육 목록으로 읽는다.
+ * JSON이 아닌 본문(HTML 오류 페이지 등)은 넣지 않고 길이만 적는다.
  */
 
 export type JsonRecord = Record<string, unknown>;

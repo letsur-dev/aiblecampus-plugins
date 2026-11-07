@@ -1,11 +1,7 @@
 /**
- * 클로드에서 바로 이미지 생성(0.42.0, 2026-10-20). MCP 도구 `generate_image`가 쓴다.
- *
- * - platform `POST /v1/images/generations`가 앱용 AI 공용 키로 게이트웨이를 부른다. 키는 플러그인에 오지 않는다
- * - 크기와 길이 한도는 서버 계약(`@aiblecampus/contracts/platform-api/images`)을 옮겼다. 공개 저장소에서 따로 빌드하므로
- *   허브 패키지를 가져오지 않고, 값이 같은지는 단위 시험이 본다
- * - 받은 이미지는 저장 폴더에 새 파일로 쓴다. 같은 이름이 있으면 번호를 붙이고 덮어쓰지 않는다
- * - 실패 안내는 media-failure.ts(이미지·영상 공용)다
+ * 도구 `generate_image`. platform `POST /v1/images/generations`가 앱용 AI 공용 키로 게이트웨이를 부르며 키는 플러그인에 오지 않는다. 실패 안내는 media-failure.ts다.
+ * 크기와 길이 한도는 서버 계약(`@aiblecampus/contracts/platform-api/images`)을 옮긴 값이다. 공개 저장소에서 따로 빌드하므로 허브 패키지를 가져오지 않고, 같은 값인지는 단위 시험이 본다.
+ * 받은 이미지는 저장 폴더에 새 파일로 쓰고, 같은 이름이 있으면 번호를 붙이며 덮어쓰지 않는다.
  */
 import { mkdir, open } from "node:fs/promises";
 import path from "node:path";

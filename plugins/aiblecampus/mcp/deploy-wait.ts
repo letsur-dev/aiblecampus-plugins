@@ -1,11 +1,7 @@
 /**
- * 비동기 배포(0.51.0)의 기다리기. 서버가 요청 헤더 `Prefer: respond-async`에 202와 상태 조회 경로를 주면 한 번의 도구 호출 안에서
- * 짧은 상태 조회를 2~3초 간격으로 되풀이해 running이나 failed를 기다린다.
- *
- * - 한 번의 호출이 기다리는 최대 시간은 APPS_DEPLOY_WAIT_SECONDS(기본 40초)다. Claude 데스크톱과 Cowork가 도구 호출을 약 60초에 끊는다는
- *   보고가 있어 그 안에 끝낸다. 넘으면 오류가 아니라 '진행 중' 결과로 끝내고 deployment_status(waitSeconds)로 이어서 기다리게 한다
- * - 상태 조회 한 번은 15초 안에 끝나야 하고(요청이 짧아 undici의 300초 한도와 무관하다), 취소 신호가 오면 바로 멈춘다
- * - 진행 알림(notifications/progress)은 호출이 progressToken을 가졌을 때만 보낸다(Claude Code CLI가 작업 항목에 보여 준다)
+ * 비동기 배포의 기다리기. 서버가 `Prefer: respond-async`에 202와 상태 조회 경로를 주면 한 번의 도구 호출 안에서 짧은 상태 조회를 되풀이해 running이나 failed를 기다린다.
+ * 최대 대기는 APPS_DEPLOY_WAIT_SECONDS(기본 40초)이고, 넘으면 오류가 아니라 '진행 중' 결과로 끝내 deployment_status(waitSeconds)로 이어 기다리게 한다(클라이언트가 도구 호출을 약 60초에 끊는다).
+ * 상태 조회 한 번은 15초 안에 끝나고 취소 신호가 오면 멈추며, 진행 알림(notifications/progress)은 호출이 progressToken을 가졌을 때만 보낸다.
  */
 import { z } from "zod";
 import type { ApiResult } from "./failure.ts";
